@@ -1,0 +1,170 @@
+/* sales_and_reports.html inline styles */
+
+/* --- EXACT SIDEBAR AND GLOBAL STYLES FROM admin_dashboard.html --- */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #fcfcfc;
+        }
+
+        .stat-card {
+            border: none;
+            border-radius: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            height: 100%;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .bg-revenue {
+            background-color: #fff9ed;
+            border: 1px solid #ffe8cc;
+        }
+
+        .bg-orders {
+            background-color: #fff5f5;
+            border: 1px solid #ffd8d8;
+        }
+
+        .bg-customers {
+            background-color: #f0fff4;
+            border: 1px solid #c6f6d5;
+        }
+
+        .bg-value {
+            background-color: #fffaf0;
+            border: 1px solid #feebc8;
+        }
+
+        .bg-best {
+            background: linear-gradient(135deg, #fff9ed 0%, #ffc107 100%);
+            border: 1px solid #ffc107;
+        }
+
+        .dashboard-icon-box {
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .icon-revenue {
+            background: #ffc107;
+            color: #1a1512;
+        }
+
+        .icon-orders {
+            background: #ff4d4d;
+            color: #fff;
+        }
+
+        .icon-customers {
+            background: #28a745;
+            color: #fff;
+        }
+
+        .icon-value {
+            background: #fd7e14;
+            color: #fff;
+        }
+
+        .icon-best {
+            background: #ffc107;
+            color: #1a1512;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            border-color: #ffc107;
+            color: #1a1512;
+        }
+
+        .btn-warning:hover {
+            background-color: #e0a800;
+            border-color: #e0a800;
+            color: #1a1512;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-weight: 600;
+            font-size: 0.8rem;
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .rank-1 {
+            background: #ffc107;
+            color: #1a1512;
+        }
+
+        .rank-2 {
+            background: #ced4da;
+            color: #1a1512;
+        }
+
+        .rank-3 {
+            background: #cd7f32;
+            color: #fff;
+        }
+
+        .top-item-row {
+            border-bottom: 1px solid #f8f9fa;
+            padding: 10px 0;
+        }
+
+        .top-item-row:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 767.98px) {
+                    .stat-card .card-body {
+                        padding: 1rem !important;
+                    }
+
+                    .chart-container {
+                        height: 200px;
+                    }
+
+                    .table {
+                        font-size: 0.8rem;
+                    }
+
+                    .modal-dialog {
+                        margin: 0.5rem;
+                    }
+                }
+
+                /* ── Additional responsive overrides ── */
+                @media (max-width: 480px) {
+                    .page-header { flex-direction: column; align-items: flex-start; }
+                    .page-header h4 { font-size: 1.1rem; }
+                    .table-responsive-wrapper { overflow-x: auto; }
+                    .table th, .table td { padding: 6px 8px; white-space: nowrap; }
+                }
+
+                @media (min-width: 768px) and (max-width: 992px) {
+                    .table { font-size: 0.8rem; }
+                }
+
+                @media (min-width: 1200px) {
+                    .container-fluid { max-width: 1400px; margin: 0 auto; }
+                }

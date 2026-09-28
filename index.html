@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House of Fries - Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="../images/favicon.jpg">
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/javascript/loading.js"></script>
+    <style>
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background-color: #120f0d;
+        }
+
+        .login-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .brand-section {
+            flex: 1.2;
+            background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('../images/LoginImg.png');
+            background-size: cover;
+            background-position: center;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            color: white;
+        }
+
+        .brand-header h1 {
+            font-weight: 700;
+            font-size: 3.5rem;
+            margin-bottom: 0;
+        }
+
+        .brand-header h1 span {
+            color: #ffc107;
+        }
+
+        .location-info {
+            font-size: 0.85rem;
+            color: #d1d1d1;
+            max-width: 450px;
+            line-height: 1.4;
+        }
+
+        .form-section {
+            flex: 1;
+            background-color: #120f0d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-box h2 {
+            color: #fff;
+            font-weight: 600;
+            font-size: 2rem;
+        }
+
+        .login-box h2 span {
+            color: #ffc107;
+        }
+
+        .form-label {
+            color: #fff;
+            font-size: 0.95rem;
+            margin-bottom: 0;
+        }
+
+        .form-control {
+            background-color: #241e1a;
+            border: 1px solid #332a24;
+            color: white;
+            padding: 14px;
+            border-radius: 10px;
+        }
+
+        .form-control:focus {
+            background-color: #2a2420;
+            border-color: #ffc107;
+            color: white;
+            box-shadow: none;
+        }
+
+        .forgot-link {
+            color: #b1b1b1;
+            font-size: 0.75rem;
+            text-decoration: underline;
+            transition: 0.3s;
+        }
+
+        .forgot-link:hover {
+            color: #ffc107;
+        }
+
+        .captcha-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 25px 0;
+        }
+
+        .num-box {
+            border: 1px solid #ffc107;
+            color: #fff;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-weight: 700;
+        }
+
+        .captcha-input {
+            width: 60px;
+            height: 45px;
+            text-align: center;
+            background-color: #241e1a;
+            border: 1px solid #332a24;
+            color: white;
+            border-radius: 8px;
+        }
+
+        .btn-login {
+            background-color: #ffc107;
+            border: none;
+            color: #1a1512;
+            font-weight: 700;
+            padding: 14px;
+            width: 100%;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            background-color: #ffca2c;
+            transform: scale(1.02);
+        }
+
+        #forgotPasswordModal .modal-content {
+            border: 1px solid #332a24;
+        }
+
+        .captcha-input.correct {
+            border: 2px solid #28a745 !important;
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+
+        .captcha-input.incorrect {
+            border: 2px solid #dc3545 !important;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+
+        /* Password Change Modal Styles */
+        #changePasswordModal .modal-content {
+            border: 1px solid #332a24;
+            background-color: #1a1512;
+            border-radius: 15px;
+        }
+
+        #changePasswordModal .modal-header {
+            border-bottom: 1px solid #332a24;
+        }
+
+        #changePasswordModal .modal-title {
+            color: #ffc107;
+            font-weight: 600;
+        }
+
+        #changePasswordModal .btn-close {
+            filter: invert(1);
+        }
+
+        .password-requirements {
+            background-color: #241e1a;
+            border: 1px solid #332a24;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 1rem;
+        }
+
+        .password-requirements h6 {
+            color: #ffc107;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .requirement-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ff6b6b; /* RED until the requirement is satisfied */
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+            transition: color 0.25s ease;
+        }
+
+        .requirement-item.met {
+            color: #28a745; /* GREEN once satisfied */
+        }
+
+        .requirement-item i {
+            font-size: 0.9rem;
+        }
+
+        .password-strength-bar {
+            height: 4px;
+            background-color: #332a24;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .password-strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .form-control.is-valid {
+            border-color: #28a745;
+            background-image: none;
+        }
+
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            background-image: none;
+        }
+
+        .toggle-password {
+            cursor: pointer;
+            color: #ffc107;
+        }
+
+        .position-relative .toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .btn-change-password {
+            background-color: #ffc107;
+            border: none;
+            color: #1a1512;
+            font-weight: 700;
+            padding: 14px;
+            width: 100%;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-change-password:hover:not(:disabled) {
+            background-color: #ffca2c;
+            transform: scale(1.02);
+        }
+
+        .btn-change-password:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        /* ============================================================
+           RESPONSIVE POLISH - smooth on phones, tablets & desktops
+           ============================================================ */
+
+        /* Smooth scrolling + no horizontal overflow */
+        html, body {
+            max-width: 100vw;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Larger, phone-friendly touch targets */
+        .form-control {
+            min-height: 48px;
+            font-size: 16px; /* prevents iOS zoom-on-focus */
+            transition: border-color .2s ease, box-shadow .2s ease;
+        }
+
+        .btn-login:active,
+        .btn-change-password:active {
+            transform: scale(0.97);
+        }
+
+        /* Autofill dark-theme fix (Chrome/Safari) */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus {
+            -webkit-text-fill-color: #fff;
+            -webkit-box-shadow: 0 0 0 1000px #2a2420 inset;
+            transition: background-color 9999s ease-in-out 0s;
+        }
+
+        /* ---- Tablet & below: stack brand over form ---- */
+        @media (max-width: 900px) {
+            .login-container {
+                flex-direction: column;
+                height: auto;
+                min-height: 100vh;
+                overflow-y: visible;
+            }
+
+            .brand-section {
+                flex: none !important;
+                padding: 48px 24px 36px;
+                align-items: center;
+                text-align: center;
+                justify-content: center;
+            }
+
+            .brand-header h1 {
+                font-size: clamp(2rem, 8vw, 2.8rem);
+            }
+
+            .location-info {
+                max-width: 340px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .form-section {
+                flex: 1 !important;
+                padding: 28px 20px 60px;
+                align-items: flex-start;
+            }
+
+            .login-box {
+                max-width: 440px;
+                margin: 0 auto;
+            }
+        }
+
+        /* ---- Small phones ---- */
+        @media (max-width: 420px) {
+            .brand-section { padding: 40px 18px 30px; }
+            .form-section { padding: 24px 16px 50px; }
+            .num-box { width: 42px; height: 42px; font-size: 1rem; }
+            .captcha-input { width: 56px; height: 42px; }
+            .captcha-box { gap: 9px; margin: 22px 0; }
+            .login-box h2 { font-size: 1.55rem; }
+            .modal-dialog { margin: 0.5rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+        }
+    </style>
+</head>
+
+<script src="/javascript/login.js"></script>
+
+<body>
+
+    <div class="login-container">
+        <div class="brand-section">
+            <div class="brand-header">
+                <h1><span>House</span> of Fries</h1>
+                <p class="location-info">
+                    Tagoloan Branch | Villegas Bldg., Poblacion, Tagoloan,<br> Misamis Oriental, 9001
+                </p>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="login-box">
+                <h2>Welcome <span>Back</span></h2>
+                <p class="text-light mb-4">Login to Continue</p>
+
+                <form id="loginForm">
+                    <div class="mb-4">
+                        <label class="form-label mb-2">Username</label>
+                        <input type="text" id="username" class="form-control" placeholder="Enter username" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label">Password</label>
+                            <a href="#" class="forgot-link" data-bs-toggle="modal"
+                                data-bs-target="#forgotPasswordModal">
+                                Forgot Password?
+                            </a>
+                        </div>
+
+                        <div class="position-relative">
+                            <input type="password" id="password" class="form-control pe-5" placeholder="Enter password"
+                                required>
+
+                            <i class="bi bi-eye-slash toggle-password" id="togglePassword" style="
+                position:absolute;
+                right:15px;
+                top:50%;
+                transform:translateY(-50%);
+                cursor:pointer;
+                color:#ffc107;
+            ">
+                            </i>
+                        </div>
+                    </div>
+
+                    <div class="captcha-box">
+                        <div class="num-box" id="num1">0</div>
+                        <span class="text-white">+</span>
+                        <div class="num-box" id="num2">0</div>
+                        <span class="text-white">=</span>
+
+                        <input type="text" id="captchaAnswer" class="form-control captcha-input" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-login">Log in</button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow" style="background-color: #1a1512; border-radius: 15px;">
+                <div class="modal-header border-0 pb-0">
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="bi bi-shield-lock text-warning" style="font-size: 3rem;"></i>
+                    </div>
+                    <h4 class="text-white fw-bold mb-3">Forgot Your Password?</h4>
+                    <p class="text-light mb-4">
+                        For security reasons, please contact your <strong>System Administrator</strong> or
+                        visit the main office to reset your login credentials.
+                    </p>
+                    <button type="button" class="btn btn-warning fw-bold w-100 py-2" data-bs-dismiss="modal"
+                        style="border-radius: 10px;">
+                        Got it, thanks!
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal (First Login / Admin Reset) -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-shield-lock me-2"></i>Set Your Password</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-light mb-4">This is your first login or your password was reset by admin. Please create a secure password.</p>
+
+                    <div class="password-requirements" id="passwordRequirements">
+                        <h6><i class="bi bi-shield-check me-2"></i>Password Requirements</h6>
+                        <div class="requirement-item" id="req-length">
+                            <i class="bi bi-x-circle"></i> At least 6 characters
+                        </div>
+                        <div class="requirement-item" id="req-uppercase">
+                            <i class="bi bi-x-circle"></i> One uppercase letter (A-Z)
+                        </div>
+                        <div class="requirement-item" id="req-number">
+                            <i class="bi bi-x-circle"></i> One number (0-9)
+                        </div>
+                        <div class="requirement-item" id="req-special">
+                            <i class="bi bi-x-circle"></i> One special character (!@#$%^&*)
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">New Password</label>
+                        <div class="position-relative">
+                            <input type="password" id="newPassword" class="form-control pe-5" placeholder="Enter new password" required>
+                            <i class="bi bi-eye-slash toggle-password" id="toggleNewPassword"></i>
+                        </div>
+                        <div class="password-strength-bar">
+                            <div class="password-strength-fill" id="passwordStrengthFill"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Confirm Password</label>
+                        <div class="position-relative">
+                            <input type="password" id="confirmPassword" class="form-control pe-5" placeholder="Confirm new password" required>
+                            <i class="bi bi-eye-slash toggle-password" id="toggleConfirmPassword"></i>
+                        </div>
+                        <div class="invalid-feedback" id="confirmError">Passwords do not match</div>
+                        <div class="valid-feedback" id="confirmSuccess">Passwords match</div>
+                    </div>
+
+                    <button type="button" class="btn btn-change-password w-100" id="btnChangePassword" disabled>
+                        <span class="spinner-border spinner-border-sm me-2 d-none" id="btnSpinner"></span>
+                        <span id="btnText">Change Password</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+</html>

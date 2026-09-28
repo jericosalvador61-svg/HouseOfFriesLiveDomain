@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GCash QR Payment - House of Fries</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/javascript/loading.js"></script>
+    <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+    <style>
+        :root {
+            --dark-bg: #121212;
+            --card-bg: #1E1E1E;
+            --surface-bg: #2A2A2A;
+            --primary-yellow: #FFB800;
+            --success-green: #34C759;
+            --danger-red: #FF3B30;
+            --warning-orange: #FF9500;
+            --text-main: #FFFFFF;
+            --text-secondary: #AAAAAA;
+            --text-muted: #666666;
+            --border-color: #333333;
+            --gcash-blue: #0057E3;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--dark-bg);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0;
+            color: var(--text-main);
+        }
+
+        .top-bar {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .top-bar .back-btn {
+            color: var(--text-secondary);
+            font-size: 20px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 4px 8px;
+            min-width: 44px;
+            min-height: 44px;
+            transition: color 0.2s;
+        }
+
+        .top-bar .back-btn:hover { color: var(--text-main); }
+
+        .top-bar h1 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary-yellow);
+            letter-spacing: 0.5px;
+        }
+
+        .top-bar .spacer { width: 44px; }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            flex: 1;
+            padding-bottom: 100px;
+        }
+
+        .confirm-card {
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 36px 24px 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .confirm-card .confirm-icon {
+            width: 72px; height: 72px;
+            border-radius: 20px;
+            background: rgba(0, 87, 227, 0.12);
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .confirm-card .confirm-icon i { font-size: 36px; color: var(--gcash-blue); }
+
+        .confirm-card .confirm-title {
+            font-size: 20px; font-weight: 800; color: var(--text-main);
+            margin-bottom: 20px;
+        }
+
+        .confirm-details {
+            width: 100%;
+            background: var(--surface-bg);
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+
+        .confirm-details .confirm-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0;
+        }
+
+        .confirm-details .confirm-row + .confirm-row { border-top: 1px solid var(--border-color); }
+
+        .confirm-details .confirm-label { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+        .confirm-details .confirm-value { font-size: 15px; font-weight: 700; color: var(--text-main); }
+        .confirm-details .confirm-total { font-size: 22px; font-weight: 900; color: var(--primary-yellow); }
+
+        .btn-gcash {
+            width: 100%;
+            min-height: 56px;
+            background: var(--gcash-blue);
+            color: #fff;
+            border: none;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 24px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(0, 87, 227, 0.3);
+        }
+
+        .btn-gcash:hover { background: #0046b8; transform: translateY(-1px); }
+        .btn-gcash:active { transform: translateY(0); }
+        .btn-gcash i { font-size: 20px; }
+
+        .confirm-card .back-link {
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 10px;
+            min-height: 44px;
+            min-width: 44px;
+            transition: color 0.2s;
+        }
+
+        .confirm-card .back-link:hover { color: var(--text-secondary); }
+
+        .order-banner {
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 18px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .order-banner .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        .order-banner .value { font-size: 16px; font-weight: 700; color: var(--text-main); margin-top: 2px; }
+        .order-banner .amount-display { text-align: right; }
+        .order-banner .amount-display .value { color: var(--primary-yellow); font-size: 22px; font-weight: 900; }
+
+        .qr-card {
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .qr-card .qr-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .qr-card .qr-label i { color: var(--primary-yellow); margin-right: 6px; }
+
+        .qr-wrapper {
+            background: white;
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            position: relative;
+            width: 280px;
+            height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-wrapper img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+        .qr-wrapper .qr-placeholder {
+            color: var(--text-muted);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .qr-wrapper .qr-placeholder i {
+            font-size: 64px;
+            color: var(--border-color);
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .qr-card .qr-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 16px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .qr-card .qr-hint i { color: var(--gcash-blue); margin-right: 4px; }
+
+        .btn-download {
+            background: var(--surface-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 24px;
+            min-height: 44px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            transition: all 0.2s;
+            margin-top: 8px;
+            text-decoration: none;
+        }
+
+        .btn-download:hover { background: #333; border-color: var(--primary-yellow); }
+        .btn-download:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-redirect {
+            width: 100%;
+            min-height: 44px;
+            background: var(--gcash-blue);
+            color: #fff;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-redirect:hover { background: #0046b8; }
+        .btn-redirect i { font-size: 18px; }
+
+        .sticky-download {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 20px;
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+            background: var(--dark-bg);
+            border-top: 1px solid var(--border-color);
+            z-index: 100;
+            display: flex;
+            gap: 12px;
+        }
+
+        .sticky-download .btn-download { margin-top: 0; flex: 1; }
+
+        .timer-section {
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid var(--border-color);
+        }
+
+        .timer-section .timer-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .timer-section .timer-label i { color: var(--warning-orange); }
+
+        .timer-section .timer-display {
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--warning-orange);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 1px;
+        }
+
+        .timer-section.warning .timer-label i,
+        .timer-section.warning .timer-display { color: var(--danger-red); }
+
+        .status-indicator {
+            width: 100%;
+            display: none;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .status-indicator.show { display: flex; }
+
+        .status-indicator.loading {
+            background: rgba(255, 184, 0, 0.12);
+            color: var(--primary-yellow);
+            border: 1px solid rgba(255, 184, 0, 0.2);
+        }
+
+        .status-indicator.paid {
+            background: rgba(52, 199, 89, 0.12);
+            color: var(--success-green);
+            border: 1px solid rgba(52, 199, 89, 0.2);
+        }
+
+        .status-indicator.failed {
+            background: rgba(255, 59, 48, 0.12);
+            color: var(--danger-red);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+        }
+
+        .status-indicator.late {
+            background: rgba(255, 149, 0, 0.12);
+            color: var(--warning-orange);
+            border: 1px solid rgba(255, 149, 0, 0.2);
+        }
+
+        .status-indicator.cancelled {
+            background: rgba(255, 59, 48, 0.12);
+            color: var(--danger-red);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+        }
+
+        .status-indicator .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 184, 0, 0.3);
+            border-top-color: var(--primary-yellow);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .error-box {
+            width: 100%;
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            display: none;
+            text-align: center;
+        }
+
+        .error-box.show { display: block; }
+
+        .error-box i { font-size: 24px; color: var(--danger-red); margin-bottom: 8px; }
+        .error-box p { font-size: 14px; color: var(--danger-red); font-weight: 500; line-height: 1.5; }
+
+        .error-box .btn-retry {
+            background: var(--danger-red);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 24px;
+            min-height: 44px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: opacity 0.2s;
+        }
+
+        .error-box .btn-retry:hover { opacity: 0.85; }
+
+        .status-steps {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin: 4px 0;
+        }
+
+        .status-steps .step-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--border-color);
+            transition: all 0.4s;
+        }
+
+        .status-steps .step-dot.active { background: var(--primary-yellow); box-shadow: 0 0 8px rgba(255, 184, 0, 0.4); }
+        .status-steps .step-dot.done { background: var(--success-green); }
+        .status-steps .step-dot.fail { background: var(--danger-red); }
+
+        .secure-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            padding: 8px 0 20px;
+        }
+
+        .secure-badge i { color: var(--success-green); }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 360px) {
+            .container { padding: 12px; gap: 12px; }
+            .qr-wrapper { width: 200px; height: 200px; padding: 10px; }
+            .qr-card { padding: 16px 12px; }
+            .timer-section .timer-display { font-size: 20px; }
+            .confirm-card { padding: 24px 16px 20px; }
+            .btn-gcash { min-height: 50px; font-size: 16px; }
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 16px; gap: 16px; }
+            .qr-wrapper { width: 240px; height: 240px; padding: 12px; }
+            .qr-card { padding: 20px 16px; }
+            .timer-section .timer-display { font-size: 24px; }
+            .confirm-card { padding: 28px 20px 24px; }
+            .btn-gcash { min-height: 52px; font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <button class="back-btn" onclick="goBack()" aria-label="Go back">
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>GCash Payment</h1>
+        <div class="spacer"></div>
+    </div>
+
+    <div class="container">
+
+        <div class="order-banner">
+            <div>
+                <div class="label">Order Reference</div>
+                <div class="value" id="displayRef">---</div>
+            </div>
+            <div class="amount-display">
+                <div class="label">Total Amount</div>
+                <div class="value" id="displayTotal">₱0.00</div>
+            </div>
+        </div>
+
+        <div class="timer-section" id="timerSection">
+            <div class="timer-label">
+                <i class="fa-solid fa-hourglass-half"></i>
+                <span>Time Remaining</span>
+            </div>
+            <div class="timer-display" id="timerDisplay">15:00</div>
+        </div>
+
+        <div class="confirm-card hidden" id="confirmCard">
+            <div class="confirm-icon">
+                <i class="fa-solid fa-wallet"></i>
+            </div>
+            <h2 class="confirm-title">Complete Your Payment</h2>
+            <div class="confirm-details">
+                <div class="confirm-row">
+                    <span class="confirm-label">Order</span>
+                    <span class="confirm-value" id="confirmRef">---</span>
+                </div>
+                <div class="confirm-row">
+                    <span class="confirm-label">Total</span>
+                    <span class="confirm-value confirm-total" id="confirmTotal">₱0.00</span>
+                </div>
+            </div>
+            <button class="btn-gcash" id="btnPayGcash" onclick="handlePayGcash()">
+                <i class="fa-solid fa-qrcode"></i> Pay with GCash
+            </button>
+            <a href="checkout.html" class="back-link">← Back to Checkout</a>
+        </div>
+
+        <div class="status-indicator loading hidden" id="statusIndicator">
+            <div class="spinner"></div>
+            <span id="statusText">Connecting to GCash...</span>
+        </div>
+
+        <div class="qr-card hidden" id="qrCard">
+            <div class="qr-label">
+                <i class="fa-solid fa-qrcode"></i>
+                Scan with GCash app to pay
+            </div>
+
+            <div class="qr-wrapper" id="qrWrapper">
+                <img id="qrImage" src="" alt="GCash QR Code" style="display:none;">
+                <div class="qr-placeholder" id="qrPlaceholder">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    Loading QR...
+                </div>
+            </div>
+
+            <div class="qr-hint" id="returnHint" style="display:none;">
+                <i class="fa-solid fa-rotate"></i>
+                Verifying your payment — please wait...
+            </div>
+        </div>
+
+        <div id="stickyDownload" class="sticky-download hidden">
+            <a class="btn-redirect" id="btnPayApp" href="#" target="_blank">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Pay with GCash app
+            </a>
+            <a class="btn-download" id="btnDownload" href="#" download>
+                <i class="fa-solid fa-download"></i> Download QR
+            </a>
+        </div>
+
+        <div class="status-steps" id="statusSteps">
+            <div class="step-dot active" data-step="1" title="QR Created"></div>
+            <div class="step-dot" data-step="2" title="Awaiting Payment"></div>
+            <div class="step-dot" data-step="3" title="Verifying"></div>
+            <div class="step-dot" data-step="4" title="Confirmed"></div>
+        </div>
+
+        <div class="error-box" id="errorBox">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <p id="errorText">An error occurred. Please try again.</p>
+        </div>
+
+        <div class="secure-badge">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Secured by PayMongo</span>
+        </div>
+    </div>
+
+    <script src="device.js"></script>
+    <script src="qr_payment.js"></script>
+
+</body>
+</html>

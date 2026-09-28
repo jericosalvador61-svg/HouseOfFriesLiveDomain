@@ -1,0 +1,26 @@
+# House of Fries - Apache configuration (required for live InfinityFree hosting)
+# - Passes the Authorization header through to PHP (JWT auth) — REQUIRED by project constitution
+
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} ^(.*)$
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
+
+# Server-side page protection: all dashboard HTML is served through the gate
+RewriteRule ^public/(.+\.html)$ backend/page_gate.php?file=$1 [QSA,L]
+
+# Block direct access to sensitive backend folders/files
+RedirectMatch 403 ^/backend/logs/.*
+RedirectMatch 403 ^/backend/libs/.*
+
+# Prevent access to sensitive files
+<FilesMatch "\.(sql|log|ini)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

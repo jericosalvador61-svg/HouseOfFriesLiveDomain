@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House of Fries - Inventory Staff Purchase Plans</title>
+    
+    
+    
+    
+    
+    
+    <link rel="icon" type="image/png" href="../../images/favicon.jpg">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    
+    
+    <link rel="stylesheet" href="/css/staff-sidebar.css">
+    <link rel="stylesheet" href="/css/admin/manage_inventory.css">
+        
+    <link rel="stylesheet" href="/css/inventoryStaff/inventoryStaff_PurchasePlan.css">
+</head><body>
+    <div class="app-shell">
+        <!-- SIDEBAR -->
+        <nav id="sidebar">
+            <div class="sidebar-header d-flex align-items-center">
+                <img src="../../images/Logo.png" alt="House of Fries Logo" class="brand-logo me-2">
+                <div class="header-text">
+                    <h5 class="mb-0 fw-bold">House of Fries</h5>
+                    <small style="font-size: 0.7rem;">Tagoloan Branch</small>
+                </div>
+            </div>
+            <div class="nav-content">
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mb-2" style="font-size: 0.7rem;">Inventory Menu</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="inventoryStaff_dashboard.html"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+                    <a class="nav-link" href="inventoryStaff_RawMaterials.html"><i class="bi bi-box"></i><span>Raw Materials</span></a>
+                    <a class="nav-link" href="inventoryStaff_StockIn.html"><i class="bi bi-arrow-down-circle"></i><span>Stock In</span></a>
+                    <a class="nav-link" href="inventoryStaff_StockOut.html"><i class="bi bi-arrow-up-circle"></i><span>Stock Out</span></a>
+                    <a class="nav-link" href="inventoryStaff_Returns.html"><i class="bi bi-arrow-return-left"></i><span>Returns</span></a>
+                    <a class="nav-link" href="inventoryStaff_Spoilage.html"><i class="bi bi-exclamation-triangle"></i><span>Spoilage</span></a>
+                    <a class="nav-link" href="inventoryStaff_Adjustment.html"><i class="bi bi-sliders"></i><span>Adjustments</span></a>
+                    <a class="nav-link active" href="inventoryStaff_PurchasePlan.html"><i class="bi bi-card-checklist"></i><span>Purchase Plans</span></a>
+                </nav>
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mt-4 mb-2" style="font-size: 0.7rem;">Account</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link text-danger" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i><span>Logout</span></a>
+                </nav>
+            </div>
+            <div class="user-profile">
+                <div class="user-avatar">U</div>
+                <div class="flex-grow-1 overflow-hidden profile-text">
+                    <p class="mb-0 fw-bold small text-white text-truncate user-name">Loading...</p>
+                    <p class="mb-0 text-light user-role" style="font-size: 0.7rem;">Loading...</p>
+                </div>
+            </div>
+        </nav>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    
+
+
+        <!-- MAIN CONTENT -->
+        <div class="content-wrapper"> <!-- TOP NAVBAR -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-4">
+                <button type="button" id="sidebarCollapse" class="btn btn-light border me-3">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="ms-auto d-flex align-items-center">
+                    <div class="dropdown me-4">
+                        <a href="#" class="text-dark position-relative link-dark" id="notificationDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-bell fs-5"></i>
+                            <span id="notificationBadge"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                                style="font-size: 0.65rem;">
+                                0
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border mt-2"
+                            aria-labelledby="notificationDropdown" id="notificationMenu"
+                            style="width: 320px; max-height: 400px; overflow-y: auto;">
+                            <li class="dropdown-header border-bottom fw-bold text-dark">Stock Alerts</li>
+                            <li id="emptyNotificationItem"><span class="dropdown-item text-muted text-center py-3">All
+                                    inventory levels are normal.</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+            <!-- CONTENT -->
+            <div class="p-4"> <!-- HEADER -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="fw-bold mb-0">Purchase Plan</h2>
+                        <p class="text-muted">Monitor and manage your purchase plans.</p>
+                    </div>
+                </div>
+
+                <!-- FILTERS -->
+                <div class="row g-2 mb-4">
+
+                    <!-- SEARCH -->
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0">
+                                <i class="bi bi-search"></i>
+                            </span>
+
+                            <input type="text" id="searchInventory" class="form-control border-start-0"
+                                placeholder="Search material...">
+                        </div>
+                    </div>
+
+                    <!-- STATUS FILTER -->
+                    <div class="col-md-4">
+                        <select class="form-select" id="filterStatus">
+                            <option value="">All Status</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+
+                </div>
+
+
+                <!-- TABLE -->
+                <div class="card border-0 shadow-sm rounded-3">
+                    <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-white">
+                        <h5 class="mb-0 fw-bold text-dark">
+                            Purchase Plan History
+                        </h5>
+                        <button id="createPurchasePlanBtn"
+                            class="btn btn-success btn-sm px-3 fw-bold d-flex align-items-center">
+                            <i class="bi bi-cart-plus-fill me-2"></i>
+                            <span>Create Purchase Plan</span>
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center" id="purchasePlanTable">
+                            <thead class="table-light text-secondary small fw-bold text-uppercase">
+                                <tr>
+                                    <th scope="col" class="py-3">Date Created</th>
+                                    <th scope="col" class="py-3">Created By</th>
+                                    <th scope="col" class="py-3">Total Items</th>
+                                    <th scope="col" class="py-3">Status</th>
+                                    <th scope="col" class="py-3">Admin Remarks</th>
+                                    <th scope="col" class="py-3">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchasePlanTableBody">
+                                <tr>
+                                    <td>June 28, 2026</td>
+                                    <td>5 Items</td>
+                                    <td><span
+                                            class="badge bg-warning text-dark px-2.5 py-1.5 fw-semibold">Pending</span>
+                                    </td>
+                                    <td class="text-muted italic small">Awaiting admin review...</td>
+                                    <td>
+                                        <button class="btn btn-outline-secondary btn-sm px-2 py-1"
+                                            onclick="viewPlanDetails(24)" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>June 27, 2026</td>
+                                    <td>3 Items</td>
+                                    <td><span class="badge bg-danger px-2.5 py-1.5 fw-semibold">Rejected</span></td>
+                                    <td class="text-danger fw-medium small">Over-budgeted on Fries. Please lower
+                                        quantities.</td>
+                                    <td>
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <button class="btn btn-sm btn-primary px-2 py-1"
+                                                onclick="reEditPurchasePlan(23)" title="Edit and Resubmit">
+                                                <i class="bi bi-pencil-square me-1"></i> Edit
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>June 25, 2026</td>
+                                    <td>7 Items</td>
+                                    <td><span class="badge bg-success px-2.5 py-1.5 fw-semibold">Approved</span></td>
+                                    <td class="text-success small">Approved. Proceed with buying.</td>
+                                    <td>
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <button class="btn btn-sm btn-info text-white px-2 py-1"
+                                                onclick="printPurchasePlan(22)" title="Print Document">
+                                                <i class="bi bi-printer me-1"></i> Print
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="noRecordsContainer" class="text-center py-5 d-none">
+                        <i class="bi bi-folder-x text-muted fs-1"></i>
+                        <p class="text-muted mt-2 mb-0">No purchase plan records found.</p>
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+
+
+    
+
+    
+    
+
+    
+
+
+
+    <!-- STANDARDIZED SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/javascript/config.js"></script>
+    <script src="/javascript/loading.js"></script>
+    <script src="../../javascript/check_session.js" defer></script>
+    <script src="../../javascript/logout.js" defer></script>
+    <script src="../../javascript/navbar-unified.js" defer></script>
+    <script src="../../javascript/inventoryStaff/inventoryStaff_PurchasePlan.js" defer></script>
+</body>
+</html>

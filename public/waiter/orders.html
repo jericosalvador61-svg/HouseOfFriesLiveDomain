@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House of Fries - Waiter Orders</title>
+    <link rel="icon" type="image/png" href="../../images/favicon.jpg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/staff-sidebar.css">
+    <link rel="stylesheet" href="/css/waiter/orders.css">
+</head><body>
+    <div class="app-shell">
+        <!-- SIDEBAR (Left - Kitchen Style) -->
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <img src="../../images/Logo.png" alt="House of Fries Logo" class="brand-logo me-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="brand-logo-fallback" style="display:none;">HF</div>
+                <div class="header-text">
+                    <h5 class="mb-0 fw-bold">House of Fries</h5>
+                    <small>Tagoloan Branch</small>
+                </div>
+            </div>
+
+            <div class="nav-content">
+                <p class="nav-section-label">Waiter Menu</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="waiter_dashboard.html">
+                        <i class="bi bi-speedometer2"></i> <span>Dashboard</span>
+                    </a>
+                    <a class="nav-link" href="tables.html">
+                        <i class="bi bi-grid-3x3-gap"></i> <span>Tables</span>
+                    </a>
+                    <a class="nav-link" href="orders.html">
+                                            <i class="bi bi-receipt"></i> <span>Orders</span>
+                                        </a>
+                                        <a class="nav-link" href="new_order.html">
+                                            <i class="bi bi-plus-circle"></i> <span>New Order</span>
+                                        </a>
+                                        <a class="nav-link" href="order_history.html">
+                                            <i class="bi bi-clock-history"></i> <span>Order History</span>
+                                        </a>
+                                    </nav>
+
+                <p class="nav-section-label">Account</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link danger" href="#" onclick="logout(); return false;">
+                        <i class="bi bi-box-arrow-right"></i> <span>Logout</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="user-profile">
+                <div class="user-avatar">W</div>
+                <div class="profile-text">
+                    <p class="mb-0 fw-bold small text-white text-truncate user-name">Loading...</p>
+                    <p class="mb-0 text-light user-role" style="font-size: 0.7rem;">Loading...</p>
+                </div>
+            </div>
+        </nav>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- MAIN CONTENT -->
+        <div class="content-wrapper">
+            <nav class="topbar">
+                <button type="button" id="sidebarCollapse" class="btn-icon sidebar-toggle-btn">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="topbar-brand d-none d-md-flex align-items-center">
+                    <img src="../../images/Logo.png" alt="Logo" class="brand-logo me-2" onerror="this.style.display='none';">
+                    <span class="fw-bold text-dark">Today's Orders</span>
+                </div>
+                <div class="search ms-auto">
+                    <i class="bi bi-search"></i>
+                    <input placeholder="Search orders...">
+                </div>
+                <button class="btn-icon bell">
+                    <i class="bi bi-bell"></i>
+                </button>
+            </nav>
+
+            <div class="page">
+                <div class="flex-between page-header">
+                    <div>
+                        <h1>Today's Orders</h1>
+                        <p>Track and manage all orders for today. Auto-refreshes on status changes.</p>
+                    </div>
+                    <div class="flex-row">
+                        <span class="pill pending">Pending</span>
+                        <span class="pill preparing">Preparing</span>
+                        <span class="pill ready">Ready to Deliver</span>
+                        <span class="pill served">Served</span>
+                    </div>
+                </div>
+
+                <!-- Orders List -->
+                <div id="ordersList">
+                    <div class="loading-spinner">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Loading orders...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    
+
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+
+    
+
+
+
+    <!-- STANDARDIZED SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../javascript/config.js"></script>
+    <script src="../../javascript/loading.js"></script>
+    <script src="../../javascript/check_session.js" defer></script>
+    <script src="../../javascript/logout.js" defer></script>
+    <script src="../../javascript/navbar-unified.js" defer></script>
+    <script src="../../javascript/waiter/waiter.js" defer></script>
+    <script src="https://js.pusher.com/8.0.1/pusher.min.js"></script>
+</body>
+</html>

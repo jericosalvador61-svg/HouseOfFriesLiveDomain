@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>House of Fries Tagoloan — Since 1983 | Fries · Chicken · Burgers</title>
+<meta name="description" content="House of Fries Tagoloan — crispy golden fries, chicken meals, footlongs, burgers and shakes. Serving Tagoloan, Misamis Oriental since 1983. Dine-in, take-out & QR table ordering.">
+<meta name="theme-color" content="#140c08">
+<meta property="og:title" content="House of Fries Tagoloan — Since 1983">
+<meta property="og:description" content="Crispy golden fries, chicken, footlongs & shakes in Tagoloan since 1983. See our menu.">
+<meta property="og:image" content="images/Logo.png">
+<link rel="icon" href="images/favicon.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#140c08; --bg2:#1d110b; --panel:rgba(29,17,11,.72);
+  --ink:#fff4e4; --muted:#c7ab8e;
+  --red:#e02b20; --red-deep:#a31208; --gold:#ffc61c; --ember:#ff6b1a;
+  --line:rgba(255,244,228,.14);
+  --fd:'Fraunces',Georgia,serif; --fs:'Space Grotesk',system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{max-width:100vw;overflow-x:hidden}
+body{background:var(--bg);color:var(--ink);font-family:var(--fs);font-weight:300;line-height:1.6;-webkit-font-smoothing:antialiased}
+::selection{background:var(--gold);color:#221202}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+::-webkit-scrollbar{width:10px}::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#46301f;border-radius:99px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:var(--gold)}
+
+#gl{position:fixed;inset:0;z-index:0}
+.grain{position:fixed;inset:-50%;width:200%;height:200%;pointer-events:none;z-index:1;opacity:.06;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");animation:gr 1.1s steps(3) infinite}
+@keyframes gr{0%{transform:translate(0,0)}33%{transform:translate(-3%,2%)}66%{transform:translate(2%,-2%)}100%{transform:translate(0,0)}}
+
+#loader{position:fixed;inset:0;z-index:80;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .7s,visibility .7s}
+#loader.done{opacity:0;visibility:hidden}
+#loader img{width:96px;height:96px;border-radius:26px;box-shadow:0 20px 60px -18px rgba(224,43,32,.55);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.06)}}
+.load-word{font-family:var(--fd);font-style:italic;font-size:15px;letter-spacing:.34em;text-transform:uppercase;color:var(--muted)}
+#lbar{width:min(260px,60vw);height:2px;background:rgba(255,244,228,.12);border-radius:99px;overflow:hidden}
+#lbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--gold));transition:width .3s}
+
+header{position:fixed;top:0;left:0;right:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:14px clamp(16px,4vw,52px);background:linear-gradient(rgba(20,12,8,.82),rgba(20,12,8,0));backdrop-filter:blur(2px)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{width:44px;height:44px;border-radius:12px;box-shadow:0 6px 18px -6px rgba(224,43,32,.5)}
+.brand b{font-family:var(--fd);font-weight:600;font-size:19px;line-height:1.05}
+.brand small{display:block;font-family:var(--fs);font-weight:400;font-size:9.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold)}
+nav.top{display:flex;gap:28px;font-size:12px;letter-spacing:.22em;text-transform:uppercase}
+nav.top a{position:relative;padding:6px 0;color:#f3ddc6;transition:color .3s}
+nav.top a:hover{color:var(--gold)}
+nav.top a::after{content:"";position:absolute;left:0;bottom:0;width:100%;height:1px;background:var(--gold);transform:scaleX(0);transform-origin:right;transition:transform .45s cubic-bezier(.65,0,.35,1)}
+nav.top a:hover::after{transform:scaleX(1);transform-origin:left}
+@media(max-width:900px){nav.top{display:none}}
+
+#audioDock{position:fixed;right:clamp(14px,3vw,42px);bottom:clamp(14px,3vw,36px);z-index:45;display:flex;align-items:center;gap:12px;background:rgba(23,13,8,.78);border:1px solid var(--line);backdrop-filter:blur(12px);border-radius:999px;padding:10px 18px 10px 13px;cursor:pointer;user-select:none;min-height:46px;transition:border-color .3s,transform .3s}
+#audioDock:hover{border-color:rgba(255,198,28,.6);transform:translateY(-2px)}
+.dock-eq{display:flex;align-items:flex-end;gap:2.5px;height:15px;width:18px}
+.dock-eq i{flex:1;background:var(--gold);border-radius:2px;height:30%;animation:eq 1s ease-in-out infinite}
+.dock-eq i:nth-child(2){animation-delay:.18s}.dock-eq i:nth-child(3){animation-delay:.36s}
+@keyframes eq{0%,100%{height:26%}50%{height:95%}}
+#audioDock.paused .dock-eq i{animation-play-state:paused;height:30%!important}
+.dock-label{font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.dock-label::after{content:" ON";color:var(--gold)}
+#audioDock.paused .dock-label::after{content:" OFF";color:var(--ember)}
+
+#hintToast{position:fixed;left:50%;bottom:100px;transform:translate(-50%,16px);z-index:46;background:rgba(23,13,8,.88);border:1px solid var(--line);border-radius:999px;padding:10px 20px;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);opacity:0;pointer-events:none;transition:all .6s;backdrop-filter:blur(10px)}
+#hintToast.show{opacity:1;transform:translate(-50%,0)}
+
+main{position:relative;z-index:5}
+section{position:relative;padding:0 clamp(20px,6vw,90px)}
+.wrap{max-width:1420px;margin:0 auto;width:100%}
+.panel{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding-top:110px;padding-bottom:90px}
+.kicker{display:inline-flex;align-items:center;gap:12px;font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold)}
+.kicker::before{content:"";width:34px;height:1px;background:var(--gold)}
+h1,h2,h3{font-family:var(--fd);font-weight:400;line-height:1.04}
+.red-i{color:var(--gold);font-style:italic}
+.btn{display:inline-flex;align-items:center;gap:11px;padding:15px 30px;border-radius:999px;font-size:12px;letter-spacing:.22em;text-transform:uppercase;border:1px solid var(--line);cursor:pointer;transition:all .45s cubic-bezier(.65,0,.35,1);min-height:48px;background:transparent;color:var(--ink)}
+.btn.solid{background:linear-gradient(115deg,#ff5a3c,var(--red));border-color:transparent;color:#fff;font-weight:600;box-shadow:0 14px 40px -14px rgba(224,43,32,.65)}
+.btn.gold{background:linear-gradient(115deg,#ffd75e,var(--gold));border-color:transparent;color:#2b1602;font-weight:600}
+.btn:hover{transform:translateY(-3px)}
+.btn.solid:hover{box-shadow:0 20px 54px -14px rgba(224,43,32,.85)}
+.reveal{opacity:0;transform:translateY(44px);transition:opacity 1s cubic-bezier(.22,.8,.3,1),transform 1s cubic-bezier(.22,.8,.3,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* hero */
+#hero .panel{align-items:center;text-align:center}
+.since{display:inline-flex;align-items:center;gap:14px;margin-bottom:26px;font-size:11px;letter-spacing:.4em;text-transform:uppercase;color:var(--gold)}
+.since::before,.since::after{content:"";width:44px;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
+.since::after{background:linear-gradient(90deg,var(--gold),transparent)}
+h1.mega{font-size:clamp(56px,11vw,178px);line-height:.94;margin:10px 0 26px;font-weight:500}
+h1.mega .fire-w{background:linear-gradient(180deg,#ffe9a8 0%,var(--gold) 38%,var(--ember) 72%,var(--red) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;font-style:italic}
+.hero-sub{max-width:58ch;margin:0 auto 40px;color:var(--muted);font-size:clamp(15px,1.6vw,19px)}
+.hero-sub b{color:var(--ink);font-weight:500}
+.hero-cta{display:flex;gap:15px;justify-content:center;flex-wrap:wrap}
+.scroll-cue{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:9px;color:var(--muted);font-size:10px;letter-spacing:.36em;text-transform:uppercase}
+.scroll-cue .stem{width:1px;height:48px;background:linear-gradient(var(--gold),transparent);position:relative;overflow:hidden}
+.scroll-cue .stem::after{content:"";position:absolute;top:-45%;left:0;width:100%;height:45%;background:#fff;animation:drip 1.9s cubic-bezier(.65,0,.35,1) infinite}
+@keyframes drip{to{top:110%}}
+
+.marquee{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;overflow:hidden;background:rgba(18,10,6,.6);backdrop-filter:blur(4px)}
+.mq-track{display:flex;gap:60px;width:max-content;animation:mq 30s linear infinite}
+.mq-track span{font-family:var(--fd);font-style:italic;font-size:clamp(17px,2.3vw,25px);color:rgba(255,244,228,.6);white-space:nowrap}
+.mq-track b{color:var(--ember);font-weight:400}
+@keyframes mq{to{transform:translateX(-50%)}}
+
+/* signature */
+.sig-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:24px;margin-bottom:46px}
+.sig-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.sig-card{position:relative;border-radius:24px;overflow:hidden;background:var(--panel);border:1px solid var(--line);transition:transform .5s cubic-bezier(.22,.8,.3,1),border-color .5s}
+.sig-card:hover{transform:translateY(-8px);border-color:rgba(255,107,26,.55)}
+.sig-card.tall{grid-row:span 2}
+.sig-card .ph{aspect-ratio:4/3;overflow:hidden;background:#241209}
+.sig-card.tall .ph{aspect-ratio:auto;min-height:420px;height:100%}
+.sig-card .ph img{width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.22,.8,.3,1)}
+.sig-card:hover .ph img{transform:scale(1.07)}
+.sig-card .lab{position:absolute;left:14px;top:14px;background:rgba(18,10,6,.82);border:1px solid var(--line);backdrop-filter:blur(8px);border-radius:99px;padding:7px 15px;font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold)}
+.sig-card .meta{padding:18px 20px 20px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sig-card h3{font-size:clamp(19px,2vw,24px)}
+.sig-card .price{font-family:var(--fd);font-style:italic;color:var(--gold);font-size:20px;white-space:nowrap}
+
+/* menu */
+.cats{display:flex;gap:10px;flex-wrap:wrap;margin:34px 0 40px}
+.cat-btn{padding:11px 20px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:var(--fs);font-size:12.5px;letter-spacing:.08em;cursor:pointer;transition:all .35s;min-height:44px}
+.cat-btn:hover{border-color:rgba(255,198,28,.55);color:var(--ink)}
+.cat-btn.active{background:linear-gradient(115deg,#ffd75e,var(--gold));color:#2b1602;border-color:transparent;font-weight:600}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:15px}
+.m-card{background:var(--panel);border:1px solid var(--line);border-radius:20px;overflow:hidden;opacity:0;transform:translateY(26px) scale(.98);animation:cardIn .6s cubic-bezier(.22,.8,.3,1) forwards;transition:transform .4s,border-color .4s}
+@keyframes cardIn{to{opacity:1;transform:none}}
+.m-card:hover{transform:translateY(-6px);border-color:rgba(255,198,28,.5)}
+.m-card .ph{aspect-ratio:1/.82;overflow:hidden;background:#241209;display:flex;align-items:center;justify-content:center}
+.m-card .ph img{width:100%;height:100%;object-fit:cover}
+.m-card .ph .fallback{font-family:var(--fd);font-style:italic;font-size:52px;color:rgba(255,198,28,.35)}
+.m-card .info{padding:15px 17px 17px}
+.m-card h3{font-size:16.5px;font-weight:500;font-family:var(--fs);line-height:1.3}
+.m-card .row{display:flex;justify-content:space-between;align-items:baseline;margin-top:7px}
+.m-card .p{font-family:var(--fd);font-style:italic;font-size:19px;color:var(--gold)}
+.m-card .cat{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:#9a7f63}
+.menu-note{margin-top:26px;font-size:12.5px;color:var(--muted)}
+.menu-note b{color:var(--gold);font-weight:500}
+
+/* about */
+.about-grid{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,5fr);gap:clamp(28px,5vw,74px);align-items:center}
+@media(max-width:900px){.about-grid{grid-template-columns:1fr}}
+.about-copy p{color:var(--muted);margin-bottom:18px;max-width:56ch}
+.about-photo{position:relative;border-radius:26px;overflow:hidden;border:1px solid var(--line);box-shadow:0 40px 90px -40px rgba(224,43,32,.35)}
+.about-photo img{width:100%;height:100%;object-fit:cover;aspect-ratio:4/4.6}
+.about-badge{position:absolute;left:18px;bottom:18px;background:rgba(18,10,6,.85);border:1px solid var(--line);backdrop-filter:blur(10px);border-radius:16px;padding:14px 20px}
+.about-badge b{font-family:var(--fd);font-size:26px;color:var(--gold);display:block;line-height:1}
+.about-badge span{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+.stat-strip{display:flex;gap:clamp(22px,4vw,54px);flex-wrap:wrap;margin-top:34px;padding-top:28px;border-top:1px solid var(--line)}
+.stat b{display:block;font-family:var(--fd);font-weight:400;font-size:clamp(32px,3.6vw,50px);color:var(--gold)}
+.stat span{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+
+/* find us */
+.find-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(24px,4vw,60px);align-items:stretch}
+@media(max-width:900px){.find-grid{grid-template-columns:1fr}}
+.find-card{background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:clamp(24px,3vw,40px);display:flex;flex-direction:column;gap:18px}
+.find-row{display:flex;gap:16px;align-items:flex-start}
+.find-row i{font-style:normal;font-size:20px;line-height:1.3}
+.find-row b{display:block;font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+.find-row p{color:var(--muted);font-size:14.5px}
+.fb-btn{margin-top:auto}
+.map-box{border-radius:24px;overflow:hidden;border:1px solid var(--line);min-height:380px;height:380px;background:#241209;position:relative}
+.map-box .gm-style{width:100%;height:100%;border-radius:24px}
+.map-box .gm-style img{filter:sepia(.25) saturate(.9)}
+
+footer{position:relative;z-index:5;border-top:1px solid var(--line);background:rgba(12,7,4,.88);backdrop-filter:blur(8px);padding:70px clamp(20px,6vw,90px) 34px}
+.foot-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr);gap:44px;max-width:1420px;margin:0 auto 56px}
+@media(max-width:900px){.foot-grid{grid-template-columns:1fr}}
+footer h4{font-weight:500;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-bottom:18px}
+footer ul{list-style:none;display:flex;flex-direction:column;gap:11px;font-size:14px;color:var(--muted)}
+footer ul a:hover{color:var(--gold)}
+.foot-brand{display:flex;gap:16px;align-items:center}
+.foot-brand img{width:64px;height:64px;border-radius:16px}
+.foot-base{max-width:1420px;margin:0 auto;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-top:24px;border-top:1px solid var(--line);font-size:11.5px;color:#8d7358}
+.staff-link{color:#8d7358;text-decoration:underline;text-underline-offset:3px}
+.staff-link:hover{color:var(--gold)}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .reveal{opacity:1!important;transform:none!important}
+}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="grain"></div>
+
+<div id="loader">
+  <img src="images/Logo.png" alt="House of Fries logo">
+  <div class="load-word">House of Fries · Tagoloan</div>
+  <div id="lbar"><i></i></div>
+</div>
+
+<header>
+  <a class="brand" href="#hero">
+    <img src="images/Logo.png" alt="House of Fries logo">
+    <span><b>House of Fries</b><small>Tagoloan · Since 1983</small></span>
+  </a>
+  <nav class="top">
+    <a href="#signature">Specialties</a><a href="#menu">Menu</a><a href="#about">Our Story</a><a href="#find">Find Us</a>
+  </nav>
+  <a class="btn gold" style="padding:12px 22px;min-height:44px" href="#menu">Order·QR</a>
+</header>
+
+<div id="audioDock" role="button" aria-label="Toggle background music" tabindex="0">
+  <div class="dock-eq"><i></i><i></i><i></i></div>
+  <span class="dock-label">Music</span>
+</div>
+<div id="hintToast">Tap anywhere for the vibe&nbsp;🎵</div>
+
+<main>
+  <!-- HERO -->
+  <section id="hero">
+    <div class="panel wrap">
+      <div class="since">Est. 1983 · Tagoloan, Misamis Oriental</div>
+      <h1 class="mega"><span class="line" style="display:block;overflow:hidden"><span style="display:inline-block;transform:translateY(112%);transition:transform 1.15s cubic-bezier(.19,1,.22,1)">Fries straight</span></span>
+      <span class="line" style="display:block;overflow:hidden"><span style="display:inline-block;transform:translateY(112%);transition:transform 1.15s cubic-bezier(.19,1,.22,1) .09s">from the <em class="fire-w">fire.</em></span></span></h1>
+      <p class="hero-sub reveal"><b>House of Fries</b> has been frying golden, serving chicken buckets,
+        stacking burgers and pouring ice-cold smoothies for over four decades.
+        Scan your table's QR code, order in seconds — we handle the rest.</p>
+      <div class="hero-cta">
+        <a class="btn solid reveal" href="#menu">Explore the menu</a>
+        <a class="btn reveal" href="https://www.facebook.com/Houseoffries1988" target="_blank" rel="noopener">Facebook ↗</a>
+      </div>
+      <div class="scroll-cue"><span>Scroll</span><div class="stem"></div></div>
+    </div>
+  </section>
+
+  <div class="marquee" aria-hidden="true"><div class="mq-track" id="mqTrack"></div></div>
+
+  <!-- SIGNATURE -->
+  <section id="signature">
+    <div class="panel wrap">
+      <div class="sig-head">
+        <div>
+          <div class="kicker reveal">The House Specialties</div>
+          <h2 class="reveal" style="font-size:clamp(34px,4.8vw,68px);margin-top:20px">What we're <em class="red-i">known for.</em></h2>
+        </div>
+        <p class="reveal" style="max-width:34ch;color:var(--muted);font-size:14px">Picked straight from our live menu — when admin adds a specialty, it lands here first.</p>
+      </div>
+      <div class="sig-grid" id="sigGrid"></div>
+    </div>
+  </section>
+
+  <!-- MENU -->
+  <section id="menu">
+    <div class="panel wrap">
+      <div class="kicker reveal">The Full Menu</div>
+      <h2 class="reveal" style="font-size:clamp(34px,4.8vw,68px);margin-top:20px">Pick your <em class="red-i">craving.</em></h2>
+      <div class="cats reveal" id="catBar"></div>
+      <div class="menu-grid" id="menuGrid"></div>
+      <p class="menu-note reveal">✨ Live from our system — prices &amp; availability update automatically.<br>
+        Dine-in guests: scan the <b>QR code on your table</b> to order these directly, pay via <b>GCash</b>.</p>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about">
+    <div class="panel wrap">
+      <div class="about-grid">
+        <div class="about-copy">
+          <div class="kicker reveal">Our Story</div>
+          <h2 class="reveal" style="font-size:clamp(34px,4.6vw,62px);margin:20px 0 26px">One fry at a time,<br><em class="red-i">since 1983.</em></h2>
+          <p class="reveal">What started as a small fries stand has grown into a Tagoloan favorite —
+            the house of golden fries where families celebrate, students refuel, and every basket
+            comes out hot, crispy and salted just right.</p>
+          <p class="reveal">Today, our kitchen runs on a fully digital system: orders fire straight from
+            your table's QR code to our screens, so all that's left to do is eat.</p>
+          <div class="stat-strip reveal">
+            <div class="stat"><b data-yrs>43</b><span>Years of frying</span></div>
+            <div class="stat"><b data-count-items>30+</b><span>Menu favorites</span></div>
+            <div class="stat"><b>1</b><span>Home: Tagoloan</span></div>
+          </div>
+        </div>
+        <div class="about-photo reveal">
+          <img src="images/loginimg.webp" alt="Inside House of Fries Tagoloan" loading="lazy" onerror="this.style.display='none'">
+          <div class="about-badge"><b>1983</b><span>Frying ever since</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FIND US -->
+  <section id="find">
+    <div class="panel wrap">
+      <div class="kicker reveal">Find Us</div>
+      <h2 class="reveal" style="font-size:clamp(34px,4.8vw,66px);margin:20px 0 40px">Come hungry.<br><em class="red-i">Leave happy.</em></h2>
+      <div class="find-grid">
+        <div class="find-card reveal">
+          <div class="find-row"><i>📍</i><div><b>Address</b><p>Villegas Bldg., Poblacion,<br>Tagoloan, Misamis Oriental 9001</p></div></div>
+          <div class="find-row"><i>🕒</i><div><b>Hours</b><p>Open daily · 10:00 AM – 9:00 PM<br><span style="font-size:12px">(holiday hours may vary)</span></p></div></div>
+          <div class="find-row"><i>📱</i><div><b>Dine-in ordering</b><p>Scan the QR code on your table — order &amp; pay via GCash, no waiting.</p></div></div>
+          <div class="find-row"><i>🛵</i><div><b>Take-out</b><p>Message us on Facebook for take-out orders &amp inquiries.</p></div></div>
+          <a class="btn fb-btn" href="https://www.facebook.com/Houseoffries1988" target="_blank" rel="noopener" style="border-color:rgba(24,119,242,.5)">f &nbsp;House of Fries — Official Page</a>
+        </div>
+        <div class="map-box reveal" id="mapBox" aria-label="Map to House of Fries Tagoloan"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand">
+          <img src="images/Logo.png" alt="logo">
+          <div><b style="font-family:var(--fd);font-size:24px;font-weight:500">House of Fries<span style="color:var(--red)">.</span></b>
+          <small style="display:block;color:var(--muted);font-size:12.5px;margin-top:4px">Golden fries &amp; honest food since 1983 — Tagoloan, Misamis Oriental.</small></div>
+        </div>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul><li><a href="#signature">Specialties</a></li><li><a href="#menu">Full menu</a></li><li><a href="#about">Our story</a></li><li><a href="#find">Find us</a></li><li><a href="https://www.facebook.com/Houseoffries1988" target="_blank" rel="noopener">Facebook page ↗</a></li></ul>
+      </div>
+      <div>
+        <h4>Visit</h4>
+        <ul><li>Villegas Bldg., Poblacion</li><li>Tagoloan, Misamis Oriental</li><li>Daily · 10 AM – 9 PM</li></ul>
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>© <span id="yr">2026</span> House of Fries Tagoloan · All rights reserved</span>
+      <span>QR ordering &amp; inventory by <a class="staff-link" href="#" onclick="return false" title="Capstone POS system">Jerico's capstone team</a> · <a class="staff-link" href="../index.html">Staff login</a></span>
+    </div>
+  </footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://unpkg.com/lenis@1.1.14/dist/lenis.min.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCykyO_JQi_NR0LiGZDudlBkdIk7ZYQQug&region=PH&language=en&callback=initLandingMap" async defer></script>
+<script>
+(function(){
+"use strict";
+var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+var hasThree = typeof THREE !== 'undefined', hasGsap = typeof gsap !== 'undefined';
+
+/* ================= FIRE + FRIES 3D SCENE ================= */
+if (hasThree) {
+  var canvas = document.getElementById('gl');
+  var renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x140c08);
+  scene.fog = new THREE.Fog(0x140c08, 10, 34);
+  var cam = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, .1, 60);
+  cam.position.set(0, .4, 10);
+
+  scene.add(new THREE.AmbientLight(0x66452c, .7));
+  var lGold = new THREE.PointLight(0xffc61c, 1.0, 45); lGold.position.set(7, 6, 7); scene.add(lGold);
+  var lFire = new THREE.PointLight(0xff5a1a, 1.6, 30); lFire.position.set(0, -3.4, -1); scene.add(lFire);
+
+  /* --- flame shader plane (procedural fbm fire) --- */
+  var fireUniforms = { uTime:{value:0}, uBoost:{value:1} };
+  var fireMat = new THREE.ShaderMaterial({
+    uniforms: fireUniforms,
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader: [
+      'varying vec2 vUv; uniform float uTime; uniform float uBoost;',
+      'float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }',
+      'float noise(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.0-2.0*f);',
+      '  return mix(mix(hash(i),hash(i+vec2(1,0)),u.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x), u.y); }',
+      'float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<5;i++){ v+=a*noise(p); p*=2.03; a*=0.55; } return v; }',
+      'void main(){',
+      '  vec2 uv = vUv;',
+      '  float t = uTime*0.9;',
+      '  vec2 q = vec2(uv.x*3.0, uv.y*2.2 - t*1.4);',
+      '  float n = fbm(q + fbm(q*1.7)*0.9);',
+      '  float flame = clamp((n*1.55 - uv.y*1.15 - 0.18)*2.4, 0.0, 1.0);',
+      '  flame *= smoothstep(0.0,0.16,uv.x)*smoothstep(1.0,0.84,uv.x);', // side falloff
+      '  flame *= smoothstep(0.0,0.10,uv.y);',                            // bottom fade
+      '  vec3 cHot = vec3(1.0,0.88,0.55);',
+      '  vec3 cMid = vec3(1.0,0.45,0.10);',
+      '  vec3 cLow = vec3(0.75,0.10,0.05);',
+      '  float yv = clamp(uv.y+n*0.25,0.0,1.0);',
+      '  vec3 col = mix(cLow, cMid, smoothstep(0.05,0.45,yv));',
+      '  col = mix(col, cHot, smoothstep(0.45,0.9,yv)*flame);',
+      '  float a = flame*flame*uBoost;',
+      '  gl_FragColor = vec4(col*(0.85+0.5*flame), a*0.9);',
+      '}'
+    ].join('\n')
+  });
+  var fire = new THREE.Mesh(new THREE.PlaneGeometry(16, 9.5), fireMat);
+  fire.position.set(0, -3.6, -2.5);
+  scene.add(fire);
+  // second, smaller flame layer for depth
+  var fire2 = new THREE.Mesh(new THREE.PlaneGeometry(9, 6), fireMat.clone());
+  fire2.material.uniforms = { uTime:{value:0}, uBoost:{value:.7} };
+  fire2.position.set(1.5, -3.2, -1.2);
+  scene.add(fire2);
+
+  /* --- fries: square sticks (4-sided cylinders) bursting from the flame --- */
+  var fryGeo = new THREE.CylinderGeometry(.17, .17, 2.15, 4);
+  var fryMatGold = new THREE.MeshStandardMaterial({color:0xffc61c, roughness:.42, metalness:.08, emissive:0x3a1e02});
+  var fryMatHot  = new THREE.MeshStandardMaterial({color:0xffb018, roughness:.36, metalness:.1, emissive:0x8a2400});
+  var world = new THREE.Group(); scene.add(world);
+  var fries = [];
+  var N = innerWidth < 700 ? 18 : 30;
+  for (var i=0;i<N;i++){
+    var m = new THREE.Mesh(fryGeo, Math.random() < .35 ? fryMatHot : fryMatGold);
+    resetFry(m, true);
+    world.add(m); fries.push(m);
+  }
+  function resetFry(m, scatter){
+    var u = m.userData;
+    u.spd  = .55 + Math.random()*.9;                       // rise speed
+    u.ph   = Math.random()*Math.PI*2;
+    u.rx   = (Math.random()-.5)*1.6; u.ry = (Math.random()-.5)*1.6; u.rz = (Math.random()-.5)*1.1;
+    u.x0   = (Math.random()-.5)*10;
+    u.z    = -3 + Math.random()*7.5;
+    u.hot  = m.material === fryMatHot;
+    if (scatter){ u.y = -4 + Math.random()*13; } else { u.y = -4.2 - Math.random()*2; }
+  }
+
+  /* --- ember sparks --- */
+  var EN = innerWidth < 700 ? 260 : 520;
+  var epos = new Float32Array(EN*3), espd = new Float32Array(EN);
+  for (var e=0;e<EN;e++){
+    epos[e*3]=(Math.random()-.5)*14; epos[e*3+1]=-4+Math.random()*14; epos[e*3+2]=-4+Math.random()*9;
+    espd[e]=.4+Math.random()*1.1;
+  }
+  var eGeo = new THREE.BufferGeometry();
+  eGeo.setAttribute('position', new THREE.BufferAttribute(epos,3));
+  var embers = new THREE.Points(eGeo, new THREE.PointsMaterial({color:0xff9a3d, size:.07, transparent:true, opacity:.85, depthWrite:false, blending:THREE.AdditiveBlending}));
+  scene.add(embers);
+
+  /* --- smoke haze puffs (cheap: big soft sprites via Points) --- */
+
+  /* --- interaction state --- */
+  var progress=0, mx=0, my=0, tmx=0, tmy=0, t=0;
+  var clock = new THREE.Clock();
+  function readScroll(){
+    var max = document.documentElement.scrollHeight - innerHeight;
+    progress = max>0 ? Math.min(1, Math.max(0, scrollY/max)) : 0;
+  }
+  addEventListener('scroll', readScroll, {passive:true});
+  addEventListener('pointermove', function(e){
+    tmx=(e.clientX/innerWidth-.5)*2; tmy=(e.clientY/innerHeight-.5)*2;
+  }, {passive:true});
+  addEventListener('resize', function(){
+    cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  (function tick(){
+    requestAnimationFrame(tick);
+    if (document.hidden) return;
+    var dt = Math.min(clock.getDelta(), .05); t += dt;
+    readScroll();
+    var p = progress;
+    mx += (tmx-mx)*.05; my += (tmy-my)*.05;
+
+    // camera: slow descend past the fry-fire as you scroll
+    cam.position.x = Math.sin(p*Math.PI*2.4)*1.6 + mx*.8;
+    cam.position.y = .4 + Math.sin(p*Math.PI*1.6)*1.1 - my*.4;
+    cam.position.z = 10 - p*5.2;
+    cam.lookAt(mx*.35, my*-.25, -1);
+
+    world.rotation.y = p*Math.PI*2.1 + t*.03 + mx*.07;
+    world.rotation.x = Math.sin(p*Math.PI*2)*.2 + my*.05;
+
+    // flames flicker
+    fireUniforms.uTime.value = t;
+    fire2.material.uniforms.uTime.value = t*1.23;
+    fireUniforms.uBoost.value = 1 + Math.sin(t*7.3)*.08 + Math.sin(t*13.7)*.05;
+    lFire.intensity = 1.45 + Math.sin(t*9.1)*.28 + Math.sin(t*23.7)*.12;
+    lFire.position.x = Math.sin(t*.8)*1.2;
+
+    // fries rise, tumble, wrap
+    for (var k=0;k<fries.length;k++){
+      var f=fries[k], u=f.userData;
+      u.y += u.spd*dt*(reduced?0:1);
+      if (u.y > 10) resetFry(f, false);
+      f.position.set(u.x0 + Math.sin(t*.6+u.ph)*.5, u.y, u.z);
+      f.rotation.x += u.rx*dt; f.rotation.y += u.ry*dt; f.rotation.z += u.rz*dt;
+      if (u.hot){ f.material.emissiveIntensity = .7 + Math.sin(t*6+u.ph)*.5; }
+    }
+    // embers rise
+    var arr = eGeo.attributes.position.array;
+    for (var j=0;j<EN;j++){
+      arr[j*3+1] += espd[j]*dt;
+      arr[j*3]   += Math.sin(t*1.4+j)*.003;
+      if (arr[j*3+1] > 10.5){ arr[j*3+1] = -4.5; arr[j*3]=(Math.random()-.5)*14; }
+    }
+    eGeo.attributes.position.needsUpdate = true;
+
+    renderer.render(scene, cam);
+  })();
+}
+
+/* ================= SMOOTH SCROLL + REVEALS ================= */
+if (hasGsap && !reduced) {
+  gsap.registerPlugin(ScrollTrigger);
+  var lenis = null;
+  if (typeof Lenis !== 'undefined') {
+    try {
+      lenis = new Lenis({duration:1.15, smoothWheel:true});
+      lenis.on('scroll', ScrollTrigger.update);
+      gsap.ticker.add(function(t){ lenis.raf(t*1000); });
+      gsap.ticker.lagSmoothing(0);
+    } catch(e){ lenis = null; }
+  }
+  window.__scrollTo = function(target){
+    if (lenis) lenis.scrollTo(target, {offset:-70, duration:1.4});
+    else { var el=document.querySelector(target); if(el) el.scrollIntoView({behavior:'smooth'}); }
+  };
+  gsap.utils.toArray('.reveal').forEach(function(el){
+    gsap.fromTo(el, {y:44, opacity:0}, {y:0, opacity:1, duration:1, ease:'power3.out',
+      scrollTrigger:{trigger:el, start:'top 88%', once:true}});
+  });
+} else {
+  document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
+  window.__scrollTo = function(t){ var el=document.querySelector(t); if(el) el.scrollIntoView({behavior:reduced?'auto':'smooth'}); };
+}
+requestAnimationFrame(function(){ requestAnimationFrame(function(){
+  setTimeout(function(){
+    document.querySelectorAll('h1 .line>span').forEach(function(s){ s.style.transform='none'; });
+  }, 150);
+});});
+
+document.querySelectorAll('a[href^="#"]').forEach(function(a){
+  a.addEventListener('click', function(e){
+    var id=a.getAttribute('href');
+    if (id.length>1 && document.querySelector(id)){ e.preventDefault(); window.__scrollTo(id); }
+  });
+});
+
+/* ================= MENU (live DB + fallback) ================= */
+var MENU = {cats:[], items:[]};
+var CAT_NAMES = {};
+function imgUrl(u){
+  if (!u) return null;
+  return u; // live API returns root-absolute (/landing/images/m/…), fallback JSON is landing-relative (images/m/…) — both usable as-is
+}
+function priceFmt(p){ return '\u20B1' + Number(p).toFixed(0); }
+
+function renderCats(){
+  var bar = document.getElementById('catBar');
+  bar.innerHTML = '';
+  var all = document.createElement('button');
+  all.className='cat-btn active'; all.textContent='All';
+  all.addEventListener('click', function(){ setCat(null); });
+  bar.appendChild(all);
+  MENU.cats.forEach(function(c){
+    var b=document.createElement('button');
+    b.className='cat-btn'; b.textContent=c.category_name;
+    b.addEventListener('click', function(){ setCat(c.category_id); });
+    bar.appendChild(b);
+  });
+}
+var activeCat = null;
+function setCat(cid){
+  activeCat = cid;
+  document.querySelectorAll('.cat-btn').forEach(function(b,i){
+    b.classList.toggle('active', i===0 ? cid===null : MENU.cats[i-1].category_id===cid);
+  });
+  renderMenu();
+}
+function cardHTML(it, idx){
+  var u = imgUrl(it.image_url);
+  return '<article class="m-card" style="animation-delay:'+Math.min(idx*45,500)+'ms">'
+    + '<div class="ph">'
+    + (u ? '<img loading="lazy" src="'+u+'" alt="'+it.item_name.replace(/"/g,'&quot;')+'" onerror="this.outerHTML=\'<span class=\\\'fallback\\\'>Hof</span>\'">' : '<span class="fallback">Hof</span>')
+    + '</div><div class="info"><h3>'+it.item_name+'</h3>'
+    + '<div class="row"><span class="p">'+priceFmt(it.price)+'</span><span class="cat">'+(CAT_NAMES[it.category_id]||'')+'</span></div></div></article>';
+}
+function renderMenu(){
+  var grid = document.getElementById('menuGrid');
+  var list = activeCat ? MENU.items.filter(function(i){return i.category_id===activeCat;}) : MENU.items;
+  grid.innerHTML = list.map(cardHTML).join('');
+}
+function loadMenu(){
+  return fetch('../backend/get_menu_for_landing.php', {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    .then(function(d){
+      if (!d.success) throw 0;
+      MENU.cats = d.categories; MENU.items = d.items;
+    })
+    .catch(function(){
+      return fetch('menu-fallback.json').then(function(r){ return r.json(); }).then(function(d){
+        MENU.cats = d.categories; MENU.items = d.items;
+        console.info('HOF landing: using offline menu fallback');
+      });
+    })
+    .then(function(){
+      MENU.cats.forEach(function(c){ CAT_NAMES[c.category_id]=c.category_name; });
+      renderCats(); renderMenu();
+      var nEl = document.querySelector('[data-count-items]');
+      if (nEl) nEl.textContent = MENU.items.length + '+';
+    });
+}
+
+/* ================= SIGNATURE PICKS ================= */
+function renderSignature(){
+  var grid = document.getElementById('sigGrid');
+  var want = ['Cheesy Fries','Triple Double Burger','CB3','Mukbang','Chicago Footlong'];
+  var picked = [];
+  want.forEach(function(name){
+    var it = MENU.items.find(function(i){return i.item_name===name;});
+    if (it && !picked.includes(it)) picked.push(it);
+  });
+  for (var i=0; picked.length<5 && i<MENU.items.length; i++){
+    if (!picked.includes(MENU.items[i])) picked.push(MENU.items[i]);
+  }
+  picked = picked.slice(0,5);
+  var labels = ['House Favorite','Fan Pick','For the Barkada','The Feast','Grilled & Gold'];
+  grid.innerHTML = picked.map(function(it,i){
+    var u = imgUrl(it.image_url);
+    var tall = i===3 ? ' tall' : '';
+    return '<article class="sig-card'+tall+' reveal'+(i>0?'':' in')+'">'
+      + '<span class="lab">'+labels[i]+'</span>'
+      + '<div class="ph">'+(u?'<img loading="lazy" src="'+u+'" alt="'+it.item_name+'" onerror="this.parentNode.innerHTML=\'<span class=fallback style=\\\'font:italic 60px Fraunces;color:rgba(255,198,28,.3)\\\'>Hof</span>\'">':'')+'</div>'
+      + '<div class="meta"><h3>'+it.item_name+'</h3><span class="price">'+priceFmt(it.price)+'</span></div></article>';
+  }).join('');
+  if (hasGsap && !reduced){
+    gsap.utils.toArray('#sigGrid .reveal').forEach(function(el){
+      gsap.fromTo(el,{y:40,opacity:0},{y:0,opacity:1,duration:.9,ease:'power3.out',
+        scrollTrigger:{trigger:el,start:'top 90%',once:true}});
+    });
+  }
+}
+
+/* ================= MARQUEE ================= */
+function renderMarquee(){
+  var words = ['Crispy Golden Fries','Chicken Buckets','Footlongs','Burgers','Smoothies','Milk Tea','Seafood Rice Meals','Since 1983'];
+  var half = words.map(function(w){return '<span>'+w+'</span><b>\u25C6</b>';}).join('');
+  document.getElementById('mqTrack').innerHTML = half + half;
+}
+
+/* ================= COUNTERS ================= */
+function counters(){
+  var y = document.querySelector('[data-yrs]');
+  if (y){ var end = new Date().getFullYear()-1983; var o={v:0};
+    function run(){ if(hasGsap&&!reduced){ gsap.to(o,{v:end,duration:1.6,ease:'power2.out',onUpdate:function(){y.textContent=Math.round(o.v);}}); } else y.textContent=end; }
+    if (hasGsap && !reduced){ ScrollTrigger.create({trigger:y,start:'top 92%',once:true,onEnter:run}); } else run();
+  }
+}
+
+/* ================= MAP ================= */
+(function(){
+  var box = document.getElementById('mapBox');
+  if (!box) return;
+  
+  // Google Maps
+  var defaultPos = { lat: 8.5372, lng: 124.8269 };
+  
+  function initLandingMap(lat, lng) {
+    var pos = { lat: lat || defaultPos.lat, lng: lng || defaultPos.lng };
+    var map = new google.maps.Map(box, {
+      center: pos,
+      zoom: 16,
+      restriction: {
+        latLngBounds: { north: 21.5, south: 4.5, west: 116.5, east: 127.0 },
+        strictBounds: true
+      },
+      mapTypeId: google.maps.MapTypeId.ROADMAP,
+      zoomControl: false,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false
+    });
+    var marker = new google.maps.Marker({
+      position: pos,
+      map: map,
+      title: 'House of Fries'
+    });
+    var info = new google.maps.InfoWindow({
+      content: '<strong>House of Fries</strong><br>Villegas St, Poblacion, Tagoloan'
+    });
+    marker.addListener('click', function(){ info.open(map, marker); });
+    
+    // Try to load dynamic location from public endpoint
+    fetch('../backend/get_location_public.php').then(function(r){return r.json();}).then(function(data){
+      if(data.success && data.settings){
+        var lat2 = parseFloat(data.settings.latitude), lng2 = parseFloat(data.settings.longitude);
+        var pos2 = { lat: lat2, lng: lng2 };
+        map.setCenter(pos2);
+        marker.setPosition(pos2);
+        info.setContent('<strong>House of Fries</strong><br>Tagoloan Branch');
+      }
+    }).catch(function(){});
+  }
+
+  // Wait for Google Maps to load, then init
+  if (typeof google !== 'undefined' && google.maps) {
+    initLandingMap();
+  } else {
+    window.initLandingMap = initLandingMap;
+  }
+})();
+
+/* ================= MUSIC ================= */
+var audio, unlocked=false, userPaused=false;
+try { audio = new Audio('ambient.mp3'); audio.loop=true; audio.preload='auto'; audio.volume=0; } catch(e){ audio=null; }
+var dock=document.getElementById('audioDock'), toast=document.getElementById('hintToast');
+function fadeIn(){ if(!audio)return; var p=audio.play(); if(p&&p.catch)p.catch(function(){}); if(hasGsap){gsap.to(audio,{volume:.5,duration:2.4,ease:'power1.out'});}else audio.volume=.5; dock.classList.remove('paused'); }
+function fadeOut(){ if(!audio)return; if(hasGsap){gsap.to(audio,{volume:0,duration:.7,onComplete:function(){audio.pause();}});}else{audio.volume=0;audio.pause();} dock.classList.add('paused'); }
+function unlock(e){
+  if (unlocked||!audio) return;
+  if (e && e.target && e.target.closest && e.target.closest('#audioDock')) return;
+  unlocked=true; if(!userPaused) fadeIn(); toast.classList.remove('show');
+}
+document.addEventListener('pointerdown', unlock, {once:true, capture:true});
+document.addEventListener('keydown', unlock, {once:true, capture:true});
+function toggle(){
+  if(!audio) return;
+  if(!unlocked){ unlocked=true; fadeIn(); toast.classList.remove('show'); return; }
+  if(userPaused){ userPaused=false; fadeIn(); } else { userPaused=true; fadeOut(); }
+}
+dock.addEventListener('click', function(e){ e.stopPropagation(); toggle(); });
+dock.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();} });
+window.__audioProbe=function(){ return audio?{unlocked:unlocked,paused:userPaused,t:audio.currentTime,vol:audio.volume}:null; };
+setTimeout(function(){ if(!unlocked&&!userPaused) toast.classList.add('show'); setTimeout(function(){toast.classList.remove('show');},6000); }, 2800);
+
+/* ================= BOOT ================= */
+document.getElementById('yr').textContent = new Date().getFullYear();
+renderMarquee();
+var menuReady = loadMenu().then(renderSignature);
+Promise.race([menuReady, new Promise(function(r){setTimeout(r,4500);})]).then(function(){
+  var loader=document.getElementById('loader'), bar=document.querySelector('#lbar i');
+  function done(){
+    if(hasGsap&&!reduced){
+      var o={v:0}; gsap.to(o,{v:100,duration:1.2,ease:'power2.inOut',onUpdate:function(){bar.style.width=o.v+'%';},
+        onComplete:function(){ loader.classList.add('done'); setTimeout(function(){loader.remove();},800); }});
+    } else { bar.style.width='100%'; setTimeout(function(){loader.classList.add('done');},300); }
+  }
+  done();
+});
+counters();
+})();
+</script>
+</body>
+</html>

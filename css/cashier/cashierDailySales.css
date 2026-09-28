@@ -1,0 +1,113 @@
+/* cashierDailySales.html inline styles */
+
+body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #fcfcfc;
+        }
+
+        /* --- DASHBOARD CARDS & UI --- */
+        .stat-card {
+            border: none;
+            border-radius: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .bg-revenue {
+            background-color: #fff9ed;
+            border: 1px solid #ffe8cc;
+        }
+
+.bg-orders {
+    background-color: #f0f4ff;
+    border: 1px solid #cce0ff;
+}
+
+.bg-gcash {
+    background-color: #f0f4ff;
+    border: 1px solid #cce0ff;
+}
+
+        .bg-value {
+            background-color: #fffaf0;
+            border: 1px solid #feebc8;
+        }
+
+        .item-row {
+            border-bottom: 1px solid #f8f9fa;
+            padding: 12px 0;
+        }
+
+        .rank-circle {
+            width: 32px;
+            height: 32px;
+            background: #ffc107;
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .dashboard-icon-box {
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .icon-revenue {
+            background: #ffc107;
+            color: #1a1512;
+        }
+
+.icon-orders {
+    background: #0056E3;
+    color: #fff;
+}
+
+        .icon-value {
+            background: #fd7e14;
+            color: #fff;
+        }
+
+        /* ── Table wrapper for horizontal scroll on narrow screens ── */
+                .table-responsive-wrapper {
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                }
+
+                /* ── Text wrapping for long content ── */
+                .word-break-all {
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                }
+
+                /* ── Responsive overrides ── */
+                @media (max-width: 480px) {
+                    .stat-card { margin-bottom: 12px; }
+                    .stat-card .card-body { padding: 1rem !important; }
+                    .page-header { flex-direction: column; align-items: flex-start; }
+                    .table { font-size: 0.75rem; }
+                    .table th, .table td { padding: 6px 8px; white-space: nowrap; }
+                    .table-responsive-wrapper { overflow-x: auto; }
+                }
+
+                @media (min-width: 768px) and (max-width: 992px) {
+                    .stat-card .card-body { padding: 1.25rem !important; }
+                    .table { font-size: 0.8rem; }
+                }
+
+                @media (min-width: 1200px) {
+                    .container-fluid { max-width: 1400px; margin: 0 auto; }
+                }

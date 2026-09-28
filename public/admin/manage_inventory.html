@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House of Fries - Manage Inventory</title>
+    
+    
+    
+    
+    
+    
+    
+    <link rel="icon" type="image/png" href="../../images/favicon.jpg">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    
+    
+    <link rel="stylesheet" href="/css/staff-sidebar.css">
+    
+    <link rel="stylesheet" href="/css/admin/manage_inventory.css">
+</head><body>
+    <div class="app-shell">
+        <!-- SIDEBAR -->
+        <nav id="sidebar">
+            <div class="sidebar-header d-flex align-items-center">
+                <img src="../../images/Logo.png" alt="House of Fries Logo" class="brand-logo me-2">
+                <div class="header-text">
+                    <h5 class="mb-0 fw-bold">House of Fries</h5>
+                    <small style="font-size: 0.7rem;">Tagoloan Branch</small>
+                </div>
+            </div>
+            <div class="nav-content">
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mb-2" style="font-size: 0.7rem;">Main Menu</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="admin_dashboard.html"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+                    <a class="nav-link" href="QR_Tables.html"><i class="bi bi-qr-code-scan"></i><span>QR Tables</span></a>
+                    <a class="nav-link" href="manage_menu.html"><i class="bi bi-egg-fried"></i><span>Menu Items</span></a>
+                    <a class="nav-link active" href="manage_inventory.html"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
+                    <a class="nav-link" href="purchasePlan.html"><i class="bi bi-card-checklist"></i><span>Purchase Plans</span></a>
+                </nav>
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mt-4 mb-2" style="font-size: 0.7rem;">Management</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="manage_users.html"><i class="bi bi-person-badge"></i><span>Staff</span></a>
+                    <a class="nav-link" href="manage_suppliers.html"><i class="bi bi-truck"></i><span>Suppliers</span></a>
+                    <a class="nav-link" href="sales_and_reports.html"><i class="bi bi-journal-check"></i><span>Sales & Reports</span></a>
+                    <a class="nav-link" href="order_history.html"><i class="bi bi-clock-history"></i><span>Order History</span></a>
+                    <a class="nav-link" href="voids.html"><i class="bi bi-slash-circle"></i><span>Voids</span></a>
+                    <a class="nav-link" href="location_settings.html"><i class="bi bi-geo-alt"></i><span>Location</span></a>
+                    <a class="nav-link" href="activity_logs.html"><i class="bi bi-journal-text"></i><span>Activity Logs</span></a>
+                    <a class="nav-link" href="settings.html"><i class="bi bi-gear"></i><span>Settings</span></a>
+                    <a class="nav-link text-danger" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i><span>Logout</span></a>
+                </nav>
+            </div>
+            <div class="user-profile">
+                <div class="user-avatar">U</div>
+                <div class="flex-grow-1 overflow-hidden profile-text">
+                    <p class="mb-0 fw-bold small text-white text-truncate user-name">Loading...</p>
+                    <p class="mb-0 text-light user-role" style="font-size: 0.7rem;">Loading...</p>
+                </div>
+            </div>
+        </nav>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    
+
+
+        <!-- MAIN CONTENT -->
+        <div class="content-wrapper"> <!-- TOP NAVBAR -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-4">
+                <button type="button" id="sidebarCollapse" class="btn btn-light border me-3">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="ms-auto d-flex align-items-center">
+                    <div class="dropdown me-4">
+                        <a href="#" class="text-dark position-relative link-dark" id="notificationDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-bell fs-5"></i>
+                            <span id="notificationBadge"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                                style="font-size: 0.65rem;">
+                                0
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border mt-2"
+                            aria-labelledby="notificationDropdown" id="notificationMenu"
+                            style="width: 320px; max-height: 400px; overflow-y: auto;">
+                            <li class="dropdown-header border-bottom fw-bold text-dark">Stock Alerts</li>
+                            <li id="emptyNotificationItem"><span class="dropdown-item text-muted text-center py-3">All
+                                    inventory levels are normal.</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+            <!-- CONTENT -->
+            <div class="p-4"> <!-- HEADER -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="fw-bold mb-0">Inventory Management</h2>
+                        <p class="text-muted">Monitor and manage your stock levels.</p>
+                    </div>
+                </div>
+                <!-- STATS -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="inventory-card bg-total text-center shadow-sm">
+                            <div class="icon-box icon-total"> <i class="bi bi-box-seam"></i> </div>
+                            <p class="mb-1 fw-semibold text-dark">Total Items</p>
+                            <h2 class="fw-bold mb-0" id="totalItems">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="inventory-card bg-low text-center shadow-sm">
+                            <div class="icon-box icon-low"> <i class="bi bi-exclamation-triangle"></i> </div>
+                            <p class="mb-1 fw-semibold text-dark">Low Stock</p>
+                            <h2 class="fw-bold mb-0" id="lowStock">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="inventory-card bg-out text-center shadow-sm">
+                            <div class="icon-box icon-out"> <i class="bi bi-x-circle"></i> </div>
+                            <p class="mb-1 fw-semibold text-dark">Out of Stock</p>
+                            <h2 class="fw-bold mb-0" id="outStock">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="inventory-card bg-damaged text-center shadow-sm">
+                            <div class="icon-box icon-damaged"> <i class="bi bi-trash3"></i> </div>
+                            <p class="mb-1 fw-semibold text-dark">Damaged</p>
+                            <h2 class="fw-bold mb-0" id="damagedStock">0</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FILTERS -->
+                <div class="row g-2 mb-4">
+
+                    <!-- SEARCH -->
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0">
+                                <i class="bi bi-search"></i>
+                            </span>
+
+                            <input type="text" id="searchInventory" class="form-control border-start-0"
+                                placeholder="Search material...">
+                        </div>
+                    </div>
+
+                    <!-- STATUS FILTER (defaults to Active so soft-deleted INACTIVE rows stay hidden) -->
+                    <div class="col-md-4">
+                        <select class="form-select" id="filterStatus">
+                            <option value="ACTIVE" selected>Active</option>
+                            <option value="">All Status</option>
+                            <option value="INACTIVE">Inactive</option>
+                        </select>
+                    </div>
+
+
+                    <!-- CATEGORY TABS -->
+                    <div class="col-12">
+
+                        <div class="nav nav-tabs" id="filterCategory">
+
+                            <a href="manage_inventory.html" class="nav-link active" data-category="raw_materials">
+                                Raw Materials
+                            </a>
+
+                            <a href="stock_in.html" class="nav-link" data-category="stock_in">
+                                Stock In
+                            </a>
+
+                            <a href="stock_out.html" class="nav-link" data-category="stock_out">
+                                Stock Out
+                            </a>
+
+                            <a href="adjustments.html" class="nav-link" data-category="adjustments">
+                                Adjustments
+                            </a>
+
+                            <a href="spoilage.html" class="nav-link" data-category="spoilage">
+                                                            Spoilage
+                                                        </a>
+
+                                                        <a href="returns.html" class="nav-link" data-category="returns">
+                                                            Returns
+                                                        </a>
+
+                                                    </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- TABLE -->
+                <div class="inventory-table-container">
+
+                    <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-white">
+
+                        <h5 class="mb-0 fw-bold" id="inventoryCategoryTitle">
+                            Raw Materials
+                        </h5>
+
+                        <button id="inventoryActionBtn" class="btn btn-success btn-sm px-3" data-bs-toggle="modal"
+                            data-bs-target="#addMaterialModal">
+
+                            <i class="bi bi-plus-lg me-1"></i>
+                            <span id="inventoryBtnText">
+                                Add Raw Material
+                            </span>
+
+                        </button>
+
+                    </div>
+
+                    <div class="table-responsive">
+
+                        <table class="table align-middle mb-0">
+
+                            <thead id="inventoryThead"></thead>
+
+                            <tbody id="inventoryTableBody"></tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD RAW MATERIALS MODAL -->
+    <div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold" id="addMaterialModalLabel">
+                        <i class="bi bi-plus-circle me-2"></i>Add New Raw Material
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <form id="addMaterialForm">
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-7">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Material Name <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" name="raw_material_name" class="form-control"
+                                        placeholder="e.g. Frozen Crinkle Fries">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Description</label>
+                                    <textarea name="description" class="form-control" rows="2"
+                                        placeholder="Brief details..."></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Image Upload / URL</label>
+                                    <div class="input-group mb-2">
+                                        <input type="file" id="materialFile" name="img_file" class="form-control"
+                                            accept="image/*">
+                                        <span class="input-group-text">OR</span>
+                                        <input type="text" id="materialUrl" name="img_url" class="form-control"
+                                            placeholder="Paste URL">
+                                    </div>
+
+                                    <div id="imagePreviewContainer"
+                                        class="border rounded d-flex align-items-center justify-content-center bg-light"
+                                        style="height: 145px; overflow: hidden; position: relative;">
+                                        <div id="previewPlaceholder" class="text-center text-muted">
+                                            <i class="bi bi-image fs-1 d-block"></i>
+                                            <span class="small">Image Preview</span>
+                                        </div>
+                                        <img id="imagePreviewDisplay" src="#" alt="Preview" class="d-none"
+                                            style="width: 100%; height: 100%; object-fit: contain;">
+                                        <button type="button" id="clearPreview" class="btn btn-sm btn-danger d-none"
+                                            style="position: absolute; top: 5px; right: 5px;">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-5">
+                                <div class="bg-light p-3 rounded border h-100">
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Unit <span
+                                                class="text-danger">*</span></label>
+                                        <select name="unit" class="form-select">
+                                            <option value="" selected disabled>Select Unit</option>
+                                            <option value="Kilogram (kg)">Kilogram (kg)</option>
+                                            <option value="Pieces (pcs)">Pieces (pcs)</option>
+                                            <option value="Grams (g)">Grams (g)</option>
+                                            <option value="Milliliters (ml)">Milliliters (ml)</option>
+                                            <option value="Pack (pk)">Pack (pk)</option>
+                                        </select>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-6 mb-3">
+                                            <label class="form-label small fw-bold">Initial Qty</label>
+                                            <input type="number" name="current_quantity" class="form-control" value="0"
+                                                min="0" step="0.01">
+                                        </div>
+                                        <div class="col-6 mb-3">
+                                            <label class="form-label small fw-bold">Reorder Level</label>
+                                            <input type="number" name="reorder_level" class="form-control" value="0"
+                                                min="0" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Cost Per Unit (₱)</label>
+                                        <input type="number" name="cost_per_unit" class="form-control" value="0.00"
+                                            min="0" step="0.01">
+                                    </div>
+
+                                    <div class="d-flex flex-column gap-3 mt-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="expTrack"
+                                                name="expiration_tracking">
+                                            <label class="form-check-label small fw-bold" for="expTrack">Track
+                                                Expiration</label>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="perishable"
+                                                name="is_perishable">
+                                            <label class="form-check-label small fw-bold" for="perishable">Perishable
+                                                Item</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4">
+                                        <button type="button" id="addAnotherBtn"
+                                            class="btn btn-warning w-100 fw-bold shadow-sm">
+                                            <i class="bi bi-plus-lg me-1"></i> Add to List
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 mt-2">
+                                <hr>
+                                <h6 class="fw-bold mb-3"><i class="bi bi-list-ul me-2"></i>Materials to be added:</h6>
+                                <div class="table-responsive" style="max-height: 200px;">
+                                    <table class="table table-sm table-hover border" id="tempMaterialTable">
+                                        <thead class="table-dark">
+                                            <tr class="small">
+                                                <th>Name</th>
+                                                <th>Unit</th>
+                                                <th>Qty</th>
+                                                <th>Cost</th>
+                                                <th class="text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-link text-secondary text-decoration-none me-auto"
+                            data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success px-5 fw-bold shadow-sm">Save All Materials</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    
+
+    
+    
+
+    
+
+
+
+    <!-- STANDARDIZED SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../javascript/config.js"></script>
+    <script src="../../javascript/loading.js"></script>
+    <script src="../../javascript/check_session.js" defer></script>
+    <script src="../../javascript/logout.js" defer></script>
+    <script src="../../javascript/navbar-unified.js" defer></script>
+    <script src="../../javascript/admin/manage_inventory.js" defer></script>
+</body>
+</html>

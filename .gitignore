@@ -1,0 +1,26 @@
+# ── SECRETS — never commit (BUG-007/008/013/032) ──────────────────────
+# These three files contain live credentials. They are already a known
+# vulnerability (BUG-013 db.php, BUG-014 JWT_SECRET, BUG-007 live PayMongo
+# keys). Committing them would make it permanent and unpurgeable.
+backend/secret.php
+backend/db.php
+backend/config/paymongo_config.php
+
+# ── SCHEMA DUMP — contains the DB structure + seed data ───────────────
+sql/
+PENDING_APPROVAL_flavors_and_customers.sql
+
+# ── AD-HOC BACKUPS — dead weight, the vault is the record ─────────────
+.backup_*/
+backup/
+*.bak
+*.orig
+
+# ── RUNTIME / LOCAL ──────────────────────────────────────────────────
+node_modules/
+vendor/
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/

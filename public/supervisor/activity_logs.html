@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House of Fries - Activity Logs</title>
+    
+    
+    
+    <link rel="icon" type="image/png" href="../../images/favicon.jpg">
+    
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    
+    
+    <link rel="stylesheet" href="/css/staff-sidebar.css">
+    <link rel="stylesheet" href="/css/supervisor/activity_logs.css">
+</head><body>
+    <div class="mobile-topbar">
+        <div class="d-flex align-items-center">
+            <button id="mobileSidebarToggle" class="btn text-white fs-4 p-0 me-3 border-0"><i class="bi bi-list"></i></button>
+            <img src="../../images/Logo.png" alt="Logo" style="width:32px;height:32px;object-fit:contain;" class="me-2">
+            <h5 class="mb-0 fw-bold fs-6">House of Fries</h5>
+        </div>
+        <small class="text-warning" style="font-size:.75rem;">Tagoloan Branch</small>
+    </div>
+    
+    <div class="app-shell">
+        <!-- SIDEBAR -->
+        <nav id="sidebar">
+            <div class="sidebar-header d-flex align-items-center">
+                <img src="../../images/Logo.png" alt="House of Fries Logo" class="brand-logo me-2">
+                <div class="header-text">
+                    <h5 class="mb-0 fw-bold">House of Fries</h5>
+                    <small style="font-size: 0.7rem;">Tagoloan Branch</small>
+                </div>
+            </div>
+            <div class="nav-content">
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mb-2" style="font-size: 0.7rem;">Main Menu</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="supervisor_dashboard.html"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+                    <a class="nav-link" href="QR_Tables.html"><i class="bi bi-qr-code-scan"></i><span>QR Tables</span></a>
+                    <a class="nav-link" href="manage_menu.html"><i class="bi bi-egg-fried"></i><span>Menu Items</span></a>
+                    <a class="nav-link" href="manage_inventory.html"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
+                    <a class="nav-link" href="purchasePlan.html"><i class="bi bi-card-checklist"></i><span>Purchase Plans</span></a>
+                </nav>
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mt-4 mb-2" style="font-size: 0.7rem;">Management</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="manage_users.html"><i class="bi bi-person-badge"></i><span>Staff</span></a>
+                    <a class="nav-link" href="manage_suppliers.html"><i class="bi bi-truck"></i><span>Suppliers</span></a>
+                    <a class="nav-link" href="sales_and_reports.html"><i class="bi bi-journal-check"></i><span>Sales & Reports</span></a>
+                    <a class="nav-link" href="order_history.html"><i class="bi bi-clock-history"></i><span>Order History</span></a>
+                    <a class="nav-link" href="voids.html"><i class="bi bi-slash-circle"></i><span>Voids</span></a>
+                    <a class="nav-link" href="location_settings.html"><i class="bi bi-geo-alt"></i><span>Location</span></a>
+                    <a class="nav-link active" href="activity_logs.html"><i class="bi bi-journal-text"></i><span>Activity Logs</span></a>
+                    <a class="nav-link" href="settings.html"><i class="bi bi-gear"></i><span>Settings</span></a>
+                    <a class="nav-link text-danger" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i><span>Logout</span></a>
+                </nav>
+            </div>
+            <div class="user-profile">
+                <div class="user-avatar">U</div>
+                <div class="flex-grow-1 overflow-hidden profile-text">
+                    <p class="mb-0 fw-bold small text-white text-truncate user-name">Loading...</p>
+                    <p class="mb-0 text-light user-role" style="font-size: 0.7rem;">Loading...</p>
+                </div>
+            </div>
+        </nav>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    
+
+        <!-- MAIN CONTENT -->
+        <div class="content-wrapper">
+            <!-- TOPBAR -->
+            <div class="topbar">
+                <button type="button" id="sidebarCollapse" class="btn btn-light border"><i class="bi bi-list"></i></button>
+                <span class="fw-bold fs-5">Activity Logs</span>
+            </div>
+
+            <!-- PAGE CONTENT -->
+            <div class="p-4">
+                <h2 class="fw-bold">Activity Logs</h2>
+                <p class="text-muted">All system activity across modules — searchable and filterable by date, action, role, and user.</p>
+
+                <!-- FILTER CARD -->
+                <div class="card border-0 shadow-sm p-4 rounded-4 bg-white mb-4">
+                    <form id="filterForm" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Search (keyword / reference)</label>
+                            <input type="text" id="userSearch" class="form-control" placeholder="e.g. ORDER-1042, username...">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">From Date</label>
+                            <input type="date" id="dateFrom" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">To Date</label>
+                            <input type="date" id="dateTo" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">Action Type</label>
+                            <select id="actionType" class="form-select"><option value="">All</option></select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">Role</label>
+                            <select id="roleFilter" class="form-select"><option value="">All</option></select>
+                        </div>
+                        <div class="col-md-1 d-grid">
+                            <button type="submit" class="btn btn-warning"><i class="bi bi-funnel"></i></button>
+                        </div>
+                        <div class="col-md-12 d-flex gap-2">
+                            <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
+                            <button type="button" id="exportBtn" class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i>Export CSV</button>
+                            <span id="totalRecords" class="ms-auto align-self-center small text-muted"></span>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- TABLE CARD -->
+                <div class="card border-0 shadow-sm rounded-4 bg-white">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date &amp; Time</th>
+                                    <th>Category</th>
+                                    <th>Action</th>
+                                    <th>Reference</th>
+                                    <th>Description</th>
+                                    <th>Actor</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activityTableBody">
+                                <tr><td colspan="8" class="text-center py-5 text-muted"><i class="bi bi-hourglass-split fs-1"></i><p class="mt-2 mb-0">Loading activity…</p></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center p-3">
+                        <span id="paginationInfo" class="small text-muted"></span>
+                        <ul id="pagination" class="pagination pagination-sm mb-0"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading…</span></div></div>
+
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+
+    <!-- STANDARDIZED SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../javascript/config.js"></script>
+    <script src="../../javascript/loading.js"></script>
+    <script src="../../javascript/check_session.js" defer></script>
+    <script src="../../javascript/logout.js" defer></script>
+    <script src="../../javascript/navbar-unified.js" defer></script>
+    <script src="../../javascript/supervisor/activity_logs.js" defer></script>
+</body>
+</html>

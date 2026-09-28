@@ -1,0 +1,36 @@
+/* activity_logs.html inline styles */
+
+body { font-family: 'Poppins', sans-serif; background: #fcfcfc; }
+                .status-badge { font-size: .7rem; font-weight: 500; }
+        #loadingOverlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,.6); z-index: 2000; align-items: center; justify-content: center; }
+        #loadingOverlay.active { display: flex; }
+        .pagination .page-link { color: #1a1512; }
+        .pagination .page-item.active .page-link { background: #ffc107; border-color: #ffc107; color: #1a1512; }
+
+        /* ── Table wrapper for horizontal scroll on narrow screens ── */
+        .table-responsive-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* ── Text wrapping for long content ── */
+        .word-break-all {
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* ── Responsive overrides ── */
+        @media (max-width: 480px) {
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .table { font-size: 0.75rem; }
+            .table th, .table td { padding: 6px 8px; white-space: nowrap; }
+            .table-responsive-wrapper { overflow-x: auto; }
+        }
+
+        @media (min-width: 768px) and (max-width: 992px) {
+            .table { font-size: 0.8rem; }
+        }
+
+        @media (min-width: 1200px) {
+            .container-fluid { max-width: 1400px; margin: 0 auto; }
+        }

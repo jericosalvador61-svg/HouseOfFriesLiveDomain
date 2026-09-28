@@ -1,0 +1,278 @@
+/* ═══════════════════════════════════════════════════════════════
+   staff-sidebar.css — Shared Staff Sidebar Styles
+   House of Fries — extracted from admin_dashboard.html
+   Used by: admin, supervisor, cashier, waiter, kitchenStaff, inventoryStaff
+   ═══════════════════════════════════════════════════════════════ */
+
+/* --- SIDEBAR BASE --- */
+#sidebar {
+    min-width: 250px;
+    max-width: 250px;
+    height: 100vh;
+    background-color: #1a1512;
+    color: #fff;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* COLLAPSED STATE (Desktop Mini Sidebar — .collapsed new, .active backward compat) */
+#sidebar.collapsed,
+#sidebar.active {
+    min-width: 85px;
+    max-width: 85px;
+}
+
+/* --- HEADER --- */
+.sidebar-header {
+    padding: 20px;
+    background: #14100e;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.brand-logo {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.header-text {
+    white-space: nowrap;
+    overflow: hidden;
+    transition: opacity 0.2s;
+}
+
+/* --- NAV CONTENT --- */
+.nav-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-top: 20px;
+    scrollbar-width: none;
+}
+
+.nav-content::-webkit-scrollbar {
+    display: none;
+}
+
+/* --- NAV LINKS --- */
+.nav-link {
+    color: #b1b1b1;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin: 4px 15px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.nav-link span {
+    transition: opacity 0.2s;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background: #332a24;
+    color: #ffc107;
+}
+
+.nav-link i {
+    margin-right: 15px;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+/* --- SECTION LABELS --- */
+.nav-section-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    transition: opacity 0.2s ease;
+    display: block;
+}
+
+/* --- USER PROFILE --- */
+.user-profile {
+    padding: 15px;
+    background: #241e1a;
+    margin: 15px;
+    border-radius: 12px;
+    border: 1px solid #332a24;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.user-avatar {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    background: #ffc107;
+    color: #1a1512;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+/* --- SHARED APP SHELL (all roles) --- */
+.app-shell { display: flex; min-height: 100vh; }
+.content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+/* --- COLLAPSED OVERRIDES --- */
+/* Hide text labels, section labels become divider lines */
+#sidebar.collapsed .header-text,
+#sidebar.collapsed .nav-link span,
+#sidebar.collapsed .nav-content p,
+#sidebar.collapsed .profile-text,
+#sidebar.active .header-text,
+#sidebar.active .nav-link span,
+#sidebar.active .nav-content p,
+#sidebar.active .profile-text {
+    display: none;
+    opacity: 0;
+}
+
+/* collapsed icon rail: links MUST stay clickable (was pointer-events:none) */
+#sidebar.collapsed .nav-link,
+#sidebar.active .nav-link {
+    justify-content: center;
+    margin: 4px 10px;
+    padding: 12px 0;
+}
+
+#sidebar.collapsed .nav-link i,
+#sidebar.active .nav-link i {
+    margin-right: 0;
+    font-size: 1.4rem;
+}
+
+#sidebar.collapsed .user-profile,
+#sidebar.active .user-profile {
+    justify-content: center;
+    padding: 10px;
+    margin: 15px 10px;
+}
+
+#sidebar.collapsed .user-avatar,
+#sidebar.active .user-avatar {
+    margin-right: 0;
+}
+
+#sidebar.collapsed .nav-section-label,
+#sidebar.active .nav-section-label {
+    margin: 10px 0;
+    padding: 0;
+    border-top: 1px solid #332a24;
+    height: 1px;
+    width: 100%;
+    display: block;
+}
+
+/* (removed) collapsed rail used to be pointer-events:none — killed navigation */
+
+/* Overlay is MOBILE-ONLY: on desktop it must never paint over the page.
+   (Bug fixed: restoring a collapsed sidebar used to show a full-screen
+   rgba(0,0,0,.4) layer that swallowed every click.) */
+#sidebarOverlay,
+.sidebar-overlay {
+    display: none;
+}
+
+/* --- MOBILE OFF-CANVAS SIDEBAR --- */
+/* .open = new primary class; .active = backward-compatible alias */
+@media (max-width: 768px) {
+    #sidebar {
+        position: fixed !important;
+        left: -250px !important;
+        top: 0 !important;
+        height: 100vh !important;
+        z-index: 1001 !important;
+        transition: left 0.3s ease !important;
+        transform: none !important; /* never let a stale transform fight the drawer */
+        min-width: 250px !important;
+        max-width: 250px !important;
+    }
+    /* Drawer OPEN = .open or .active on mobile */
+    #sidebar.open,
+    #sidebar.active {
+        left: 0 !important;
+        min-width: 250px !important;
+        max-width: 250px !important;
+    }
+    /* Override collapsed-text-hiding: on mobile the open drawer MUST show everything */
+    #sidebar.open .nav-link span,
+    #sidebar.active .nav-link span {
+        display: inline !important;
+        opacity: 1 !important;
+    }
+    #sidebar.open .nav-content p,
+    #sidebar.open .nav-section-label,
+    #sidebar.active .nav-content p,
+    #sidebar.active .nav-section-label {
+        display: block !important;
+        opacity: 1 !important;
+        height: auto !important;
+        padding: 0 16px !important;
+        border-top: none !important;
+        margin: 10px 0 !important;
+    }
+    #sidebar.open .header-text,
+    #sidebar.open .profile-text,
+    #sidebar.active .header-text,
+    #sidebar.active .profile-text {
+        display: block !important;
+        opacity: 1 !important;
+    }
+    #sidebar.open .nav-link,
+    #sidebar.active .nav-link {
+        justify-content: flex-start !important;
+        padding: 12px 20px !important;
+        margin: 4px 15px !important;
+    }
+    #sidebar.open .nav-link i,
+    #sidebar.active .nav-link i {
+        margin-right: 15px !important;
+        font-size: 1.1rem !important;
+    }
+    #sidebar.open .user-profile,
+    #sidebar.active .user-profile {
+        justify-content: flex-start !important;
+        padding: 15px !important;
+        margin: 15px !important;
+    }
+    #sidebar.open .user-avatar,
+    #sidebar.active .user-avatar {
+        margin-right: 12px !important;
+    }
+
+    /* Overlay */
+    #sidebarOverlay,
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 1000;
+    }
+
+    #sidebarOverlay.open,
+    .sidebar-overlay.open,
+    #sidebarOverlay.active,
+    .sidebar-overlay.active {
+        display: block;
+    }
+}

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House of Fries - Admin Voids Dashboard</title>
+    
+    
+    
+    <link rel="icon" type="image/png" href="/../images/favicon.jpg">
+
+    
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    
+    
+    <link rel="stylesheet" href="/css/staff-sidebar.css">
+    
+    <link rel="stylesheet" href="/css/admin/voids.css">
+</head><body>
+    <div class="app-shell">
+        <!-- SIDEBAR -->
+        <nav id="sidebar">
+            <div class="sidebar-header d-flex align-items-center">
+                <img src="../../images/Logo.png" alt="House of Fries Logo" class="brand-logo me-2">
+                <div class="header-text">
+                    <h5 class="mb-0 fw-bold">House of Fries</h5>
+                    <small style="font-size: 0.7rem;">Tagoloan Branch</small>
+                </div>
+            </div>
+            <div class="nav-content">
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mb-2" style="font-size: 0.7rem;">Main Menu</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="admin_dashboard.html"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+                    <a class="nav-link" href="QR_Tables.html"><i class="bi bi-qr-code-scan"></i><span>QR Tables</span></a>
+                    <a class="nav-link" href="manage_menu.html"><i class="bi bi-egg-fried"></i><span>Menu Items</span></a>
+                    <a class="nav-link" href="manage_inventory.html"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
+                    <a class="nav-link" href="purchasePlan.html"><i class="bi bi-card-checklist"></i><span>Purchase Plans</span></a>
+                </nav>
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mt-4 mb-2" style="font-size: 0.7rem;">Management</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="manage_users.html"><i class="bi bi-person-badge"></i><span>Staff</span></a>
+                    <a class="nav-link" href="manage_suppliers.html"><i class="bi bi-truck"></i><span>Suppliers</span></a>
+                    <a class="nav-link" href="sales_and_reports.html"><i class="bi bi-journal-check"></i><span>Sales & Reports</span></a>
+                    <a class="nav-link" href="order_history.html"><i class="bi bi-clock-history"></i><span>Order History</span></a>
+                    <a class="nav-link active" href="voids.html"><i class="bi bi-slash-circle"></i><span>Voids</span></a>
+                    <a class="nav-link" href="location_settings.html"><i class="bi bi-geo-alt"></i><span>Location</span></a>
+                    <a class="nav-link" href="activity_logs.html"><i class="bi bi-journal-text"></i><span>Activity Logs</span></a>
+                    <a class="nav-link" href="settings.html"><i class="bi bi-gear"></i><span>Settings</span></a>
+                    <a class="nav-link text-danger" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i><span>Logout</span></a>
+                </nav>
+            </div>
+            <div class="user-profile">
+                <div class="user-avatar">A</div>
+                <div class="flex-grow-1 overflow-hidden profile-text">
+                    <p class="mb-0 fw-bold small text-white text-truncate user-name">Loading...</p>
+                    <p class="mb-0 text-light user-role" style="font-size: 0.7rem;">Loading...</p>
+                </div>
+            </div>
+        </nav>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    
+
+        <!-- MAIN CONTENT -->
+        <div class="content-wrapper" style="min-width: 0;">
+            <!-- TOPBAR -->
+            <div class="topbar">
+                <button type="button" id="sidebarCollapse" class="btn btn-light border"><i class="bi bi-list"></i></button>
+                <span class="fw-bold fs-5">Voids</span>
+            </div>
+
+            <!-- PAGE CONTENT -->
+            <div class="p-4">
+                <!-- STAT CARDS -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-6">
+                        <div class="card stat-card h-100 p-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h6 class="text-muted small text-uppercase fw-bold mb-1">Voided Items</h6>
+                                    <h3 class="fw-bold mb-0" id="statTotalItems">0</h3>
+                                </div>
+                                <div class="dashboard-icon-box icon-void"><i class="bi bi-slash-circle"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="card stat-card h-100 p-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h6 class="text-muted small text-uppercase fw-bold mb-1">Total Voided Value</h6>
+                                    <h3 class="fw-bold mb-0 text-danger" id="statTotalValue">&#8369;0.00</h3>
+                                </div>
+                                <div class="dashboard-icon-box icon-danger"><i class="bi bi-cash-stack"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="card stat-card h-100 p-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h6 class="text-muted small text-uppercase fw-bold mb-1">Void Requests</h6>
+                                    <h3 class="fw-bold mb-0" id="statRequests">0</h3>
+                                </div>
+                                <div class="dashboard-icon-box icon-warning"><i class="bi bi-files"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="card stat-card h-100 p-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h6 class="text-muted small text-uppercase fw-bold mb-1">Pending Approval</h6>
+                                    <h3 class="fw-bold mb-0" id="statPending">0</h3>
+                                </div>
+                                <div class="dashboard-icon-box icon-check"><i class="bi bi-hourglass-split"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FILTER BAR -->
+                <div class="filter-bar">
+                    <div class="filter-row">
+                        <div class="filter-group flex-grow-1" style="min-width: 200px;">
+                            <label class="filter-label">Search</label>
+                            <input type="text" id="voidSearch" class="form-control form-control-sm filter-input"
+                                placeholder="Item, reference, reason, staff...">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Status</label>
+                            <select id="voidStatus" class="form-select form-select-sm filter-input">
+                                <option value="">All Statuses</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="APPROVED">Approved</option>
+                                <option value="REJECTED">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Date From</label>
+                            <input type="date" id="voidDateFrom" class="form-control form-control-sm filter-input">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Date To</label>
+                            <input type="date" id="voidDateTo" class="form-control form-control-sm filter-input">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">&nbsp;</label>
+                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="VoidsUI.clearFilters()"
+                                title="Clear filters">
+                                <i class="bi bi-x-circle"></i> Clear
+                            </button>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">&nbsp;</label>
+                            <button class="btn btn-dark btn-sm w-100" onclick="VoidsUI.loadData()">
+                                <i class="bi bi-funnel me-1"></i> Apply
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VOIDED ITEMS TABLE -->
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 void-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Reference</th>
+                                        <th>Voided Item</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-end">Unit Price</th>
+                                        <th class="text-end">Voided Amt</th>
+                                        <th>Status</th>
+                                        <th>Reason</th>
+                                        <th>Requested By</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="voidsTableBody">
+                                    <tr>
+                                        <td colspan="9" class="text-center py-5 text-muted">
+                                            <div class="spinner-border spinner-border-sm text-warning me-2"
+                                                role="status"></div>
+                                            Loading voided items...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div
+                        class="card-footer bg-white border-0 d-flex justify-content-between align-items-center py-3">
+                        <small class="text-muted" id="voidsPageInfo">-</small>
+                        <div id="voidsPagination"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+
+    <!-- STANDARDIZED SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../javascript/config.js"></script>
+    <script src="../../javascript/loading.js"></script>
+    <script src="../../javascript/check_session.js" defer></script>
+    <script src="../../javascript/logout.js" defer></script>
+    <script src="../../javascript/navbar-unified.js" defer></script>
+    <script src="../../javascript/admin/voids.js" defer></script>
+</body>
+
+</html>

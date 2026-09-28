@@ -1,0 +1,52 @@
+/* QR_Tables.html inline styles */
+
+body { font-family: 'Poppins', sans-serif; background-color: #fcfcfc; }
+        .stat-card { border: none; border-radius: 15px; transition: transform 0.2s, box-shadow 0.2s; border: 1px solid rgba(0,0,0,0.05); }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .qr-table-card { transition: transform 0.2s ease, box-shadow 0.2s ease; border-radius: 12px; overflow: hidden; }
+        .qr-table-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+        .qr-table-card .status-badge { font-size: 0.65rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+        .qr-table-card .card-img-top { max-height: 130px; object-fit: contain; padding: 12px; }
+        .qr-table-card .btn { font-size: 0.7rem; min-height: 44px; border-radius: 8px; font-weight: 600; transition: all 0.15s ease; }
+        .qr-table-card .btn:active { transform: scale(0.96); }
+        .type-select-card { cursor: pointer; border: 2px solid #dee2e6; border-radius: 12px; padding: 20px 12px; text-align: center; transition: all 0.2s ease; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .type-select-card:hover { border-color: #007d43; background: #f0fff4; }
+        .type-select-card.selected { border-color: #007d43; background: #e8f5e9; box-shadow: 0 0 0 3px rgba(0,125,67,0.15); }
+        .type-select-card i { font-size: 2rem; margin-bottom: 8px; }
+        .type-select-card .type-label { font-weight: 600; font-size: 0.9rem; }
+        .toolbar-select { min-width: 130px; font-size: 0.85rem; min-height: 44px; }
+        .toolbar-search { min-height: 44px; }
+        .pagination .page-link { min-width: 44px; text-align: center; font-size: 0.85rem; border-radius: 8px !important; margin: 0 2px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+        @media (max-width: 767.98px) {
+            .modal-dialog { margin: 0.5rem; }
+            .modal-content { border-radius: 12px; }
+            .type-select-card { min-height: 80px; padding: 14px 8px; }
+            .type-select-card i { font-size: 1.5rem; }
+            .qr-table-card .btn { font-size: 0.75rem; }
+            .toolbar-select { min-width: 100%; margin-bottom: 6px; }
+            .toolbar-row .col, .toolbar-row .col-auto { padding-left: 4px; padding-right: 4px; }
+        }
+        @media (max-width: 575.98px) { .qr-table-card .card-img-top { max-height: 100px; } }
+
+        /* ── Additional responsive overrides ── */
+        @media (max-width: 480px) {
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .page-header h4 { font-size: 1.1rem; }
+            .qr-table-card { margin-bottom: 12px; }
+            .table-responsive-wrapper { overflow-x: auto; }
+            .table { font-size: 0.75rem; }
+            .table th, .table td { padding: 6px 8px; white-space: nowrap; }
+        }
+
+        @media (min-width: 768px) and (max-width: 992px) {
+            .qr-table-card { margin-bottom: 16px; }
+            .table { font-size: 0.8rem; }
+        }
+
+        @media (min-width: 1200px) {
+            .container-fluid { max-width: 1400px; margin: 0 auto; }
+        }
+        .nav-content::-webkit-scrollbar { display: none; }
+        .nav-content { -ms-overflow-style: none; scrollbar-width: none; }
+        .swal2-popup { font-size: 0.9rem; }
+        .swal2-confirm, .swal2-cancel { min-height: 44px !important; }

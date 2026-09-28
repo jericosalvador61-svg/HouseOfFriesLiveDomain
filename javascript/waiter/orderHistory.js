@@ -1,0 +1,201 @@
+/**
+ * ============================================================
+ * javascript/waiter/orderHistory.js
+ * ------------------------------------------------------------
+ * Drives public/waiter/order_history.html against
+ * backend/waiter/get_order_history.php.
+ *
+ * The page previously had NO script bound to it: it rendered
+ * `onclick="applyFilters()"` and an empty <tbody>, so the table
+ * stayed on "Loading..." forever. This file supplies the missing
+ * behaviour: filters, rendering and pagination.
+ *
+ * Statuses use HYPHENS (IN-PROGRESS), matching the DB enums.
+ * ============================================================
+ */
+
+const ORDER_HISTORY_API = '../../backend/waiter/get_order_history.php';
+
+const orderHistoryState = {
+    page: 1,
+    limit: 20,
+    search: '',
+    status: 'all',
+    scope: 'mine'
+};
+
+function orderHistoryEscape(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function orderHistoryApiFetch(endpoint) {
+    const token = localStorage.getItem('hof_token') || '';
+    return fetch(ORDER_HISTORY_API + endpoint, {
+        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+    });
+}
+
+function orderHistoryStatusLabel(status) {
+    const map = {
+        'PENDING': 'Pending',
+        'IN-PROGRESS': 'Preparing',
+        'COOKING': 'Cooking',
+        'COMPLETED': 'Ready to Deliver',
+        'SERVED': 'Served',
+        'CANCELLED': 'Cancelled'
+    };
+    return map[String(status || '').toUpperCase()] || (status || '-');
+}
+
+
+/** Render the orders table body. */
+function renderOrderHistory(orders) {
+    const tbody = document.getElementById('orderHistoryTableBody');
+    if (!tbody) return;
+
+    if (!orders || orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--hof-muted);padding:24px;">No orders found for the selected filters.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = orders.map(o => {
+        const items = (o.items || [])
+            .map(i => `${Number(i.quantity)}x ${orderHistoryEscape(i.item_name)}`)
+            .join(', ') || '-';
+
+        return `
+            <tr>
+                <td>
+                    <strong>${orderHistoryEscape(o.reference_number || '#' + o.order_id)}</strong>
+                    <div style="font-size:0.72rem;color:var(--hof-muted);" title="${items}">${items}</div>
+                </td>
+                <td>${orderHistoryEscape(String(o.order_type || '').replace('_', ' '))}</td>
+                <td>${o.table_number ? orderHistoryEscape(o.table_number) : '-'}</td>
+                <td>${orderHistoryFormatPeso(o.total_amount)}</td>
+                <td>${orderHistoryFormatDate(o.ordered_at)}</td>
+                <td>${orderHistoryFormatDate(o.completed_at)}</td>
+                <td>${orderHistoryEscape(o.creator_name || '-')}</td>
+                <td><span class="pill ${getStatusPillClass(o.status)}">${orderHistoryStatusLabel(o.status)}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+/** Render pagination controls. */
+function renderOrderHistoryPagination(pagination) {
+    const nav = document.getElementById('orderHistoryPagination');
+    if (!nav) return;
+
+    const totalPages = (pagination && pagination.total_pages) || 0;
+    if (totalPages <= 1) {
+        nav.innerHTML = '';
+        return;
+    }
+
+    let html = '<div class="d-flex gap-1 justify-content-center flex-wrap">';
+    for (let p = 1; p <= totalPages; p++) {
+        const active = p === orderHistoryState.page;
+        html += `<button class="btn-hof btn-sm ${active ? 'primary' : ''}" data-page="${p}" style="${active ? '' : 'opacity:0.75;'}">${p}</button>`;
+    }
+    html += '</div>';
+    nav.innerHTML = html;
+
+    nav.querySelectorAll('button[data-page]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            orderHistoryState.page = parseInt(btn.getAttribute('data-page'), 10) || 1;
+            loadOrderHistory();
+        });
+    });
+}
+
+function orderHistoryFormatDate(value) {
+
+/** Fetch and render the current page of order history. */
+async function loadOrderHistory() {
+    const tbody = document.getElementById('orderHistoryTableBody');
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--hof-muted);padding:24px;">Loading...</td></tr>';
+    }
+
+    const params = new URLSearchParams({
+        page: String(orderHistoryState.page),
+        limit: String(orderHistoryState.limit),
+        scope: orderHistoryState.scope
+    });
+    if (orderHistoryState.status && orderHistoryState.status !== 'all') {
+        params.set('status', orderHistoryState.status);
+    }
+    if (orderHistoryState.search) {
+        params.set('search', orderHistoryState.search);
+    }
+
+    try {
+        const res = await orderHistoryApiFetch('?' + params.toString());
+        const data = await res.json();
+
+        if (!data.success) {
+            renderOrderHistory([]);
+            return;
+        }
+
+        renderOrderHistory(data.orders || []);
+        renderOrderHistoryPagination(data.pagination);
+    } catch (e) {
+        console.error('Failed to load order history:', e);
+        renderOrderHistory([]);
+    }
+}
+
+/** Read the filter controls and reload from page 1. Bound to the Search button. */
+function applyFilters() {
+    const searchInput = document.getElementById('historySearchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const ownershipFilter = document.getElementById('ownershipFilter');
+
+    orderHistoryState.search = searchInput ? searchInput.value.trim() : '';
+    orderHistoryState.status = statusFilter ? statusFilter.value : 'all';
+    orderHistoryState.scope = ownershipFilter ? ownershipFilter.value : 'mine';
+    orderHistoryState.page = 1;
+
+    loadOrderHistory();
+}
+
+/** Live search: re-query shortly after the user stops typing. */
+function setupOrderHistoryEvents() {
+    const searchInput = document.getElementById('historySearchInput');
+    if (searchInput) {
+        let timer;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(applyFilters, 350);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Only initialise on the order-history page.
+    if (!document.getElementById('orderHistoryTableBody')) return;
+    setupOrderHistoryEvents();
+    loadOrderHistory();
+});
+
+    if (!value || String(value).startsWith('0000-00-00')) return '-';
+    const d = new Date(String(value).replace(' ', 'T'));
+    if (isNaN(d.getTime())) return orderHistoryEscape(value);
+    return d.toLocaleString('en-PH', {
+        year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: true
+    });
+}
+
+function orderHistoryFormatPeso(amount) {
+    return '₱' + parseFloat(amount || 0).toLocaleString('en-PH', {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
+}

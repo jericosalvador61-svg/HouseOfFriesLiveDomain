@@ -1,0 +1,307 @@
+/* cashier_dashboard.html inline styles */
+
+body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #fcfcfc;
+            overflow-x: hidden;
+        }
+
+                .order-card {
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .order-card.active {
+            background-color: #4a4a4a;
+            color: #fff;
+        }
+
+        .order-card.inactive {
+            background-color: #e2e2e2;
+            color: #000;
+        }
+
+        .order-tag {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-weight: bold;
+            background: #333;
+            color: #fff;
+            margin-left: 10px;
+        }
+
+        .summary-header {
+            font-weight: 800;
+            font-size: 1.5rem;
+        }
+
+        .summary-table-header {
+            background-color: #e2e2e2;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .qty-btn {
+            background-color: #fac12b;
+            border: none;
+            width: 24px;
+            height: 24px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .total-box {
+            background-color: #e2e2e2;
+            padding: 15px;
+            border-radius: 0;
+            margin-top: auto;
+        }
+
+        .text-green {
+            color: #0f8a46;
+            font-weight: bold;
+        }
+
+        .cat-select {
+            background-color: #e2e2e2;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 10px !important;
+        }
+
+        .input-display {
+            background-color: #d4d4d4;
+            border: 2px solid #555;
+            border-radius: 6px;
+            height: 40px;
+        }
+
+        .backspace-btn {
+            background-color: #a0a0a0;
+            border: none;
+            border-radius: 6px;
+            width: 55px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .quick-amt-btn {
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 0;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .numpad-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .num-btn {
+            background-color: #a0a0a0;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #000;
+            padding: 6px 0;
+        }
+
+        .enter-btn {
+            grid-column: 4;
+            grid-row: 1 / span 2;
+            font-size: 1.1rem;
+        }
+
+        .zero-btn {
+            grid-column: 4;
+            grid-row: 3;
+        }
+
+        .btn-void {
+            background-color: #ff0000;
+            color: white;
+            border: none;
+        }
+
+        .btn-discount {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+        }
+
+        .btn-add {
+            background-color: #fac12b;
+            color: white;
+            border: none;
+        }
+
+        .btn-pay {
+            background-color: #0f8a46;
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 800;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 0;
+            width: 100%;
+        }
+
+        .col-lg-4 {
+            display: flex !important;
+            flex-direction: column !important;
+            height: calc(100vh - 73px) !important;
+            overflow: hidden;
+        }
+
+        .pos-summary-panel { height: calc(100vh - 100px) !important; display: flex !important; flex-direction: column !important; overflow: hidden; }
+        .pos-summary-items { flex: 1 1 auto; overflow-y: auto; min-height: 0; padding: 10px; }
+        .pos-summary-total { flex: 0 0 auto; position: sticky; bottom: 0; background: #fcfcfc; z-index: 10; border-top: 2px solid #ddd; padding: 15px; margin-top: auto; }
+
+        .cat-container {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            overflow-y: auto;
+            padding-right: 5px;
+            margin-bottom: 10px;
+        }
+
+        .cat-btn {
+                    background-color: #fac12b;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 10px 8px;
+                    font-weight: 800;
+                    font-size: clamp(0.75rem, 2.5vw, 1.2rem);
+                    color: #000;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    min-height: 44px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    word-break: break-word;
+                }
+
+        .mt-auto {
+            margin-top: auto !important;
+            flex-shrink: 0;
+            padding-top: 10px;
+            border-top: 2px solid #ddd;
+            background-color: #fcfcfc;
+        }
+
+        .cat-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .cat-grid::-webkit-scrollbar-thumb {
+            background-color: #ffc107;
+            border-radius: 10px;
+        }
+
+        .cat-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .order-card.active .text-muted {
+            color: #fff !important;
+        }
+
+        /* =========================================
+           RESPONSIVE: MOBILE (max-width: 991.98px)
+           ========================================= */
+        @media (max-width: 991.98px) {
+            .pos-container {
+                height: auto;
+                overflow: visible;
+            }
+            .col-lg-4 {
+                height: auto !important;
+                overflow: visible !important;
+            }
+            .col-lg-3,
+            .col-lg-5 {
+                height: auto !important;
+                overflow: visible !important;
+            }
+            #pending-list-container {
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+            .cat-grid {
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+            /* Payment summary: give the items table its own scroll container so sticky total-box can bind */
+            .col-lg-5 .flex-grow-1.overflow-auto {
+                max-height: calc(100vh - 250px);
+            }
+            .total-box {
+                position: sticky;
+                bottom: 0;
+                background: #fcfcfc;
+                z-index: 10;
+            }
+            .qty-btn,
+            .num-btn,
+            .quick-amt-btn,
+            .backspace-btn,
+            .btn-pay,
+            .btn-void,
+            .btn-discount,
+            .btn-add,
+            .cat-btn {
+                min-height: 44px;
+            }
+        }
+
+
+                                /* ── Responsive overrides ── */
+        @media (max-width: 480px) {
+            .summary-header { font-size: 1.2rem; }
+            .order-card { padding: 10px; }
+            .table-responsive-wrapper { overflow-x: auto; }
+        }
+
+        @media (min-width: 768px) and (max-width: 992px) {
+            .summary-header { font-size: 1.3rem; }
+        }
+
+        @media (min-width: 1200px) {
+            .container-fluid { max-width: 1400px; margin: 0 auto; }
+        }
+                                    to { transform: rotate(360deg); }
+                                }
+
+                                /* ── PRINT STYLES ── */
+                                @media print {
+                                    body * { visibility: hidden; }
+                                    #receiptContent, #receiptContent * { visibility: visible; }
+                                    #receiptContent { position: absolute; left: 0; top: 0; width: 100%; }
+                                }
+                                

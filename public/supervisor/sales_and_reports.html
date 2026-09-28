@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales & Reports - House of Fries</title>
+    
+    
+    
+    <link rel="icon" type="image/png" href="../../images/favicon.jpg">
+    
+
+    
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    
+    
+    <link rel="stylesheet" href="/css/staff-sidebar.css">
+    
+    <link rel="stylesheet" href="/css/supervisor/sales_and_reports.css">
+</head><body>
+    <div class="app-shell">
+        <!-- SIDEBAR (EXACT COPY) -->
+        <nav id="sidebar">
+            <div class="sidebar-header d-flex align-items-center">
+                <img src="../../images/Logo.png" alt="House of Fries Logo" class="brand-logo me-2">
+                <div class="header-text">
+                    <h5 class="mb-0 fw-bold">House of Fries</h5>
+                    <small style="font-size: 0.7rem;">Tagoloan Branch</small>
+                </div>
+            </div>
+            <div class="nav-content">
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mb-2" style="font-size: 0.7rem;">Main Menu</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="supervisor_dashboard.html"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+                    <a class="nav-link" href="QR_Tables.html"><i class="bi bi-qr-code-scan"></i><span>QR Tables</span></a>
+                    <a class="nav-link" href="manage_menu.html"><i class="bi bi-egg-fried"></i><span>Menu Items</span></a>
+                    <a class="nav-link" href="manage_inventory.html"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
+                    <a class="nav-link" href="purchasePlan.html"><i class="bi bi-card-checklist"></i><span>Purchase Plans</span></a>
+                </nav>
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mt-4 mb-2" style="font-size: 0.7rem;">Management</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="manage_suppliers.html"><i class="bi bi-truck"></i><span>Suppliers</span></a>
+                    <a class="nav-link active" href="sales_and_reports.html"><i class="bi bi-journal-check"></i><span>Sales & Reports</span></a>
+                    <a class="nav-link" href="order_history.html"><i class="bi bi-clock-history"></i><span>Order History</span></a>
+                    <a class="nav-link" href="voids.html"><i class="bi bi-slash-circle"></i><span>Voids</span></a>
+                    <a class="nav-link" href="activity_logs.html"><i class="bi bi-journal-text"></i><span>Activity Logs</span></a>
+                    <a class="nav-link text-danger" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i><span>Logout</span></a>
+                </nav>
+            </div>
+            <div class="user-profile">
+                <div class="user-avatar">U</div>
+                <div class="flex-grow-1 overflow-hidden profile-text">
+                    <p class="mb-0 fw-bold small text-white text-truncate user-name">Loading...</p>
+                    <p class="mb-0 text-light user-role" style="font-size: 0.7rem;">Loading...</p>
+                </div>
+            </div>
+        </nav>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    
+
+        <!-- MAIN CONTENT -->
+        <div class="content-wrapper">
+            <!-- TOP NAVBAR -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-4">
+                <button type="button" id="sidebarCollapse" class="btn btn-light border me-3">
+                    <i class="bi bi-list"></i>
+                </button>
+
+                <form class="d-flex flex-grow-1">
+                    <div class="input-group" style="max-width: 400px;">
+                        <span class="input-group-text bg-light border-0">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control bg-light border-0"
+                            placeholder="Search orders, inventory...">
+                    </div>
+                </form>
+
+                <div class="ms-auto d-flex align-items-center">
+                    <div class="dropdown me-4">
+                        <a href="#" class="text-dark position-relative link-dark" id="notificationDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-bell fs-5"></i>
+                            <span id="notificationBadge"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                                style="font-size: 0.65rem;">
+                                0
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border mt-2"
+                            aria-labelledby="notificationDropdown" id="notificationMenu"
+                            style="width: 320px; max-height: 400px; overflow-y: auto;">
+                            <li class="dropdown-header border-bottom fw-bold text-dark">Stock Alerts</li>
+                            <li id="emptyNotificationItem"><span class="dropdown-item text-muted text-center py-3">All
+                                    inventory levels are normal.</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- PAGE CONTENT -->
+            <div class="p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="fw-bold">Sales & Reports</h2>
+                        <p class="text-muted">Track your business performance with real-time insights.</p>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-success" id="refreshBtn">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" id="printBtn">
+                            <i class="bi bi-printer"></i> Print
+                        </button>
+                        <button class="btn btn-sm btn-outline-info" id="exportCsvBtn">
+                            <i class="bi bi-file-earmark-spreadsheet"></i> CSV
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" id="exportExcelBtn">
+                            <i class="bi bi-file-earmark-excel"></i> Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- FILTERS -->
+                <div class="card border-1 shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Date Range</label>
+                                <div class="d-flex gap-0">
+                                    <input type="date" class="form-control" id="startDate">
+                                    <input type="date" class="form-control" id="endDate">
+                                </div>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label fw-semibold">Group By</label>
+                                <select class="form-select" id="groupBy">
+                                    <option value="day">Daily</option>
+                                    <option value="week">Weekly</option>
+                                    <option value="month">Monthly</option>
+                                    <option value="year">Yearly</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Filter by Menu Item</label>
+                                <select class="form-select" id="menuItemFilter">
+                                    <option value="">All Items</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-warning w-100" id="applyFiltersBtn">
+                                    <i class="bi bi-funnel"></i> Apply
+                                </button>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-secondary w-100" id="resetFiltersBtn">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI CARDS -->
+                <div class="row g-4 mb-4" id="kpiCards">
+                    <div class="col-6 col-md-3">
+                        <div class="card stat-card bg-revenue p-3">
+                            <div class="d-flex align-items-center">
+                                <div class="dashboard-icon-box icon-revenue me-3">
+                                    <i class="bi bi-cash-stack"></i>
+                                </div>
+                                <div>
+                                    <p class="mb-0 text-muted small">Total Revenue</p>
+                                    <h4 class="fw-bold mb-0" id="totalRevenue">₱0.00</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card stat-card bg-orders p-3">
+                            <div class="d-flex align-items-center">
+                                <div class="dashboard-icon-box icon-orders me-3">
+                                    <i class="bi bi-bag-check"></i>
+                                </div>
+                                <div>
+                                    <p class="mb-0 text-muted small">Total Orders</p>
+                                    <h4 class="fw-bold mb-0" id="totalOrders">0</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card stat-card bg-value p-3">
+                            <div class="d-flex align-items-center">
+                                <div class="dashboard-icon-box icon-value me-3">
+                                    <i class="bi bi-graph-up-arrow"></i>
+                                </div>
+                                <div>
+                                    <p class="mb-0 text-muted small">Avg Order Value</p>
+                                    <h4 class="fw-bold mb-0" id="avgOrderValue">₱0.00</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card stat-card bg-best p-3">
+                            <div class="d-flex align-items-center">
+                                <div class="dashboard-icon-box icon-best me-3">
+                                    <i class="bi bi-trophy"></i>
+                                </div>
+                                <div>
+                                    <p class="mb-0 text-muted small">Best Seller</p>
+                                    <h5 class="fw-bold mb-0" id="bestSeller">—</h5>
+                                    <small class="text-muted" id="bestSellerRevenue">₱0.00</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHART -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0">Sales Overview</h5>
+                            <span class="text-muted small" id="chartPeriodLabel">Last 7 Days</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="salesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PEAK HOUR + TOP SELLING -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body">
+                                <h5 class="fw-bold mb-3">
+                                    <i class="bi bi-clock-history text-warning me-2"></i>Peak Sales Time
+                                </h5>
+                                <div id="peakHourDisplay">
+                                    <div class="text-center py-4">
+                                        <div class="display-1 text-warning mb-2">⏰</div>
+                                        <h4 class="fw-bold" id="peakHourLabel">—</h4>
+                                        <p class="text-muted" id="peakHourStats">0 orders · ₱0.00 revenue</p>
+                                    </div>
+                                </div>
+                                <div id="hourlyChartContainer" style="height:150px;">
+                                    <canvas id="hourlyChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body">
+                                <h5 class="fw-bold mb-3">
+                                    <i class="bi bi-trophy text-warning me-2"></i>Top Selling Products
+                                    <span class="badge bg-warning text-dark ms-2">Revenue</span>
+                                </h5>
+                                <div id="topSellingList">
+                                    <div class="text-center py-4 text-muted">Loading top sellers...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DATA TABLE (hidden, used for export) -->
+                <div class="card border-0 shadow-sm d-none" id="reportTableContainer">
+                    <div class="card-body">
+                        <h5 class="fw-bold mb-3">Detailed Report Data</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm" id="reportDataTable">
+                                <thead>
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>Reference</th>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Total</th>
+                                        <th>Item</th>
+                                        <th>Qty</th>
+                                        <th>Price</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reportTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+
+    
+
+
+
+    <!-- STANDARDIZED SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../javascript/config.js"></script>
+    <script src="../../javascript/loading.js"></script>
+    <script src="../../javascript/check_session.js" defer></script>
+    <script src="../../javascript/logout.js" defer></script>
+    <script src="../../javascript/navbar-unified.js" defer></script>
+    <script src="../../javascript/supervisor/sales_and_reports.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+</html>

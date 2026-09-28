@@ -1,0 +1,62 @@
+/* manage_menu.html inline styles */
+
+body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #fcfcfc;
+        }
+
+                .menu-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .menu-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .card-img-top {
+            height: 160px;
+            object-fit: cover;
+        }
+
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+
+        .modal-header {
+                    background-color: #1a1512;
+                    color: #ffc107;
+                }
+
+                /* ── Table wrapper for horizontal scroll on narrow screens ── */
+                .table-responsive-wrapper {
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                }
+
+                /* ── Text wrapping for long content ── */
+                .word-break-all {
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                }
+
+                /* ── Responsive overrides ── */
+                @media (max-width: 480px) {
+                    .page-header { flex-direction: column; align-items: flex-start; }
+                    .page-header h4 { font-size: 1.1rem; }
+                    .menu-card { margin-bottom: 12px; }
+                    .table { font-size: 0.75rem; }
+                    .table th, .table td { padding: 6px 8px; white-space: nowrap; }
+                    .table-responsive-wrapper { overflow-x: auto; }
+                }
+
+                @media (min-width: 768px) and (max-width: 992px) {
+                    .menu-card { margin-bottom: 16px; }
+                }
+
+                @media (min-width: 1200px) {
+                    .container-fluid { max-width: 1400px; margin: 0 auto; }
+                }
+
+        

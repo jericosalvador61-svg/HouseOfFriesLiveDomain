@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House of Fries - Order Placed</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-yellow: #FFB800;
+            --dark-bg: #121212;
+            --card-bg: #FFFFFF;
+            --text-main: #331A11;
+            --border-color: #E5E5EA;
+            --success-green: #34C759;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #FAF9F6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            padding-top: 90px;
+        }
+
+        /* Modern Status Card Style */
+        .status-container {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 420px;
+            padding: 35px 25px;
+            border-radius: 28px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+            text-align: center;
+            position: relative;
+        }
+
+        .success-icon-wrap {
+            width: 72px;
+            height: 72px;
+            background: #FFF9E6;
+            color: var(--primary-yellow);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 20px auto;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        h2 {
+            color: var(--text-main);
+            font-weight: 800;
+            font-size: 24px;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            display: none;
+        }
+
+        /* High-visibility Queue Ticket Info Area */
+        .ticket-box {
+            background: #FDFBF7;
+            border: 2px dashed var(--primary-yellow);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .ticket-box div {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            color: #75757a;
+        }
+
+        .ticket-box h1 {
+            font-size: 7vw;
+            /* Fluid scaling base */
+            size: 38px;
+            /* Clamp cap limits */
+            font-size: clamp(24px, 6.5vw, 36px);
+            /* Graceful scaling down across all screens */
+            font-weight: 900;
+            color: var(--text-main);
+            margin: 10px 0;
+            letter-spacing: -0.5px;
+            /* Tighter tracking for long alphanumeric IDs */
+            word-break: break-all;
+        }
+
+        .total-amount-display {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-top: 5px;
+        }
+
+        /* Next Steps Info Box */
+        .instruction-card {
+            background: var(--dark-bg);
+            color: white;
+            padding: 18px;
+            border-radius: 16px;
+            text-align: left;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .instruction-card i {
+            color: var(--primary-yellow);
+            font-size: 20px;
+            margin-top: 2px;
+        }
+
+        .instruction-text h4 {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            letter-spacing: 0.3px;
+        }
+
+        .instruction-text p {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.4;
+        }
+
+        .meta-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 6px 0 6px;
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: #8E8E93;
+            font-weight: 500;
+        }
+
+        /* Action Nav Elements */
+        .actions {
+            margin-top: 25px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .btn-home {
+            background-color: var(--primary-yellow);
+            color: var(--text-main);
+            border: none;
+            border-radius: 16px;
+            padding: 16px;
+            width: 100%;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(255, 184, 0, 0.2);
+            transition: transform 0.2s;
+        }
+
+        .btn-home:active {
+            transform: scale(0.98);
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--dark-bg);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1050;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .brand-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        header h1 {
+            color: var(--primary-yellow);
+            font-size: 22px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        header p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-top: 1px;
+        }
+
+        .cart-nav-trigger {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .cart-nav-trigger:hover,
+        .cart-nav-trigger:focus {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: var(--primary-yellow);
+            outline: none;
+        }
+        .cart-nav-trigger i {
+            color: var(--primary-yellow);
+            font-size: 20px;
+        }
+        .nav-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #FF3B30;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            padding: 0 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--dark-bg);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="brand-container">
+            <h1>House of Fries</h1>
+            <p>Order Placed</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <button class="cart-nav-trigger" id="cartTrigger" aria-label="View Shopping Cart" onclick="window.location.href='cart.html'">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <div class="nav-badge" id="cartBadgeCount">0</div>
+            </button>
+            <button class="cart-nav-trigger" id="myOrdersBtn" aria-label="My Orders" onclick="window.location.href='orderHistory.html'">
+                <i class="fa-solid fa-receipt"></i>
+                <div class="nav-badge" id="myOrdersBadge" style="display:none;">0</div>
+            </button>
+        </div>
+    </header>
+
+    <div class="status-container" style="position:relative;">
+        <button onclick="history.length>1?history.back():location.href='customer.html'"
+                class="btn btn-light rounded-circle shadow-sm position-absolute"
+                style="top:16px;left:16px;z-index:1050;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:none;font-size:18px;font-weight:bold;" aria-label="Back">←</button>
+        <div class="success-icon-wrap">
+            <i class="fa-solid fa-receipt"></i>
+        </div>
+
+        <h2>Order Sent to Cashier</h2>
+        <p class="subtitle">Your digital token has been logged successfully.</p>
+
+        <div class="ticket-box">
+            <div>Your Order ID</div>
+            <h1 id="displayOrderID">#0000</h1>
+            <div class="total-amount-display" id="receiptTotalAmount">₱ 0.00</div>
+        </div>
+
+        <!-- Payment Choice Cards -->
+                <div id="paymentChoiceSection" style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px;margin-top:12px;">
+                    <div style="font-size:13px;font-weight:700;color:#331A11;text-align:center;text-transform:uppercase;letter-spacing:0.5px;">Choose Payment Method</div>
+                    <div id="cashCard" style="background:#FFFFFF;border:2px solid var(--primary-yellow);border-radius:20px;padding:20px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all 0.2s;" onclick="choosePayment('cash')">
+                        <div style="width:56px;height:56px;background:#FFF9E6;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;">💵</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:800;font-size:16px;color:#331A11;">Cash at Counter</div>
+                            <div style="font-size:13px;color:#75757a;">Pay when you pick up your order</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="color:#75757a;"></i>
+                    </div>
+                    <div id="gcashCard" style="background:#FFFFFF;border:2px solid #0056E3;border-radius:20px;padding:20px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all 0.2s;" onclick="payWithGCashQR()">
+                        <div style="width:56px;height:56px;background:#E8F0FE;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;">📱</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:800;font-size:16px;color:#331A11;">GCash</div>
+                            <div style="font-size:13px;color:#75757a;">Pay online via GCash app</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="color:#75757a;"></i>
+                    </div>
+                </div>
+
+                <!-- Cash instruction card (hidden by default) -->
+                <div id="cashInstructionCard" style="width:100%;max-width:420px;display:none;flex-direction:column;gap:12px;margin-top:12px;">
+                    <div class="instruction-card">
+                        <i class="fa-solid fa-cash-register"></i>
+                        <div class="instruction-text">
+                            <h4 id="paymentInstructionTitle">Proceed to Cashier</h4>
+                            <p id="paymentInstructionDesc">Kindly present your Order ID above to the counter to fulfill payment and
+                                secure your kitchen priority line number.</p>
+                            <small class="text-muted d-block mt-2" style="font-size:11px;color:rgba(255,255,255,0.5);">
+                                ⏳ Unpaid orders are auto-cancelled after 15 minutes. Please pay to lock in your order.
+                            </small>
+                        </div>
+                    </div>
+                    <button onclick="switchToGCash()" style="background:none;border:none;color:#0056E3;font-weight:700;font-size:14px;cursor:pointer;padding:12px;text-align:center;">
+                        Pay with GCash instead →
+                    </button>
+                </div>
+
+                <!-- GCash QR Payment Option (hidden by default) -->
+                <div id="gcashSection" style="width:100%;max-width:420px;display:none;flex-direction:column;gap:12px;margin-top:12px;">
+                    <div class="gcash-qr-card" style="width:100%;max-width:420px;background:#1E1E1E;border-radius:20px;padding:20px;border:2px solid #0056E3;display:flex;flex-direction:column;align-items:center;gap:10px;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <i class="fa-solid fa-qrcode" style="font-size:24px;color:#0056E3;"></i>
+                            <span style="font-weight:700;font-size:16px;color:#FFFFFF;">Pay with GCash</span>
+                        </div>
+                        <p style="font-size:13px;color:#AAAAAA;text-align:center;margin:0;">
+                            You will be redirected to the GCash payment page.
+                        </p>
+                        <button onclick="payWithGCashQR()" style="background:#0056E3;color:white;border:none;border-radius:12px;padding:12px 24px;font-weight:700;font-size:15px;cursor:pointer;width:100%;">
+                            <i class="fa-solid fa-qrcode"></i> Pay with GCash
+                        </button>
+                    </div>
+                    <button onclick="switchToCash()" style="background:none;border:none;color:var(--primary-yellow);font-weight:700;font-size:14px;cursor:pointer;padding:12px;text-align:center;">
+                        ← Pay with Cash instead
+                    </button>
+                </div>
+
+                <!-- Back link -->
+                <div class="meta-info-row">
+            <span id="tableDisplay">Table: --</span>
+            <span id="orderTime">--:-- --</span>
+        </div>
+    </div>
+
+    <div class="actions"
+        style="width: 100%; max-width: 400px; padding: 0 16px; box-sizing: border-box; margin-top: 20px; display: flex; flex-direction: column; gap: 12px;">
+        <!-- Clean, wide call to action that directs them to the tracker -->
+        <button class="btn-home" onclick="goToTracker()"
+            style="width: 100%; margin: 0; background-color: #FFB800; color: #331A11; font-weight: 700; height: 50px; border-radius: 12px; font-size: 16px; transition: background 0.2s;">
+            <i class="fa-solid fa-radar fa-pulse"></i> Track Your Order Live
+        </button>
+
+        <!-- Edit Order Button (visible for unpaid PENDING) -->
+        <button class="btn-cancel" id="editOrderBtn" onclick="editOrder()"
+            style="width: 100%; margin: 0; background-color: #ffe3e3; color: #dc3545; font-weight: 700; height: 50px; border-radius: 12px; font-size: 16px; border: 1px solid #f5c6cb; transition: background 0.2s;">
+            <i class="fa-solid fa-pen"></i> ✏️ Edit Order
+        </button>
+
+        <!-- Order Again Button (hidden by default, shown after payment) -->
+        <button class="btn-home" id="orderAgainBtn" onclick="orderAgain()" style="display:none; width: 100%; margin: 0; background-color: #FFB800; color: #331A11; font-weight: 700; height: 50px; border-radius: 12px; font-size: 16px; transition: background 0.2s;">
+            <i class="fa-solid fa-plus"></i> ➕ Order Again for a friend
+        </button>
+
+        <!-- Go to Tracker Button (hidden by default, shown after payment) -->
+        <button class="btn-home" id="goTrackBtn" onclick="goToTracker()" style="display:none; width: 100%; margin: 0; background-color: #FFB800; color: #331A11; font-weight: 700; height: 50px; border-radius: 12px; font-size: 16px; transition: background 0.2s;">
+            <i class="fa-solid fa-radar fa-pulse"></i> Track Your Order Live
+        </button>
+    </div>
+
+    <script src="device.js"></script>
+    <script src="checkout.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="/javascript/loading.js"></script>
+        <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+        </body>
+
+</html>

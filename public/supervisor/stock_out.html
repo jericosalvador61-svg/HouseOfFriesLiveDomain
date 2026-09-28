@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House of Fries - Stock Out</title>
+    
+    
+    
+    
+    
+    
+    
+	<link rel="icon" type="/image/png" href="/../images/favicon.jpg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    
+    
+    <link rel="stylesheet" href="/css/staff-sidebar.css">
+    
+    <link rel="stylesheet" href="/css/supervisor/manage_inventory.css">
+    <link rel="stylesheet" href="/css/supervisor/stock_out.css">
+</head><body>
+    <div class="app-shell">
+        <nav id="sidebar">
+            <div class="sidebar-header d-flex align-items-center">
+                <img src="../../images/Logo.png" alt="House of Fries Logo" class="brand-logo me-2">
+                <div class="header-text">
+                    <h5 class="mb-0 fw-bold">House of Fries</h5>
+                    <small style="font-size: 0.7rem;">Tagoloan Branch</small>
+                </div>
+            </div>
+            <div class="nav-content">
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mb-2" style="font-size: 0.7rem;">Main Menu</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="supervisor_dashboard.html"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+                    <a class="nav-link" href="QR_Tables.html"><i class="bi bi-qr-code-scan"></i><span>QR Tables</span></a>
+                    <a class="nav-link" href="manage_menu.html"><i class="bi bi-egg-fried"></i><span>Menu Items</span></a>
+                    <a class="nav-link" href="manage_inventory.html"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
+                    <a class="nav-link" href="purchasePlan.html"><i class="bi bi-card-checklist"></i><span>Purchase Plans</span></a>
+                </nav>
+                <p class="nav-section-label text-uppercase small fw-bold px-4 text-light mt-4 mb-2" style="font-size: 0.7rem;">Management</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="manage_suppliers.html"><i class="bi bi-truck"></i><span>Suppliers</span></a>
+                    <a class="nav-link" href="sales_and_reports.html"><i class="bi bi-journal-check"></i><span>Sales & Reports</span></a>
+                    <a class="nav-link" href="order_history.html"><i class="bi bi-clock-history"></i><span>Order History</span></a>
+                    <a class="nav-link" href="voids.html"><i class="bi bi-slash-circle"></i><span>Voids</span></a>
+                    <a class="nav-link" href="activity_logs.html"><i class="bi bi-journal-text"></i><span>Activity Logs</span></a>
+                    <a class="nav-link text-danger" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i><span>Logout</span></a>
+                </nav>
+            </div>
+            <div class="user-profile">
+                <div class="user-avatar">U</div>
+                <div class="flex-grow-1 overflow-hidden profile-text">
+                    <p class="mb-0 fw-bold small text-white text-truncate user-name">Loading...</p>
+                    <p class="mb-0 text-light user-role" style="font-size: 0.7rem;">Loading...</p>
+                </div>
+            </div>
+        </nav>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    
+
+        <div class="content-wrapper">
+            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-4">
+                <button type="button" id="sidebarCollapse" class="btn btn-light border me-3">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="ms-auto d-flex align-items-center">
+                    <div class="dropdown me-4">
+                        <a href="#" class="text-dark position-relative link-dark" id="notificationDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-bell fs-5"></i>
+                            <span id="notificationBadge"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                                style="font-size: 0.65rem;">
+                                0
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border mt-2"
+                            aria-labelledby="notificationDropdown" id="notificationMenu"
+                            style="width: 320px; max-height: 400px; overflow-y: auto;">
+                            <li class="dropdown-header border-bottom fw-bold text-dark">Stock Alerts</li>
+                            <li id="emptyNotificationItem"><span class="dropdown-item text-muted text-center py-3">All
+                                    inventory levels are normal.</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="fw-bold mb-0">Inventory Management</h2>
+                        <p class="text-muted">Monitor and manage your stock levels.</p>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="inventory-card bg-total text-center shadow-sm">
+                            <div class="icon-box icon-total"> <i class="bi bi-box-seam"></i> </div>
+                            <p class="mb-1 fw-semibold text-dark">Total Items</p>
+                            <h2 class="fw-bold mb-0" id="totalItems">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="inventory-card bg-low text-center shadow-sm">
+                            <div class="icon-box icon-low"> <i class="bi bi-exclamation-triangle"></i> </div>
+                            <p class="mb-1 fw-semibold text-dark">Low Stock</p>
+                            <h2 class="fw-bold mb-0" id="lowStock">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="inventory-card bg-out text-center shadow-sm">
+                            <div class="icon-box icon-out"> <i class="bi bi-x-circle"></i> </div>
+                            <p class="mb-1 fw-semibold text-dark">Out of Stock</p>
+                            <h2 class="fw-bold mb-0" id="outStock">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="inventory-card bg-damaged text-center shadow-sm">
+                            <div class="icon-box icon-damaged"> <i class="bi bi-trash3"></i> </div>
+                            <p class="mb-1 fw-semibold text-dark">Damaged</p>
+                            <h2 class="fw-bold mb-0" id="damagedStock">0</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-4">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                            <input type="text" id="searchInventory" class="form-control border-start-0"
+                                placeholder="Search history...">
+                        </div>
+                    </div>
+                    <!-- STATUS FILTER -->
+                    <div class="col-md-4">
+                        <select class="form-select" id="filterStatus">
+                            <option value="">All Status</option>
+                            <option value="in">Approved</option>
+                            <option value="low">Pending</option>
+                            <option value="out">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <div class="nav nav-tabs" id="filterCategory">
+                            <a href="manage_inventory.html" class="nav-link" data-category="raw_materials">Raw
+                                Materials</a>
+                            <a href="stock_in.html" class="nav-link" data-category="stock_in">Stock In</a>
+                            <a href="stock_out.html" class="nav-link active" data-category="stock_out">Stock Out</a>
+                            <a href="adjustments.html" class="nav-link" data-category="adjustments">Adjustments</a>
+                            <a href="spoilage.html" class="nav-link" data-category="spoilage">Spoilage</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stockout-table-container">
+                    <div class="row g-4">
+                        <div class="col-lg-8">
+                            <div class="stockout-table-card shadow-sm border rounded bg-white">
+                                <div
+                                    class="card-header-custom d-flex justify-content-between align-items-center p-3 border-bottom">
+                                    <h5 id="stockoutCategoryTitle" class="mb-0 fw-bold">Stock Out History</h5>
+                                    <button class="btn btn-danger btn-sm px-3 shadow-sm" data-bs-toggle="modal"
+                                        data-bs-target="#stockOutModal">
+                                        <i class="bi bi-dash-circle me-1"></i> Record Stock Out
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-4">Item Name</th>
+                                                <th>Quantity</th>
+                                                <th>Stockout Date</th>
+                                                <th>Stockout By</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="stockoutTableBody">
+                                            <tr>
+                                                <td colspan="4" class="text-center py-5 text-muted">
+                                                    No stock out records found.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-4">
+                            <div class="pending-table-card shadow-sm border rounded bg-white">
+                                <div
+                                    class="card-header-custom d-flex justify-content-between align-items-center p-3 border-bottom">
+                                    <h6 class="text-uppercase mb-0" style="font-size: 0.85rem; letter-spacing: 1px;">
+                                        Pending Approval</h6>
+                                    <span class="badge bg-warning text-dark rounded-pill">0</span>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table align-middle mb-0" style="font-size: 0.85rem;">
+                                        <thead>
+                                            <tr>
+                                                <th class="ps-3">Select</th>
+                                                <th class="ps-3">Product</th>
+                                                <th class="text-end pe-3">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td colspan="2" class="text-center py-5 text-muted">
+                                                    <i class="bi bi-shield-check fs-2 d-block mb-2"></i>
+                                                    No pending requests
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="stockOutModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-box-arrow-up me-2"></i>New Stock Out Entry</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="stockOutForm">
+                    <div class="modal-body p-4">
+                        <div class="row g-3 mb-4 p-3 bg-light rounded border">
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold">Stock Out Date <span
+                                        class="text-danger">*</span></label>
+                                <input type="date" name="stock_out_date" id="stockOutDateDefault" class="form-control"
+                                    required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-bold">Remarks / Reason</label>
+                                <textarea name="remarks" class="form-control" rows="1"
+                                    placeholder="e.g. Daily Production, Kitchen Use..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="p-3 border rounded mb-3 bg-white shadow-sm">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-7">
+                                    <label class="form-label small fw-bold">Select Material</label>
+                                    <select id="outTempMaterial" class="form-select">
+                                        <option value="" selected disabled>Choose Material...</option>
+                                        <option value="1" data-name="Potatoes">Potatoes (kg)</option>
+                                        <option value="2" data-name="Cooking Oil">Cooking Oil (L)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Quantity</label>
+                                    <input type="number" id="outTempQty" class="form-control" placeholder="0.00"
+                                        step="0.01">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" id="addOutItemBtn" class="btn btn-danger w-100 fw-bold">
+                                        <i class="bi bi-plus-lg"></i> Add
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="stockOutTableContainer" class="table-responsive d-none">
+                            <table class="table table-hover align-middle" id="stockOutItemsTable">
+                                <thead class="table-dark">
+                                    <tr class="small text-uppercase">
+                                        <th style="width: 70%;">Raw Material</th>
+                                        <th style="width: 20%;">Quantity</th>
+                                        <th style="width: 10%;" class="text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stockOutItemBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-0">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger fw-bold px-4">Confirm Stock Out</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    
+    
+    
+
+    
+
+
+
+    <!-- STANDARDIZED SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../javascript/config.js"></script>
+    <script src="../../javascript/loading.js"></script>
+    <script src="../../javascript/check_session.js" defer></script>
+    <script src="../../javascript/logout.js" defer></script>
+    <script src="../../javascript/navbar-unified.js" defer></script>
+    <script src="../../javascript/supervisor/stock_out.js" defer></script>
+</body>
+</html>

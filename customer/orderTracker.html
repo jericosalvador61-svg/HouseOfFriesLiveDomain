@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Your Order - House of Fries</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --body-bg: white;
+            --card-bg: #FFFFFF;
+            --primary-yellow: #FFB800;
+            --text-main: #331A11;
+            --text-muted: #666666;
+            --success-green: #008444;
+            --border-color: #EFEFEF;
+            --brand-yellow-solid: #fac12b;
+            --dark-bg: #121212;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--body-bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            padding-top: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .tracker-container {
+            width: 100%;
+            max-width: 414px;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .back-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1050;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: white;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--text-main);
+        }
+        .brand-header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        .brand-logo {
+            width: 75px;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto 8px auto;
+        }
+        .brand-title {
+            color: black;
+            font-size: 22px;
+            font-weight: 900;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        .tracker-card {
+            background-color: var(--card-bg);
+            border-radius: 32px;
+            padding: 35px 25px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+            box-sizing: border-box;
+            position: relative;
+        }
+        .order-id-badge {
+            background: rgba(255, 184, 0, 0.12);
+            color: #b07e00;
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 20px;
+            border: 1px dashed rgba(255, 184, 0, 0.4);
+        }
+        .status-visual {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #F9F9F9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px auto;
+            font-size: 32px;
+            transition: all 0.4s ease;
+        }
+        .status-pending { background: rgba(255, 184, 0, 0.15); color: var(--primary-yellow); animation: pulse 2s infinite; }
+        .status-preparing { background: rgba(255, 184, 0, 0.15); color: var(--primary-yellow); }
+        .status-ready { background: rgba(0, 132, 68, 0.1); color: var(--success-green); }
+        h2 { font-size: 24px; font-weight: 700; margin: 10px 0 6px 0; color: var(--text-main); }
+        p.desc { color: var(--text-muted); font-size: 13px; line-height: 1.6; margin-bottom: 25px; padding: 0 10px; }
+        .steps-wrapper { margin-top: 10px; text-align: left; position: relative; }
+        .step-row { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 28px; opacity: 0.35; transition: all 0.3s ease; position: relative; }
+        .step-row:not(:last-child)::after { content: ''; position: absolute; left: 13px; top: 28px; bottom: -22px; width: 2px; background: #E0E0E0; z-index: 1; }
+        .step-row.completed:not(:last-child)::after { background: var(--success-green); }
+        .step-row.active { opacity: 1; }
+        .step-icon { font-size: 18px; width: 28px; height: 28px; border-radius: 50%; background: #F5F5F5; display: flex; align-items: center; justify-content: center; z-index: 2; transition: all 0.3s ease; color: #999999; }
+        .step-row.active .step-icon { background: rgba(255, 184, 0, 0.15); color: var(--primary-yellow); }
+        .step-row.completed .step-icon { background: rgba(0, 132, 68, 0.1); color: var(--success-green); }
+        .step-text h4 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text-main); }
+        .step-text p { margin: 3px 0 0 0; font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+        .actions-stack { margin-top: 30px; display: flex; flex-direction: column; gap: 14px; width: 100%; }
+        .btn-action-large { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 700; padding: 15px 20px; border-radius: 14px; cursor: pointer; transition: transform 0.1s ease, box-shadow 0.2s ease; box-sizing: border-box; text-decoration: none; }
+        .btn-action-large:active { transform: scale(0.98); }
+        .btn-action-yellow { background-color: var(--brand-yellow-solid); border: none; color: #1e1e1e; box-shadow: 0 4px 12px rgba(250, 193, 43, 0.25); }
+        .btn-action-outline { background-color: transparent; border: 2px solid var(--brand-yellow-solid); color: var(--brand-yellow-solid); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02); }
+        .items-block { text-align: left; margin-top: 4px; }
+        .items-toggle { user-select: none; -webkit-tap-highlight-color: transparent; }
+        .items-toggle:active { opacity: 0.6; }
+
+        .btn-view-order {
+            width: 100%;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: rgba(255, 184, 0, 0.08);
+            border: 1px solid rgba(255, 184, 0, 0.2);
+            border-radius: 12px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+            margin-top: 16px;
+        }
+        .btn-view-order:active {
+            background: rgba(255, 184, 0, 0.15);
+            transform: scale(0.98);
+        }
+        .btn-view-order span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .view-order-body {
+            padding: 12px 0 4px;
+        }
+        .view-order-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0 0;
+            margin-top: 4px;
+            border-top: 1px solid var(--border-color);
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .view-order-total span:last-child {
+            color: var(--success-green);
+        }
+
+        .order-selector {
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .order-selector select {
+            width: 100%;
+            min-height: 44px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: white;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            appearance: auto;
+            -webkit-appearance: auto;
+        }
+        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 184, 0, 0.3); } 70% { transform: scale(1.04); box-shadow: 0 0 0 10px rgba(255, 184, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 184, 0, 0); } }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--dark-bg);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1050;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .brand-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        header h1 {
+            color: var(--primary-yellow);
+            font-size: 22px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        header p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-top: 1px;
+        }
+
+        .cart-nav-trigger {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .cart-nav-trigger:hover,
+        .cart-nav-trigger:focus {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: var(--primary-yellow);
+            outline: none;
+        }
+        .cart-nav-trigger i {
+            color: var(--primary-yellow);
+            font-size: 20px;
+        }
+        .nav-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #FF3B30;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            padding: 0 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--dark-bg);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+    <style>
+        @media print {
+            body * { visibility: hidden; }
+            #receiptContent, #receiptContent * { visibility: visible; }
+            #receiptContent { position: absolute; left: 0; top: 0; width: 80mm; }
+        }
+    </style>
+</head>
+<body>
+    <button onclick="goBackFromTracker()" class="back-btn" aria-label="Back">←</button>
+
+    <header>
+        <div class="brand-container">
+            <h1>House of Fries</h1>
+            <p>Track Your Order</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <button class="cart-nav-trigger" id="cartTrigger" aria-label="View Shopping Cart" onclick="window.location.href='cart.html'">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <div class="nav-badge" id="cartBadgeCount">0</div>
+            </button>
+            <button class="cart-nav-trigger" id="myOrdersBtn" aria-label="My Orders" onclick="window.location.href='orderHistory.html'">
+                <i class="fa-solid fa-receipt"></i>
+                <div class="nav-badge" id="myOrdersBadge" style="display:none;">0</div>
+            </button>
+        </div>
+    </header>
+
+    <div class="tracker-container" id="trackerContainer">
+        <div id="orderCardsContainer"></div>
+    </div>
+
+    <script src="device.js"></script>
+    <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+    <script src="orderTracker.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/javascript/loading.js"></script>
+    </body>
+</html>

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GCash Payment - House of Fries</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="/javascript/loading.js"></script>
+        <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+        <style>
+        :root {
+            --gcash-blue: #0056E3;
+            --light-bg: #E7EEFF;
+            --text-main: #2A2A2A;
+            --text-secondary: #757575;
+            --success-blue: #D1E1FF;
+            --warning-orange: #FF9500;
+            --danger-red: #FF3B30;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--light-bg);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: var(--gcash-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        header a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+        }
+
+        .container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .gcash-logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #0056E3 0%, #3786FE 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .order-info {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .order-info .ref-number {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--gcash-blue);
+            margin-bottom: 5px;
+        }
+
+        .order-info .amount {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .order-info .amount span {
+            font-size: 20px;
+            font-weight: 400;
+        }
+
+        .timer-box {
+            background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+            border-radius: 12px;
+            padding: 15px;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .timer-box.warning {
+            background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+        }
+
+        .timer-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            color: var(--warning-orange);
+            margin-bottom: 5px;
+        }
+
+        .timer-box.warning .timer-label {
+            color: var(--danger-red);
+        }
+
+        .timer-display {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--warning-orange);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-box.warning .timer-display {
+            color: var(--danger-red);
+        }
+
+        .payment-methods {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .payment-methods h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .method-option {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 2px solid var(--gcash-blue);
+            border-radius: 12px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            background: rgba(0, 86, 227, 0.05);
+        }
+
+        .method-option.selected {
+            background: rgba(0, 86, 227, 0.1);
+        }
+
+        .method-option i {
+            font-size: 24px;
+            color: var(--gcash-blue);
+            margin-right: 15px;
+        }
+
+        .method-option .method-name {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .method-option .method-check {
+            margin-left: auto;
+            color: var(--gcash-blue);
+            font-size: 20px;
+        }
+
+        .btn-pay {
+            background-color: var(--gcash-blue);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 18px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-pay:hover {
+            background-color: #004BC7;
+            transform: translateY(-2px);
+        }
+
+        .btn-pay:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-pay .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .btn-pay.loading .spinner {
+            display: inline-block;
+        }
+
+        .btn-pay.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .secure-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 15px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .secure-badge i {
+            color: #34C759;
+        }
+
+        .error-message {
+            background: #FFEBEE;
+            color: var(--danger-red);
+            padding: 15px;
+            border-radius: 12px;
+            width: 100%;
+            text-align: center;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <a href="cart.html"><i class="fa-solid fa-arrow-left"></i></a>
+        <span>GCash Payment</span>
+        <div style="opacity: 0;">--</div>
+    </header>
+
+    <div class="container">
+        <!-- Order Info Card -->
+        <div class="card">
+            <div class="gcash-logo">
+                <i class="fa-solid fa-mobile-screen"></i>
+            </div>
+
+            <div class="order-info">
+                <div class="ref-number" id="refNumber">Loading...</div>
+                <div class="amount"><span>₱</span> <span id="totalAmount">0.00</span></div>
+            </div>
+
+            <!-- Timer -->
+            <div class="timer-box" id="timerBox">
+                <div class="timer-label">Time Remaining to Pay</div>
+                <div class="timer-display" id="timerDisplay">15:00</div>
+            </div>
+
+            <!-- Error Message -->
+            <div class="error-message" id="errorMessage">
+                <i class="fa-solid fa-exclamation-circle"></i>
+                <span id="errorText">Payment failed. Please try again.</span>
+            </div>
+
+            <!-- Payment Method Selection -->
+            <div class="payment-methods">
+                <h3>Select Payment Method</h3>
+                <div class="method-option selected" onclick="selectMethod('gcash')">
+                    <i class="fa-solid fa-mobile-screen"></i>
+                    <span class="method-name">GCash</span>
+                    <i class="fa-solid fa-circle-check method-check"></i>
+                </div>
+            </div>
+
+            <!-- Pay Button -->
+            <button class="btn-pay" id="payBtn" onclick="processPayment()">
+                <span class="btn-text">Pay with GCash</span>
+                <div class="spinner"></div>
+            </button>
+
+            <!-- Secure Badge -->
+            <div class="secure-badge">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>Secured by PayMongo</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get order data from URL
+        const params = new URLSearchParams(window.location.search);
+        const orderId = params.get('order_id');
+        const totalAmount = params.get('total') || '0.00';
+        const refNumber = params.get('ref') || localStorage.getItem('lastRefNumber') || 'HOF000000';
+
+        let timerInterval = null;
+        let selectedMethod = 'gcash';
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('refNumber').textContent = refNumber;
+            document.getElementById('totalAmount').textContent = parseFloat(totalAmount).toFixed(2);
+            
+            startTimer();
+        });
+
+        // Timer function
+        function startTimer() {
+            let totalSeconds = 15 * 60; // 15 minutes
+            
+            // Check if we have a saved start time
+            const startTime = localStorage.getItem('gcash_order_start_' + orderId);
+            if (startTime) {
+                const elapsed = Math.floor((Date.now() - parseInt(startTime)) / 1000);
+                totalSeconds = Math.max(0, totalSeconds - elapsed);
+            } else {
+                localStorage.setItem('gcash_order_start_' + orderId, Date.now());
+            }
+
+            updateTimerDisplay(totalSeconds);
+
+            timerInterval = setInterval(() => {
+                totalSeconds--;
+                updateTimerDisplay(totalSeconds);
+
+                if (totalSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    showExpired();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            const display = `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            const timerDisplay = document.getElementById('timerDisplay');
+            const timerBox = document.getElementById('timerBox');
+            
+            timerDisplay.textContent = display;
+
+            // Change color when low time
+            if (seconds <= 300) { // 5 minutes
+                timerBox.classList.add('warning');
+            }
+        }
+
+        function selectMethod(method) {
+            selectedMethod = method;
+            document.querySelectorAll('.method-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+        }
+
+        async function processPayment() {
+            if (!orderId || !totalAmount) {
+                showError('Invalid order data. Please try again.');
+                return;
+            }
+
+            const payBtn = document.getElementById('payBtn');
+            payBtn.classList.add('loading');
+            payBtn.disabled = true;
+
+            try {
+                            // Create GCash payment
+                            // NOTE: relative path (../backend) — works on localhost subfolder AND live domain root
+                            const response = await fetch('../backend/payments/create-gcash-payment.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    order_id: parseInt(orderId),
+                                    amount: parseFloat(totalAmount),
+                                    reference_number: refNumber
+                                })
+                            });
+
+                            // If the server answered with anything but JSON (e.g. a 404 HTML page),
+                            // surface a readable error instead of a cryptic JSON parse failure.
+                            let result;
+                            try {
+                                result = await response.json();
+                            } catch (parseError) {
+                                throw new Error('Server error (HTTP ' + response.status + '). Please check the backend path and try again.');
+                            }
+
+                            if (result.success && result.redirect_url) {
+                                // Redirect to PayMongo GCash page
+                                window.location.href = result.redirect_url;
+                            } else {
+                                throw new Error(result.message || 'Failed to create payment');
+                            }
+                        } catch (error) {
+                console.error('Payment error:', error);
+                showError(error.message || 'Payment failed. Please try again.');
+                payBtn.classList.remove('loading');
+                payBtn.disabled = false;
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            errorText.textContent = message;
+            errorDiv.classList.add('show');
+            
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        function showExpired() {
+            Swal.fire({
+                icon: 'error',
+                title: 'Payment Expired',
+                text: 'Your payment session has expired. Please try again.',
+                confirmButtonColor: '#FF3B30'
+            }).then(() => {
+                window.location.href = 'cart.html';
+            });
+        }
+    </script>
+</body>
+
+</html>

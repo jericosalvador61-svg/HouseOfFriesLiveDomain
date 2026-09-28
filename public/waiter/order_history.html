@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House of Fries - Order History</title>
+    <link rel="icon" type="image/png" href="../../images/favicon.jpg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/staff-sidebar.css">
+    <link rel="stylesheet" href="/css/waiter/order_history.css">
+</head><body>
+    <div class="app-shell">
+        <!-- SIDEBAR -->
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-logo">HF</div>
+                <div class="header-text">
+                    <h5 class="mb-0 fw-bold">House of Fries</h5>
+                    <small>Tagoloan Branch</small>
+                </div>
+            </div>
+
+            <div class="nav-content">
+                <p class="nav-section-label">Waiter Menu</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="waiter_dashboard.html">
+                        <i class="bi bi-speedometer2"></i> <span>Dashboard</span>
+                    </a>
+                    <a class="nav-link" href="tables.html">
+                        <i class="bi bi-grid-3x3-gap"></i> <span>Tables</span>
+                    </a>
+                    <a class="nav-link" href="orders.html">
+                        <i class="bi bi-receipt"></i> <span>Orders</span>
+                    </a>
+                    <a class="nav-link" href="new_order.html">
+                        <i class="bi bi-plus-circle"></i> <span>New Order</span>
+                    </a>
+                    <a class="nav-link active" href="order_history.html">
+                        <i class="bi bi-clock-history"></i> <span>Order History</span>
+                    </a>
+                </nav>
+
+                <p class="nav-section-label">Account</p>
+                <nav class="nav flex-column">
+                    <a class="nav-link danger" href="#" onclick="logout(); return false;">
+                        <i class="bi bi-box-arrow-right"></i> <span>Logout</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="user-profile">
+                <div class="user-avatar">W</div>
+                <div class="profile-text">
+                    <p class="mb-0 fw-bold small text-white text-truncate user-name">Loading...</p>
+                    <p class="mb-0 text-light user-role" style="font-size: 0.7rem;">Loading...</p>
+                </div>
+            </div>
+        </nav>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- MAIN CONTENT -->
+        <div class="content-wrapper">
+            <div class="topbar">
+                <button type="button" id="sidebarCollapse" class="btn-icon">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="search">
+                    <i class="bi bi-search"></i>
+                    <input id="historySearchInput" placeholder="Search by order ref or customer name...">
+                </div>
+                <button class="btn-icon bell">
+                    <i class="bi bi-bell"></i>
+                </button>
+            </div>
+
+            <div class="page">
+                <div class="page-header">
+                    <h1>Order History</h1>
+                    <p>Review served and completed orders from your shifts.</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="card-hof">
+                    <div class="flex-between" style="margin-bottom:8px;">
+                        <div>
+                            <h2 class="section-title">Filters</h2>
+                            <p class="section-sub">Today's completed orders</p>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Search</label>
+                            <input type="text" class="form-control" id="searchInput" placeholder="Reference # or customer...">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Status</label>
+                            <select class="form-select" id="statusFilter">
+                                <option value="all">All</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="IN-PROGRESS">Preparing</option>
+                                <option value="COOKING">Cooking</option>
+                                <option value="COMPLETED">Ready to Deliver</option>
+                                <option value="SERVED">Served</option>
+                                <option value="CANCELLED">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Ownership</label>
+                            <select class="form-select" id="ownershipFilter">
+                                <option value="mine">Mine</option>
+                                <option value="all">All Staff</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn-hof primary w-100" onclick="applyFilters()">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Table -->
+                <div class="card-hof" style="margin-top:18px;">
+                    <div style="overflow-x: auto;">
+                        <table class="hof-table">
+                            <thead>
+                                <tr>
+                                    <th>Order Ref</th>
+                                    <th>Type</th>
+                                    <th>Table</th>
+                                    <th>Total</th>
+                                    <th>Ordered At</th>
+                                    <th>Completed At</th>
+                                    <th>Staff</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderHistoryTableBody">
+                                <tr><td colspan="8" style="text-align:center;color:var(--hof-muted);padding:20px;">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <nav id="orderHistoryPagination" style="margin-top:16px;"></nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+
+    
+
+
+
+    <!-- STANDARDIZED SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../javascript/config.js"></script>
+    <script src="../../javascript/loading.js"></script>
+    <script src="../../javascript/check_session.js" defer></script>
+    <script src="../../javascript/logout.js" defer></script>
+    <script src="../../javascript/navbar-unified.js" defer></script>
+    <script src="../../javascript/waiter/waiter.js" defer></script>
+    <script src="../../javascript/waiter/orderHistory.js" defer></script>
+    <script src="https://js.pusher.com/8.0.1/pusher.min.js"></script>
+</body>
+</html>

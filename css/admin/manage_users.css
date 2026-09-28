@@ -1,0 +1,58 @@
+/* manage_users.html inline styles */
+
+body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #fcfcfc;
+        }
+
+        .stat-card {
+            border: none;
+            border-radius: 15px;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        /* --- NAVBAR SEARCH --- */
+        .nav-content::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-content {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+
+                /* ── Table wrapper for horizontal scroll on narrow screens ── */
+                .table-responsive-wrapper {
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                }
+
+                /* ── Text wrapping for long content ── */
+                .word-break-all {
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                }
+
+                /* ── Responsive overrides ── */
+                @media (max-width: 480px) {
+                    .page-header { flex-direction: column; align-items: flex-start; }
+                    .page-header h4 { font-size: 1.1rem; }
+                    .stat-card { margin-bottom: 12px; }
+                    .table { font-size: 0.75rem; }
+                    .table th, .table td { padding: 6px 8px; white-space: nowrap; }
+                    .table-responsive-wrapper { overflow-x: auto; }
+                }
+
+                @media (min-width: 768px) and (max-width: 992px) {
+                    .stat-card { margin-bottom: 16px; }
+                }
+
+                @media (min-width: 1200px) {
+                    .container-fluid { max-width: 1400px; margin: 0 auto; }
+                }
+
+        

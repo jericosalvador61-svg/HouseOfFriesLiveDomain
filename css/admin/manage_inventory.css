@@ -1,0 +1,53 @@
+/* Admin page styles */
+.card { border-radius: 12px; border: 1px solid #e9ecef; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.card-header { background: #fff; border-bottom: 1px solid #e9ecef; font-weight: 600; }
+.table th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; font-weight: 600; }
+.form-label { font-weight: 600; font-size: 0.85rem; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+.page-header h4 { font-weight: 700; margin: 0; }
+
+/* manage_inventory.css — page-specific overrides */
+
+/* ── Table wrapper for horizontal scroll on narrow screens ── */
+.table-responsive-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ── Text wrapping for long content ── */
+.word-break-all {
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+/* ── Responsive overrides ── */
+@media (max-width: 480px) {
+    .page-header { flex-direction: column; align-items: flex-start; }
+    .page-header h4 { font-size: 1.1rem; }
+    .table { font-size: 0.75rem; }
+    .table th,
+    .table td { padding: 6px 8px; white-space: nowrap; }
+    .inventory-card { padding: 14px 12px; }
+    .card { padding: 12px; }
+}
+
+@media (min-width: 768px) and (max-width: 992px) {
+    .table { font-size: 0.8rem; }
+}
+
+@media (min-width: 1200px) {
+    .container-fluid { max-width: 1400px; margin: 0 auto; }
+}
+
+/* ── Inventory status cards — consistent across all pages ── */
+.inventory-card { border-radius: 12px; padding: 20px 16px; border: 1px solid #e9ecef; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: transform 0.2s; }
+.inventory-card:hover { transform: translateY(-2px); }
+.bg-total     { background: #FFFFFF; color: #212529; border-color: #dee2e6; }
+.bg-low       { background: #FFB800; color: #1e1e1e; border-color: #e6a600; }
+.bg-out       { background: #FF3B30; color: #ffffff; border-color: #cc2f26; }
+.bg-damaged   { background: #FF9500; color: #ffffff; border-color: #cc7700; }
+.icon-box { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin: 0 auto 10px; }
+.icon-total   { background: #6c757d; color: #fff; }
+.icon-low     { background: #1e1e1e; color: #FFB800; }
+.icon-out     { background: #ffffff; color: #FF3B30; }
+.icon-damaged { background: #ffffff; color: #FF9500; }
