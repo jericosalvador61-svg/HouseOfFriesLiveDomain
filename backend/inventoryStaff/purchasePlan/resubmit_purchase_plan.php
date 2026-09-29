@@ -1,7 +1,14 @@
 <?php
-// backend/resubmit_purchase_plan.php
+// backend/inventoryStaff/purchasePlan/resubmit_purchase_plan.php
 header("Content-Type: application/json");
 require_once __DIR__ . '/../../db.php';
+require_once __DIR__ . '/../../auth_middleware.php';
+require_once __DIR__ . '/../../log_activity_helper.php';
+
+$auth = authenticate(['Admin', 'Inventory Staff']);
+$userId = (int)$auth['user_id'];
+$username = $auth['username'] ?? 'unknown';
+$role = $auth['role'] ?? '';
 
 $input = json_decode(file_get_contents("php://input"), true);
 
@@ -64,7 +71,7 @@ try {
     $stmt = $pdo->prepare($deleteItemsSql);
     $stmt->execute([':plan_id' => $plan_id]);
 
-    // 3. Insert new modified quantities requested by staff (✨ NOW SAVES: snapshot_unit_cost)
+    // 3. Insert new modified quantities requested by staff
     $insertItemSql = "INSERT INTO purchase_plan_items (plan_id, raw_material_id, current_quantity, snapshot_unit_cost, reorder_level, suggested_quantity) 
                       VALUES (:plan_id, :raw_material_id, :current_quantity, :snapshot_unit_cost, :reorder_level, :suggested_quantity)";
     $insertStmt = $pdo->prepare($insertItemSql);
@@ -74,7 +81,7 @@ try {
             ':plan_id'            => $plan_id,
             ':raw_material_id'    => $ci['id'],
             ':current_quantity'   => $ci['current_qty'],
-            ':snapshot_unit_cost' => $ci['unit_cost'], // Preserves standard cost benchmarking data
+            ':snapshot_unit_cost' => $ci['unit_cost'],
             ':reorder_level'      => $ci['reorder_lvl'],
             ':suggested_quantity' => $ci['qty']
         ]);
@@ -82,6 +89,11 @@ try {
 
     // Save everything permanently if all loops succeed
     $pdo->commit();
+
+    logActivity($pdo, $userId, $username, $role, 'PURCHASE_PLAN_CREATE',
+        "Resubmitted purchase plan #{$plan_id}",
+        'purchase_plan', (int)$plan_id, (string)$plan_id, 'Pending');
+
     echo json_encode(["success" => true, "message" => "Purchase plan updated with new totals and resubmitted!"]);
 } catch (Exception $e) {
     // Undo everything if an error occurs midway

@@ -1,47 +1,17 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../../db.php';
+require_once __DIR__ . '/../../auth_middleware.php';
+require_once __DIR__ . '/../../log_activity_helper.php';
 require_once __DIR__ . '/../../inventory_helpers.php';
 require_once __DIR__ . '/../../notifications/notification_helper.php';
 require_once __DIR__ . '/../../secret.php';
 
 try {
-    $authHeader = '';
-    if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-        $authHeader = trim($_SERVER['HTTP_AUTHORIZATION']);
-    } elseif (function_exists('apache_request_headers')) {
-        $requestHeaders = apache_request_headers();
-        $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
-        if (isset($requestHeaders['Authorization'])) {
-            $authHeader = trim($requestHeaders['Authorization']);
-        }
-    }
-
-    if (empty($authHeader) || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-        throw new Exception("Unauthorized access.");
-    }
-
-    $jwt = $matches[1];
-    $tokenParts = explode('.', $jwt);
-    if (count($tokenParts) !== 3) {
-        throw new Exception("Unauthorized: Invalid authentication structure.");
-    }
-
-    list($base64UrlHeader, $base64UrlPayload, $base64UrlSignature) = $tokenParts;
-
-    $signature = base64_decode(str_replace(['-', '_'], ['+', '/'], $base64UrlSignature));
-    $expectedSignature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, JWT_SECRET, true);
-
-    if (!hash_equals($signature, $expectedSignature)) {
-        throw new Exception("Unauthorized: Crypto token verification failed.");
-    }
-
-    $payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $base64UrlPayload)), true);
-    if (!$payload || ($payload['exp'] ?? 0) < time()) {
-        throw new Exception("User session expired. Please log in again.");
-    }
-
-    $userId = (int)$payload['user_id'];
+    $auth = authenticate(['Admin', 'Inventory Staff', 'Supervisor']);
+    $userId = (int)$auth['user_id'];
+    $username = $auth['username'] ?? 'unknown';
+    $role = $auth['role'] ?? '';
 
     $input = json_decode(file_get_contents('php://input'), true);
 
@@ -87,6 +57,10 @@ try {
     }
 
     $pdo->commit();
+
+    logActivity($pdo, $userId, $username, $role, 'ADJUSTMENT',
+        "Inventory adjustment #{$adjustmentId} (" . strtoupper($adjType) . ") created",
+        'adjustment', (int)$adjustmentId, null, 'PENDING');
 
     hof_notify_roles($pdo, 'pending_approval', 'Adjustment Approval Needed',
         "Inventory adjustment #$adjustmentId (" . strtoupper($adjType) . ") is awaiting your approval.",

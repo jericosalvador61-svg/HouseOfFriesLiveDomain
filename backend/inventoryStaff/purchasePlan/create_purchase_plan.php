@@ -2,58 +2,15 @@
 // backend/inventoryStaff/purchasePlan/create_purchase_plan.php
 header("Content-Type: application/json; charset=utf-8");
 require_once __DIR__ . '/../../db.php';
-require_once __DIR__ . '/../../secret.php'; // Pull cryptographic secret key
+require_once __DIR__ . '/../../auth_middleware.php';
+require_once __DIR__ . '/../../log_activity_helper.php';
+require_once __DIR__ . '/../../secret.php';
 
-// ─── STATELESS JWT SECURITY BLOCK ───
-$authHeader = '';
-if (function_exists('getallheaders')) {
-    $headers = getallheaders();
-    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-}
-if (empty($authHeader)) {
-    if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-        $authHeader = trim($_SERVER['HTTP_AUTHORIZATION']);
-    } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-        $authHeader = trim($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
-    }
-}
-
-if (empty($authHeader) || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized access. Token context not discovered.']);
-    exit;
-}
-
-$jwt = $matches[1];
-$tokenParts = explode('.', $jwt);
-if (count($tokenParts) !== 3) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized: Invalid authentication structure.']);
-    exit;
-}
-
-list($base64UrlHeader, $base64UrlPayload, $base64UrlSignature) = $tokenParts;
-
-// Validate Signature Match
-$signature = base64_decode(str_replace(['-', '_'], ['+', '/'], $base64UrlSignature));
-$expectedSignature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, JWT_SECRET, true);
-
-if (!hash_equals($signature, $expectedSignature)) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized: Token key verification failed.']);
-    exit;
-}
-
-// Parse Payload and Verify Expiration
-$payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $base64UrlPayload)), true);
-if (!$payload || ($payload['exp'] ?? 0) < time()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized: Your current session has expired.']);
-    exit;
-}
-
-// Pull active user session indicator directly from the validated payload properties
-$created_by = (int)$payload['user_id'];
+$auth = authenticate(['Admin', 'Inventory Staff', 'Supervisor']);
+$userId = (int)$auth['user_id'];
+$username = $auth['username'] ?? 'unknown';
+$role = $auth['role'] ?? '';
+$created_by = $userId;
 
 // ─── TRANSACTION PROCESSING ENGINE ───
 $input = json_decode(file_get_contents("php://input"), true);
@@ -125,6 +82,11 @@ try {
     }
 
     $pdo->commit();
+
+    logActivity($pdo, $userId, $username, $role, 'PURCHASE_PLAN_CREATE',
+        "Created purchase plan #{$plan_id}",
+        'purchase_plan', (int)$plan_id, (string)$plan_id, 'Pending');
+
     echo json_encode(["success" => true, "message" => "Purchase plan submitted to Admin successfully!"]);
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {

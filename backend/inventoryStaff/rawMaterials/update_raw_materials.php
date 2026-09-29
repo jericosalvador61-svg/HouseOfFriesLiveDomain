@@ -1,6 +1,13 @@
 <?php
 require_once __DIR__ . '/../../db.php';
+require_once __DIR__ . '/../../auth_middleware.php';
+require_once __DIR__ . '/../../log_activity_helper.php';
 header('Content-Type: application/json');
+
+$auth = authenticate(['Admin', 'Inventory Staff']);
+$userId = (int)$auth['user_id'];
+$username = $auth['username'] ?? 'unknown';
+$role = $auth['role'] ?? '';
 
 $id         = $_POST['raw_material_id'] ?? null;
 $name       = $_POST['raw_material_name'] ?? null;
@@ -55,11 +62,15 @@ try {
         $unit,
         $reorder,
         $cost,
-        $expTrack, // Now sending 1 or 0
-        $perishable, // Now sending 1 or 0
+        $expTrack,
+        $perishable,
         $imgUrl,
         $id
     ]);
+
+    logActivity($pdo, $userId, $username, $role, 'MATERIAL_UPDATE',
+        "Updated raw material ID {$id}",
+        'raw_material', (int)$id, null, null);
 
     echo json_encode(['status' => 'success']);
 } catch (Exception $e) {

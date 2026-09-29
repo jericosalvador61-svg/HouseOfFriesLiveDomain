@@ -5,68 +5,15 @@ header("Content-Type: application/json; charset=utf-8");
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-// Safe cross-server function to fetch request headers
-if (!function_exists('getallheaders')) {
-    function getallheaders() {
-        $headers = [];
-        foreach ($_SERVER as $name => $value) {
-            if (substr($name, 0, 5) == 'HTTP_') {
-                $headerName = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))));
-                $headers[$headerName] = $value;
-            }
-        }
-        return $headers;
-    }
-}
-
 try {
     require_once __DIR__ . '/../../db.php';
+    require_once __DIR__ . '/../../auth_middleware.php';
     require_once __DIR__ . '/../../notifications/notification_helper.php';
     require_once __DIR__ . '/../../log_activity_helper.php';
     require_once __DIR__ . '/../../secret.php';
 
-    // ─── STATELESS JWT SECURITY BLOCK ───
-    $headers = getallheaders();
-    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-
-    if (empty($authHeader) && function_exists('apache_request_headers')) {
-        $apacheHeaders = apache_request_headers();
-        $authHeader = $apacheHeaders['Authorization'] ?? $apacheHeaders['authorization'] ?? '';
-    }
-
-    if (empty($authHeader) || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-        http_response_code(401);
-        echo json_encode(["success" => false, "message" => "Unauthorized access. Token context not discovered."]);
-        exit;
-    }
-
-    $jwt = $matches[1];
-    $tokenParts = explode('.', $jwt);
-    if (count($tokenParts) !== 3) {
-        http_response_code(401);
-        echo json_encode(["success" => false, "message" => "Unauthorized: Invalid authentication structure."]);
-        exit;
-    }
-
-    list($base64UrlHeader, $base64UrlPayload, $base64UrlSignature) = $tokenParts;
-
-    $signature = base64_decode(str_replace(['-', '_'], ['+', '/'], $base64UrlSignature));
-    $expectedSignature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, JWT_SECRET, true);
-
-    if (!hash_equals($signature, $expectedSignature)) {
-        http_response_code(401);
-        echo json_encode(["success" => false, "message" => "Unauthorized: Token verification check failed."]);
-        exit;
-    }
-
-    $payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $base64UrlPayload)), true);
-    if (!$payload || ($payload['exp'] ?? 0) < time()) {
-        http_response_code(401);
-        echo json_encode(["success" => false, "message" => "User session expired. Please log in again."]);
-        exit;
-    }
-
-    $created_by = (int)$payload['user_id'];
+    $auth = authenticate(['Admin', 'Inventory Staff', 'Supervisor']);
+    $created_by = (int)$auth['user_id'];
 
     // ─── TRANSACTION PROCESSING ENGINE ───
     $input = json_decode(file_get_contents("php://input"), true);
@@ -140,7 +87,7 @@ try {
 
     $pdo->commit();
 
-    logActivity($pdo, $payload['user_id'], $payload['username'], $payload['role'],
+    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'PURCHASE_PLAN_CREATE', "Created purchase plan #{$plan_id}",
         'purchase_plan', $plan_id, (string)$plan_id);
 

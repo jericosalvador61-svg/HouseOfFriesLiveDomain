@@ -2,6 +2,13 @@
 header('Content-Type: application/json');
 error_reporting(0);
 require_once __DIR__ . "/../../db.php";
+require_once __DIR__ . "/../../auth_middleware.php";
+require_once __DIR__ . "/../../log_activity_helper.php";
+
+$auth = authenticate(['Admin', 'Inventory Staff', 'Supervisor']);
+$user_id = (int)$auth['user_id'];
+$username = $auth['username'] ?? 'unknown';
+$role = $auth['role'] ?? '';
 
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);
@@ -11,7 +18,6 @@ if (!$data) {
     exit;
 }
 
-$user_id       = $_SESSION['user_id'] ?? null;
 $supplier_id   = $data['supplier_id'] ?? null;
 $stock_in_date = $data['stock_in_date'] ?? date('Y-m-d');
 $remarks       = $data['remarks'] ?? '';
@@ -81,6 +87,10 @@ try {
 
 
     $pdo->commit();
+
+    logActivity($pdo, $user_id, $username, $role, 'STOCK_IN',
+        "Stock in #{$stock_in_id} submitted",
+        'stock_in', (int)$stock_in_id, null, 'Pending');
 
     echo json_encode([
         'success' => true,
