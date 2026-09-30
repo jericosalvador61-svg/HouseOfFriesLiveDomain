@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . "/../../db.php";
+require_once __DIR__ . "/../../auth_middleware.php";
+$user = authenticate(['Admin', 'Supervisor', 'Kitchen Staff']);
 require_once __DIR__ . "/../../image_helper.php";
 header("Content-Type: application/json");
 

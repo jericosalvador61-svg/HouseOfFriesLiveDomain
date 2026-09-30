@@ -1,6 +1,8 @@
 <?php
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../db.php';
+require_once __DIR__ . '/../../auth_middleware.php';
+$user = authenticate(['Admin', 'Supervisor']);
 
 try {
     // Changed u_staff.username to a CONCAT function for first and last name

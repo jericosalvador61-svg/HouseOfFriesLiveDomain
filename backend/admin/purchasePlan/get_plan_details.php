@@ -2,6 +2,8 @@
 // backend/get_plan_details.php
 header("Content-Type: application/json");
 require_once __DIR__ . '/../../db.php';
+require_once __DIR__ . '/../../auth_middleware.php';
+$user = authenticate(['Admin', 'Supervisor']);
 
 $plan_id = isset($_GET['plan_id']) ? intval($_GET['plan_id']) : 0;
 
