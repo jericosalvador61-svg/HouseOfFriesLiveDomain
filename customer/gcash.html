@@ -406,6 +406,19 @@
             try {
                             // Create GCash payment
                             // NOTE: relative path (../backend) — works on localhost subfolder AND live domain root
+                            // REQ-050 H2: the endpoint now requires a signed payload (purpose='pay').
+                            const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
+                            let sig = params.get('sig') || '';
+                            if (!sig) {
+                                const linkResp = await fetch('/backend/payments/get-payment-link.php', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ order_id: parseInt(orderId), ref: String(refNumber), purpose: 'pay', device_id: deviceId })
+                                });
+                                const linkData = await linkResp.json();
+                                if (linkData.success && linkData.sig) sig = linkData.sig;
+                                else { throw new Error('Could not authorize payment page'); }
+                            }
                             const response = await fetch('../backend/payments/create-gcash-payment.php', {
                                 method: 'POST',
                                 headers: {
@@ -414,7 +427,9 @@
                                 body: JSON.stringify({
                                     order_id: parseInt(orderId),
                                     amount: parseFloat(totalAmount),
-                                    reference_number: refNumber
+                                    reference_number: refNumber,
+                                    sig: sig,
+                                    device_id: deviceId
                                 })
                             });
 

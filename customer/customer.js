@@ -57,10 +57,11 @@ async function initGeofenceGate() {
                     return;
                 }
     } catch (e) {
-        // Geofence check failed — fail-open: allow ordering without location
-        sessionStorage.setItem('hof_geo_disabled', 'true');
-        localStorage.setItem('hof_geo_disabled', 'true');
-        startOrderingFlow();
+        // REQ-050 L3: geofence check failed → FAIL CLOSED. Never allow ordering
+        // on an unverifiable location state; the backend re-validates anyway,
+        // but we must not silently disable the gate.
+        console.error('Geofence mode check failed:', e);
+        showGeofenceBlocked({ reason: 'CHECK_FAILED' });
         return;
     }
 
@@ -278,13 +279,14 @@ function startOrderingFlow() {
             // Stale edit flags with empty cart — silently clear
             localStorage.removeItem('editOrderId');
             localStorage.removeItem('editRefNumber');
+            localStorage.removeItem('editSig');
         } else {
             // Show dismissible banner
             const banner = document.createElement('div');
             banner.id = 'editOrderBanner';
             banner.style.cssText = 'background:rgba(255,184,0,0.15);border:1px solid rgba(255,184,0,0.3);border-radius:12px;padding:10px 16px;margin:12px auto;max-width:600px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;font-weight:600;color:#331A11;';
             banner.innerHTML = '<span><i class="fa-solid fa-pen-to-square" style="color:#FFB800;"></i> Editing Order #' + escapeHtml(editRefNumber) + ' — you are updating this order at checkout</span>'
-              + '<button onclick="document.getElementById(\'editOrderBanner\').remove();localStorage.removeItem(\'editOrderId\');localStorage.removeItem(\'editRefNumber\');" style="background:none;border:none;font-size:18px;cursor:pointer;color:#666;padding:0 4px;">✕</button>';
+              + '<button onclick="document.getElementById(\'editOrderBanner\').remove();localStorage.removeItem(\'editOrderId\');localStorage.removeItem(\'editRefNumber\');localStorage.removeItem(\'editSig\');" style="background:none;border:none;font-size:18px;cursor:pointer;color:#666;padding:0 4px;">✕</button>';
             const header = document.querySelector('header');
             if (header) header.insertAdjacentElement('afterend', banner);
         }
@@ -503,6 +505,7 @@ async function verifyQrSession(tableId, isTakeout) {
         localStorage.removeItem('customerName');
         localStorage.removeItem('editOrderId');
         localStorage.removeItem('editRefNumber');
+        localStorage.removeItem('editSig');
     }
 
     startOrderSession({

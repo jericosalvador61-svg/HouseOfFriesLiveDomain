@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCart();
     setupCartNavigation();
     setupSwipeGestures(); // Initialize gesture listener bindings
+    bindMenuAvailability(); // REQ-050 L6: live menu availability on cart page
 });
 
 // --- 1. DYNAMIC HEADER LOGIC ---
@@ -248,9 +249,12 @@ async function editCartLine(lineKey) {
         initial: initial,
         onConfirm: function (line) {
             // Preserve the DB-rebuilt (configured) marker so a resume/edit line
-            // keeps skipping the required-group gate on re-submit (HIGH-3).
+            // keeps skipping the required-group gate on re-submit (HIGH-3),
+            // and keep the order_item_id so the authoritative stored price
+            // survives re-submit (REQ-050 C2).
             const enriched = Object.assign({}, withLineKey(line), {
                 configured: !!initial.configured,
+                order_item_id: initial.order_item_id || 0,
                 item_name: item.item_name,
                 description: item.description,
                 image_url: item.image_url
@@ -367,7 +371,8 @@ async function rebuildCartFromOrder(orderId) {
         composed_instructions: item.composed_instructions || item.special_instructions || '',
         choices: item.choices || [],
         addons: item.addons || [],
-        configured: !!item.configured
+        configured: !!item.configured,
+        order_item_id: item.order_item_id || 0
       };
     } else {
       acc[line.line_key].quantity += qty;
@@ -375,6 +380,36 @@ async function rebuildCartFromOrder(orderId) {
     return acc;
   }, {});
   return Object.values(grouped).reduce((sum, i) => sum + (i.price * i.quantity), 0);
+}
+
+// ── REQ-050 L6: live menu availability on the cart page ──
+// Mirrors the customer.html binding. When the kitchen/admin flips an item
+// to Unavailable, lines in the cart that reference it are surfaced so the
+// customer knows before checkout instead of discovering it at submit.
+function bindMenuAvailability() {
+    if (typeof Pusher === 'undefined') return;
+    const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+    const menuChannel = pusher.subscribe('hof-menu');
+    menuChannel.bind('menu-availability-changed', function (data) {
+        let payload = typeof data === 'string' ? JSON.parse(data) : data;
+        if (typeof payload.data === 'string') payload = JSON.parse(payload.data);
+        if (!payload.menu_item_id || !payload.status) return;
+
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+        const hit = cart.some(line => String(line.menu_item_id) === String(payload.menu_item_id));
+        if (!hit) return;
+
+        const name = payload.item_name || ('Item #' + payload.menu_item_id);
+        if (payload.status === 'Unavailable') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Item Unavailable',
+                text: name + ' is no longer available. Remove it or swap it before checking out.',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#FFB800'
+            });
+        }
+    });
 }
 
 function setupCartNavigation() {
@@ -402,7 +437,8 @@ function setupCartNavigation() {
                         special_instructions: line.special_instructions || '',
                         choices: line.choices || [],
                         addons: line.addons || [],
-                        configured: !!line.configured
+                        configured: !!line.configured,
+                        order_item_id: line.order_item_id || 0
                     };
                 } else {
                     acc[line.line_key].quantity += qty;
@@ -467,13 +503,20 @@ function setupCartNavigation() {
                 placeOrderBtn.innerText = "Updating Order...";
                 placeOrderBtn.disabled = true;
                 try {
+                    // REQ-050 C1: the update endpoint now requires the HMAC
+                    // edit signature (bound to this device) issued when the
+                    // edit link was obtained on checkout.
+                    const editSig = localStorage.getItem('editSig') || '';
+                    const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
                     const updateResp = await fetch('update_existing_order.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             order_id: parseInt(editOrderId),
                             reference_number: editRefNumber,
-                            items: finalCartItems
+                            items: finalCartItems,
+                            sig: editSig,
+                            device_id: deviceId
                         })
                     });
                     const updateResult = await updateResp.json();
@@ -496,6 +539,7 @@ function setupCartNavigation() {
                         localStorage.setItem('lastRefNumber', editRefNumber);
                         localStorage.removeItem('editOrderId');
                         localStorage.removeItem('editRefNumber');
+                        localStorage.removeItem('editSig');
                         if (window.HOFDevice) {
                             HOFDevice.addOrder({
                                 order_id: parseInt(editOrderId), ref: editRefNumber,
@@ -542,6 +586,7 @@ function setupCartNavigation() {
                     }
                     localStorage.removeItem('editOrderId');
                     localStorage.removeItem('editRefNumber');
+                    localStorage.removeItem('editSig');
                     if (updateResp.status === 409) {
                         const placeNew = await Swal.fire({
                             icon: 'info', title: 'Cannot Edit',

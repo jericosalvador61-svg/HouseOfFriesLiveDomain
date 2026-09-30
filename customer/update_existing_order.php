@@ -9,6 +9,7 @@ try {
     require_once __DIR__ . "/../backend/rate_limit.php";
     require_once __DIR__ . "/../backend/log_activity_helper.php";
     require_once __DIR__ . "/../backend/choices_addons_helper.php"; // REQ-040
+    require_once __DIR__ . "/../backend/url_signer.php";            // REQ-050 C1
 
     hof_rate_limit('update_existing_order', 10, 60);
 
@@ -17,16 +18,40 @@ try {
     $orderId = $input['order_id'] ?? null;
     $refNumber = $input['reference_number'] ?? null;
     $items = $input['items'] ?? [];
+    $sig = isset($input['sig']) ? trim($input['sig']) : '';
+    $device_id = isset($input['device_id']) ? trim($input['device_id']) : '';
 
     if (empty($orderId) || empty($refNumber) || empty($items)) {
         echo json_encode(["success" => false, "message" => "Missing order ID, reference number, or items."]);
         exit;
     }
 
+    // ── OWNERSHIP GATE (REQ-050 C1) ──
+    // Only a link issued by the backend (HMAC purpose='edit', bound to THIS
+    // device) may re-write an order. Knowing the reference number alone is
+    // never enough — an attacker who only saw a receipt could otherwise
+    // re-price someone else's order.
+    if (empty($sig) || empty($device_id)) {
+        http_response_code(403);
+        echo json_encode(["success" => false, "message" => "Invalid or expired link"]);
+        exit;
+    }
+    hof_require_signed_params(
+        [
+            'order_id'  => (int)$orderId,
+            'ref'       => (string)$refNumber,
+            'purpose'   => 'edit',
+            'device_id' => (string)$device_id
+        ],
+        $sig,
+        false,
+        true
+    );
+
     $pdo->beginTransaction();
 
-    // 1. Fetch order with status + payment_status + table_id + reference_number
-    $stmt = $pdo->prepare("SELECT status, payment_status, table_id, order_type, reference_number FROM orders WHERE order_id = ?");
+    // 1. Fetch order with status + payment_status + table_id + reference_number + ordered_at
+    $stmt = $pdo->prepare("SELECT status, payment_status, table_id, order_type, reference_number, ordered_at FROM orders WHERE order_id = ?");
     $stmt->execute([$orderId]);
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -41,6 +66,15 @@ try {
         $pdo->rollBack();
         http_response_code(409);
         echo json_encode(["success" => false, "message" => "This order is already being prepared and can no longer be edited. You can place a new order instead."]);
+        exit;
+    }
+
+    // 2b. 15-minute edit window — server-side authoritative check (REQ-050 H5)
+    $orderedTs = $order['ordered_at'] ? strtotime($order['ordered_at']) : null;
+    if ($orderedTs && (time() - $orderedTs) > 900) {
+        $pdo->rollBack();
+        http_response_code(409);
+        echo json_encode(["success" => false, "message" => "This order has expired and can no longer be edited. Please place a new order instead."]);
         exit;
     }
 
@@ -80,26 +114,34 @@ try {
             return $a['menu_addon_id'] <=> $b['menu_addon_id'];
         });
         $configured = !empty($item['configured']);
+        // REQ-050 C2: a line that was rebuilt from the DB is authoritative ONLY
+        // if it really carries the order_item_id it came from. A client-forged
+        // `configured` flag with no id must NOT skip the required-group gate.
+        $orderItemId = $configured ? (int)($item['order_item_id'] ?? 0) : 0;
+        if ($configured && $orderItemId < 1) {
+            $configured = false;
+        }
 
-        $sig = json_encode([
+        $configKey = json_encode([
             'i' => $itemId,
             'c' => $lineChoices,
             'a' => $lineAddons,
             's' => $configured ? '__configured__' : $instructions
         ], JSON_UNESCAPED_SLASHES);
 
-        if (!isset($groupedCart[$sig])) {
-            $groupedCart[$sig] = [
+        if (!isset($groupedCart[$configKey])) {
+            $groupedCart[$configKey] = [
                 'menu_item_id' => $itemId,
                 'quantity' => 0,
                 'special_instructions' => $instructions,
                 'choices' => $lineChoices,
                 'addons' => $lineAddons,
-                'configured' => $configured
+                'configured' => $configured,
+                'order_item_id' => $orderItemId
             ];
         }
         // Always accumulate quantity — the first occurrence included.
-        $groupedCart[$sig]['quantity'] += isset($item['quantity']) ? (int)$item['quantity'] : 1;
+        $groupedCart[$configKey]['quantity'] += isset($item['quantity']) ? (int)$item['quantity'] : 1;
     }
 
     // 5. Fetch server-side prices from menu_items (never trust client prices)
@@ -153,6 +195,21 @@ try {
         $serverPrice = $menuPrices[$itemId] ?? 0;
         if ($serverPrice <= 0) continue;
 
+        // REQ-050 C2: a DB-rebuilt (configured) line keeps its authoritative
+        // stored price + snapshot instead of being re-folded to base+0. This
+        // is the ONLY place `configured` may skip the required-group gate, and
+        // it is only honored when the line carries the order_item_id it came
+        // from (enforced above).
+        $resolved = null;
+        if (!empty($item['configured']) && (int)$item['order_item_id'] > 0) {
+            $resolved = hof_resolve_configured_line($pdo, (int)$item['order_item_id'], $orderId);
+            if ($resolved === null) {
+                $pdo->rollBack();
+                echo json_encode(['success' => false, 'message' => 'One or more order lines are invalid. Please rebuild the order.']);
+                exit;
+            }
+        }
+
         // REQ-040: validate choices/add-ons, fold add-on price, compose instructions
         $validated = hof_validate_choices_addons(
             $pdo,
@@ -160,7 +217,7 @@ try {
             $item['special_instructions'],
             $item['choices'],
             $item['addons'],
-            !empty($item['configured'])
+            $resolved !== null
         );
         if (!$validated['ok']) {
             $pdo->rollBack();
@@ -168,14 +225,19 @@ try {
             exit;
         }
 
-        $foldedPrice = $serverPrice + $validated['addon_total'];
+        $foldedPrice = $resolved !== null
+            ? (float)$resolved['price']
+            : $serverPrice + $validated['addon_total'];
+        $snapshot = $resolved !== null
+            ? $resolved['special_instructions']
+            : $validated['special_instructions'];
         $newTotal += $foldedPrice * $item['quantity'];
         $insertItem->execute([
             $orderId,
             $itemId,
             $item['quantity'],
             $foldedPrice,
-            $validated['special_instructions']
+            $snapshot
         ]);
     }
 

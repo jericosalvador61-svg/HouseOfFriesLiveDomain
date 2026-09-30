@@ -103,18 +103,22 @@ if (abs(time() - (int)$timestamp) > 300) {
     exit;
 }
 
-if (PAYMONGO_WEBHOOK_SECRET !== '') {
-    $expectedSignature = hash_hmac('sha256', $timestamp . '.' . $rawBody, PAYMONGO_WEBHOOK_SECRET);
-    if (!hash_equals($expectedSignature, $signature)) {
-        http_response_code(401);
-        logWebhook('Rejected: invalid signature');
-        echo json_encode(['success' => false, 'message' => 'Invalid signature']);
-        exit;
-    }
-} else {
-    // Sandbox/demo only — PayMongo webhooks cannot reach localhost anyway.
-    // Set PAYMONGO_WEBHOOK_SECRET before go-live.
-    logWebhook('WARNING: PAYMONGO_WEBHOOK_SECRET empty — signature verification skipped (sandbox only)');
+if (PAYMONGO_WEBHOOK_SECRET === '') {
+    // REQ-050 C4: never skip signature verification. A missing secret is a
+    // misconfiguration — reject the webhook so a payment can never be flipped
+    // by a forged payload.
+    http_response_code(403);
+    logWebhook('Rejected: PAYMONGO_WEBHOOK_SECRET is not configured');
+    echo json_encode(['success' => false, 'message' => 'Webhook not configured']);
+    exit;
+}
+
+$expectedSignature = hash_hmac('sha256', $timestamp . '.' . $rawBody, PAYMONGO_WEBHOOK_SECRET);
+if (!hash_equals($expectedSignature, $signature)) {
+    http_response_code(401);
+    logWebhook('Rejected: invalid signature');
+    echo json_encode(['success' => false, 'message' => 'Invalid signature']);
+    exit;
 }
 
 try {

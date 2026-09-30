@@ -25,14 +25,32 @@ if ($orderId <= 0 || empty($diningOption) || empty($ref) || empty($sig)) {
     exit;
 }
 
+// REQ-050 H4: only the two enum values are accepted.
+$diningOption = strtoupper($diningOption);
+if (!in_array($diningOption, ['DINE_IN', 'TAKE_OUT'], true)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Invalid serving style.']);
+    exit;
+}
+
 hof_require_signed_params(['order_id' => $orderId, 'ref' => $ref, 'purpose' => 'dining'], $sig, false, true);
 
 try {
-    $verifyStmt = $pdo->prepare("SELECT reference_number FROM orders WHERE order_id = ?");
+    // REQ-050 H4: only PENDING + unpaid orders may change their serving style.
+    $verifyStmt = $pdo->prepare("SELECT reference_number, status, payment_status FROM orders WHERE order_id = ?");
     $verifyStmt->execute([$orderId]);
-    $dbRef = $verifyStmt->fetchColumn();
-    if ($dbRef !== $ref) {
+    $dbOrder = $verifyStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$dbOrder) {
+        echo json_encode(['success' => false, 'message' => 'Order not found.']);
+        exit;
+    }
+    if ($dbOrder['reference_number'] !== $ref) {
         echo json_encode(['success' => false, 'message' => 'Reference mismatch.']);
+        exit;
+    }
+    if ($dbOrder['status'] !== 'PENDING' || $dbOrder['payment_status'] === 'COMPLETED') {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'message' => 'This order can no longer be changed. You can place a new order instead.']);
         exit;
     }
 
