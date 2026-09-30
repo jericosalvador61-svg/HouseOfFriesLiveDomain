@@ -21,14 +21,58 @@ try {
     ");
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $menu = array_map(function ($item) {
+    // REQ-040: Per-item choices + global add-ons, fetched once and grouped in PHP.
+    // Graceful degradation: if the new tables aren't applied yet, return empty
+    // choices/add-ons instead of killing the whole menu (MEDIUM-2).
+    $choicesByItem = [];
+    $addons = [];
+    try {
+        $choicesStmt = $pdo->query("
+            SELECT menu_choice_id, menu_item_id, group_name, choice_name
+            FROM menu_item_choices
+            WHERE status = 'Active'
+            ORDER BY menu_choice_id ASC
+        ");
+        foreach ($choicesStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $choicesByItem[$row['menu_item_id']][$row['group_name']][] = [
+                'menu_choice_id' => (int)$row['menu_choice_id'],
+                'choice_name'    => $row['choice_name']
+            ];
+        }
+
+        $addonsStmt = $pdo->query("
+            SELECT menu_addon_id, addon_name, price
+            FROM menu_item_addons
+            WHERE status = 'Active'
+            ORDER BY sort_order ASC
+        ");
+        $addons = array_map(function ($a) {
+            return [
+                'menu_addon_id' => (int)$a['menu_addon_id'],
+                'addon_name'    => $a['addon_name'],
+                'price'         => (float)$a['price']
+            ];
+        }, $addonsStmt->fetchAll(PDO::FETCH_ASSOC));
+    } catch (PDOException $e) {
+        error_log('get_menu_items choices/addons degrade: ' . $e->getMessage());
+        $choicesByItem = [];
+        $addons = [];
+    }
+
+    $menu = array_map(function ($item) use ($choicesByItem, $addons) {
+        $itemChoices = [];
+        foreach (($choicesByItem[$item['menu_item_id']] ?? []) as $group => $options) {
+            $itemChoices[] = ['group_name' => $group, 'options' => $options];
+        }
         return [
             'id'          => (int)$item['menu_item_id'],
             'name'        => $item['item_name'],
             'description' => $item['description'],
             'image'       => hof_normalize_image($item['image_url'], 'menu'),
             'price'       => (float)$item['price'],
-            'status'      => $item['status']
+            'status'      => $item['status'],
+            'choices'     => $itemChoices,
+            'addons'      => $addons
         ];
     }, $items);
 

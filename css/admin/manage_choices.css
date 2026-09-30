@@ -1,0 +1,65 @@
+/* manage_choices.html styles */
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #fcfcfc;
+}
+
+.choices-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.choices-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.global-addons-card {
+    border: 2px solid #ffc107 !important;
+    background: linear-gradient(180deg, #fffdf5 0%, #ffffff 100%);
+}
+
+.modal-content {
+    border-radius: 15px;
+    border: none;
+}
+
+.modal-header {
+    background-color: #1a1512;
+    color: #ffc107;
+}
+
+.btn-save-choices {
+    background-color: #1a1512;
+    color: #ffc107;
+    font-weight: 600;
+    border: none;
+}
+
+.btn-save-choices:hover {
+    background-color: #332a24;
+    color: #ffc107;
+}
+
+.choice-group-row {
+    background-color: #f8f9fa;
+}
+
+.option-row .form-control {
+    border-radius: 8px;
+}
+
+/* ── Responsive overrides ── */
+@media (max-width: 480px) {
+    .page-header { flex-direction: column; align-items: flex-start; }
+    .page-header h4 { font-size: 1.1rem; }
+    .choices-card { margin-bottom: 12px; }
+}
+
+@media (min-width: 768px) and (max-width: 992px) {
+    .choices-card { margin-bottom: 16px; }
+}
+
+@media (min-width: 1200px) {
+    .container-fluid { max-width: 1400px; margin: 0 auto; }
+}

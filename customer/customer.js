@@ -696,8 +696,15 @@ function renderMenu(items) {
         let filename = item.image_url ? item.image_url.split('/').pop() : '';
         let imageSrc = filename ? `/images/menu/${filename}` : '/images/placeholder.png';
 
-        // Count how many of this item are currently in the cart
-        const currentQty = cart.filter(cartItem => cartItem.menu_item_id == item.menu_item_id).length;
+        // Count how many of this item are currently in the cart (grouped total quantity)
+        const currentQty = getCartQtyForItem(item.menu_item_id);
+
+        // REQ-040: single "+ Add" button; the card shows a small count badge
+        // (over the top-right of the image) when the item is already in the cart.
+        // Both the button and the badge reopen the choice/add-on popup.
+        const qtyBadge = currentQty > 0
+            ? `<div class="item-qty-badge" onclick="openItemPopup(${item.menu_item_id})">${currentQty}</div>`
+            : '';
 
         let actionButtonHTML = '';
         if (isUnavailable) {
@@ -707,22 +714,10 @@ function renderMenu(items) {
                     <span style="font-size: 11px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Out of Stock</span>
                 </button>
             `;
-        } else if (currentQty > 0) {
-            // Display Quantity Counter Controller right on the card
-            actionButtonHTML = `
-                <div class="item-action-bar" style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
-                    <span class="item-price">₱${parseFloat(item.price).toFixed(2)}</span>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <button onclick="decreaseCartQty(${item.menu_item_id})" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
-                        <span style="font-weight: bold; font-size: 14px; min-width: 15px; text-align: center;">${currentQty}</span>
-                        <button onclick="addToCart(${item.menu_item_id})" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
-                    </div>
-                </div>
-            `;
         } else {
-            // Default Add Button
+            // Default Add Button — opens the choice/add-on popup
             actionButtonHTML = `
-                <button class="item-action-bar" onclick="addToCart(${item.menu_item_id})">
+                <button class="item-action-bar" onclick="openItemPopup(${item.menu_item_id})">
                     <span class="item-price">₱${parseFloat(item.price).toFixed(2)}</span>
                     <i class="fa-solid fa-plus"></i>
                 </button>
@@ -731,10 +726,13 @@ function renderMenu(items) {
 
         const card = `
             <div class="item-card" ${cardStyle}>
-                <img src="${imageSrc}" alt="${item.item_name}" onerror="if(this.src.endsWith('/images/placeholder.png')){this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\'padding:20px;text-align:center;color:#999;\'><i class=\'fa-solid fa-image\' style=\'font-size:2rem;\'></i><br>No image</div>');}else{this.src='/images/placeholder.png';}">
+                <div class="item-card-image-wrap">
+                    <img src="${imageSrc}" alt="${escapeHtml(item.item_name)}" onerror="if(this.src.endsWith('/images/placeholder.png')){this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\'padding:20px;text-align:center;color:#999;\'><i class=\'fa-solid fa-image\' style=\'font-size:2rem;\'></i><br>No image</div>');}else{this.src='/images/placeholder.png';}">
+                    ${qtyBadge}
+                </div>
                 <div class="item-info">
-                    <h3 class="item-title-row">${item.item_name}</h3>
-                    <p class="item-desc">${item.description || ''}</p>
+                    <h3 class="item-title-row">${escapeHtml(item.item_name)}</h3>
+                    <p class="item-desc">${escapeHtml(item.description || '')}</p>
                     
                     ${actionButtonHTML}
                 </div>
@@ -745,29 +743,94 @@ function renderMenu(items) {
 }
 
 // --- CART LOGIC ---
-window.addToCart = function (id) {
-    const item = allMenuItems.find(p => p.menu_item_id == id);
+// Total quantity currently in the cart for one menu item, summed across lines
+// (each stored line carries a `quantity`, defaulting to 1 for legacy carts).
+function getCartQtyForItem(menuItemId) {
+    return cart.reduce((sum, line) => {
+        if (String(line.menu_item_id) === String(menuItemId)) {
+            const qty = parseInt(line.quantity, 10);
+            return sum + (isNaN(qty) || qty < 1 ? 1 : qty);
+        }
+        return sum;
+    }, 0);
+}
 
-    if (item && item.status !== 'Unavailable') {
-        cart.push(item);
-        updateCartUI();
-    } else if (item && item.status === 'Unavailable') {
-        alert("Sorry, this item is currently out of stock!");
+// REQ-040: open the shared choice/add-on popup for an item.
+// The stored cart line (first one found) is passed as `initial` so the
+// popup pre-fills quantity / choices / add-ons for editing.
+// A config-signature match is used so a second DIFFERENT configuration of the
+// same item is appended (not overwritten) — MEDIUM-3 fix.
+function cartLineSignature(line) {
+    const choices = (line.choices || []).map(c => String(c)).slice().sort();
+    const addons = (line.addons || []).slice().sort((a, b) => String(a.menu_addon_id).localeCompare(String(b.menu_addon_id)))
+        .map(a => a.menu_addon_id + 'x' + (parseInt(a.quantity, 10) || 1));
+    return String(line.menu_item_id) + '|' + choices.join(',') + '|' + addons.join(',');
+}
+
+window.openItemPopup = function (id) {
+    const item = allMenuItems.find(p => String(p.menu_item_id) === String(id));
+
+    if (!item) {
+        alert("Sorry, we couldn't find that item in the menu.");
+        return;
     }
+    if (item.status === 'Unavailable') {
+        alert("Sorry, this item is currently out of stock!");
+        return;
+    }
+
+    // Find an EXISTING line with the same configuration to pre-fill + replace
+    // in place. If none matches (or it's a different config), we append.
+    const existingIndex = cart.findIndex(cartItem =>
+        String(cartItem.menu_item_id) === String(id) &&
+        cartItem.line_key === cartLineSignature(cartItem)
+    );
+    const initial = existingIndex !== -1 ? cart[existingIndex] : null;
+
+    window.HOFChoicePopup.open({
+        item: item,
+        initial: initial || {},
+        onConfirm: function (line) {
+            // Enrich the structured line with display fields so the cart page
+            // can render it without needing the full menu again. Preserve the
+            // DB-rebuilt (configured) marker if editing an existing line so a
+            // resume/edit line keeps skipping the required-group gate (HIGH-3).
+            const enriched = Object.assign({}, line, {
+                line_key: cartLineSignature(line),
+                configured: !!(initial && initial.configured),
+                item_name: item.item_name,
+                description: item.description,
+                image_url: item.image_url
+            });
+            if (initial && existingIndex !== -1) {
+                // Replace the existing configured line in place, preserving other lines.
+                cart.splice(existingIndex, 1, enriched);
+            } else {
+                // New line — append (distinct configuration of the same item).
+                cart.push(enriched);
+            }
+            updateCartUI();
+        }
+    });
 };
 
-window.decreaseCartQty = function (id) {
-    // Find the index of one instance of this item and remove it
-    const index = cart.findIndex(cartItem => cartItem.menu_item_id == id);
-    if (index !== -1) {
-        cart.splice(index, 1);
-        updateCartUI();
-    }
+window.addToCart = function (id) {
+    // Legacy alias kept so any stale inline handlers degrade gracefully to the popup.
+    window.openItemPopup(id);
 };
 
 function updateCartUI() {
-    const totalCount = cart.length;
-    const totalPrice = cart.reduce((sum, item) => sum + parseFloat(item.price), 0);
+    // Count TOTAL quantity (sum of line quantities), not raw array length.
+    const totalCount = cart.reduce((sum, item) => {
+        const qty = parseInt(item.quantity, 10);
+        return sum + (isNaN(qty) || qty < 1 ? 1 : qty);
+    }, 0);
+    // line.price already includes add-ons (REQ-040); legacy lines default to 1 per line.
+    const totalPrice = cart.reduce((sum, item) => {
+        const qty = parseInt(item.quantity, 10);
+        const lineQty = isNaN(qty) || qty < 1 ? 1 : qty;
+        return sum + (parseFloat(item.price) * lineQty);
+    }, 0);
 
     if (cartBadge) cartBadge.textContent = totalCount;
     if (totalItemsText) totalItemsText.textContent = totalCount;

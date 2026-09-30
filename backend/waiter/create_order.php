@@ -49,6 +49,9 @@ foreach (($data['items'] ?? []) as $item) {
         'id'                   => (int)($item['menu_item_id'] ?? $item['id'] ?? 0),
         'quantity'             => (int)($item['quantity'] ?? 1),
         'special_instructions' => (string)($item['special_instructions'] ?? ''),
+        'choices'              => $item['choices'] ?? [],
+        'addons'               => $item['addons'] ?? [],
+        'configured'           => !empty($item['configured']),
     ];
 }
 

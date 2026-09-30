@@ -153,10 +153,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Attach event listeners to the generated add buttons
                 document.querySelectorAll('.add-to-cart-btn').forEach(button => {
                     button.addEventListener('click', (e) => {
+                        // The fetched item already carries choices/addons — pass the
+                        // whole item so staff see the SAME popup as the customer.
                         const id = e.currentTarget.getAttribute('data-id');
-                        const name = e.currentTarget.getAttribute('data-name');
-                        const price = parseFloat(e.currentTarget.getAttribute('data-price'));
-                        addToCart(id, name, price);
+                        const item = result.menu.find(m => String(m.id) === String(id));
+                        if (item) {
+                            openChoicePopup(item);
+                        } else {
+                            // Fallback (should not happen): base price, no options.
+                            const name = e.currentTarget.getAttribute('data-name');
+                            const price = parseFloat(e.currentTarget.getAttribute('data-price'));
+                            addConfiguredLine({ menu_item_id: id, price, quantity: 1, choices: [], addons: [] }, name, id);
+                        }
                     });
                 });
             } else {
@@ -169,12 +177,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 3. Cart Management Logic
-    function addToCart(id, name, price) {
-        const existingItem = cart.find(item => item.id === id);
+
+    // Open the shared choice/add-on popup (REQ-040). The waiter sees the same
+    // flow as the customer: choices + add-ons + special instructions + qty.
+    function openChoicePopup(item) {
+        if (typeof window.HOFChoicePopup === 'undefined') {
+            Swal.fire('Missing Component', 'The choice popup is not loaded on this page.', 'error');
+            return;
+        }
+        window.HOFChoicePopup.open({
+            item: {
+                menu_item_id: item.id,
+                item_name: item.name,
+                description: item.description,
+                price: item.price,
+                choices: item.choices || [],
+                addons: item.addons || []
+            },
+            onConfirm: (line) => {
+                addConfiguredLine(line, item.name, item.id);
+            }
+        });
+    }
+
+    // Add a configured line to the cart. Lines with the same item AND the same
+    // configuration (choices / add-ons / instructions) are merged by quantity.
+    function addConfiguredLine(line, name, id) {
+        const safeLine = {
+            id: id !== undefined ? id : line.menu_item_id,
+            name: name,
+            price: Number(line.price) || 0,
+            quantity: Number(line.quantity) || 1,
+            special_instructions: line.special_instructions || '',
+            composed_instructions: line.composed_instructions || '',
+            choices: Array.isArray(line.choices) ? line.choices : [],
+            addons: Array.isArray(line.addons) ? line.addons : []
+        };
+
+        const existingItem = cart.find(item => {
+            if (String(item.id) !== String(safeLine.id)) return false;
+            if ((item.special_instructions || '') !== safeLine.special_instructions) return false;
+            if (JSON.stringify(item.choices || []) !== JSON.stringify(safeLine.choices)) return false;
+            return JSON.stringify(item.addons || []) === JSON.stringify(safeLine.addons);
+        });
+
         if (existingItem) {
-            existingItem.quantity += 1;
+            existingItem.quantity += safeLine.quantity;
         } else {
-            cart.push({ id, name, price, quantity: 1 });
+            cart.push(safeLine);
         }
         updateCartUI();
     }
@@ -277,7 +327,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             cartItemsList.innerHTML += `
                 <tr>
-                    <td class="ps-3 fw-semibold text-dark">${esc(item.name)}</td>
+                    <td class="ps-3 fw-semibold text-dark">
+                        ${esc(item.name)}
+                        ${((item.composed_instructions || item.special_instructions) || '') ? `<div class="small text-muted fw-normal">${esc(item.composed_instructions || item.special_instructions)}</div>` : ''}
+                    </td>
                     <td class="text-center text-muted">&#8369;${Number(item.price).toFixed(2)}</td>
                     <td class="text-center">${Number(item.quantity)}</td>
                     <td class="text-end pe-3 fw-bold text-dark">&#8369;${Number(subtotal).toFixed(2)}</td>
@@ -302,7 +355,13 @@ document.addEventListener('DOMContentLoaded', () => {
             orderType: selectedOrderType,
             tableId: selectedOrderType === 'Dine In' ? tableId : (window.takeoutTableId ?? null),
             customerName: customerName,
-            items: cart
+            items: cart.map(item => ({
+                id: item.id,
+                quantity: item.quantity,
+                special_instructions: item.special_instructions || '',
+                choices: item.choices || [],
+                addons: item.addons || []
+            }))
         };
 
         // Disable button to prevent multi-clicks

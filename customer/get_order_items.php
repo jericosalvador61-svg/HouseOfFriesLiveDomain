@@ -87,7 +87,14 @@ try {
                 'price' => (float)$item['price'],
                 'image_url' => $item['image_url'] ?? '',
                 'description' => '',
+                // DB-rebuilt line: the stored text IS the authoritative snapshot.
+                // Mark `configured` so the backend skips the required-group gate
+                // on resume/edit (the picks already came from a real order).
                 'special_instructions' => $item['special_instructions'] ?? '',
+                'composed_instructions' => $item['special_instructions'] ?? '',
+                'choices' => [],
+                'addons' => [],
+                'configured' => true,
                 'created_epoch' => $item['created_epoch'] ? (int)$item['created_epoch'] : null,
                 'prep_minutes' => $lineMinutes,
                 'is_prepared' => $isPrepared
