@@ -145,7 +145,7 @@ class SalesReportController {
         }
 
         echo '<tr style="background:#f0f0f0; font-weight:bold;">';
-        echo '<td colspan="9" align="right">Total Revenue:</td>';
+        echo '<td colspan="11" align="right">Total Revenue:</td>';
         echo '<td>' . number_format($totalRevenue, 2) . '</td>';
         echo '</tr>';
         echo '</table>';
