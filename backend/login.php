@@ -257,7 +257,7 @@ try {
                 "success" => true,
                 "must_change_password" => true,
                 "token" => $tempToken,
-                "redirect" => "/?token=" . $tempToken, // Redirect to index.html with token for modal
+                "redirect" => "/index.html", // Frontend login.js reads data.token, never the URL
                 "captcha" => ["num1" => rand(0,9), "num2" => rand(0,9), "answer" => rand(0,9) + rand(0,9)]
             ]);
             exit;

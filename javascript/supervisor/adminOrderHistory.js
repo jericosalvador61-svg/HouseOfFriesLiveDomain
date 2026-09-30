@@ -14,7 +14,7 @@ const AdminOrderHistoryAPI = (function () {
         const token = localStorage.getItem(TOKEN_KEY);
         if (!token) throw new Error('No authentication token found');
 
-        const url = `${BASE_URL}${endpoint}${endpoint.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
+        const url = `${BASE_URL}${endpoint}`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -25,6 +25,7 @@ const AdminOrderHistoryAPI = (function () {
                 signal: controller.signal,
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
                     ...options.headers
                 }
             });
@@ -78,9 +79,12 @@ const AdminOrderHistoryAPI = (function () {
             }).toString();
 
             const token = localStorage.getItem(TOKEN_KEY);
-            const url = `${BASE_URL}/get_history.php?${query}&token=${encodeURIComponent(token)}`;
+            const url = `${BASE_URL}/get_history.php?${query}`;
 
-            const response = await fetch(url);
+            const response = await fetch(new Request(url, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            }));
             if (!response.ok) throw new Error('Export failed');
 
             const blob = await response.blob();
