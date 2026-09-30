@@ -375,7 +375,11 @@
             // display-only composed string for cart/checkout/kitchen rendering
             composed_instructions: isConfigured ? (initial.special_instructions || '').trim() : composeInstructions(),
             choices: getSelectedChoices(),
-            addons: getAddonQuantities()
+            addons: getAddonQuantities(),
+            // REQ-050 C2: carry the DB line id so configured (resume/edit)
+            // lines keep their authoritative stored price on re-submit.
+            order_item_id: initial.order_item_id || 0,
+            configured: !!initial.configured
         };
         return line;
     }

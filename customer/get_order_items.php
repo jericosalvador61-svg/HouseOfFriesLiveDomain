@@ -21,7 +21,7 @@ if ($sig && $ref) {
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT reference_number FROM orders WHERE order_id = ?");
+    $stmt = $pdo->prepare("SELECT reference_number, ordered_at FROM orders WHERE order_id = ?");
     $stmt->execute([$order_id]);
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -105,6 +105,7 @@ try {
     echo json_encode([
         'success' => true,
         'items' => $cartItems,
+        'ordered_at' => $order['ordered_at'] ?? null,
         'total_prep_minutes' => $totalPrepMinutes,
         'minutes_done' => $minutesDone
     ]);

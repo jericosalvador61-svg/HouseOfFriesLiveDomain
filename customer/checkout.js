@@ -111,8 +111,9 @@ function renderReceipt() {
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
     const refNumber = localStorage.getItem('lastRefNumber');
 
-    // MATCHED KEY FIX: Pulling the table ID saved by customer.js
-    const tableNumber = localStorage.getItem('currentTableId') || '--';
+    // H3: display the table NUMBER (label), not the DB table_id.
+    const tableNumber = localStorage.getItem('currentTableNumber')
+        || (JSON.parse(localStorage.getItem('hof_order_session') || '{}').table_number || '--');
 
     // Redirect if someone tries to access checkout.html without an active order
     if (!refNumber) {
@@ -144,40 +145,73 @@ function renderReceipt() {
         });
     }
 
-    // Update the display text seamlessly 
+    // Update the display text seamlessly
     if (tableDisplay) {
         tableDisplay.textContent = `Table: ${tableNumber}`;
     }
 
-    // 3. Group items to accurately calculate the grand total price.
-    //    REQ-040 lines carry their own `quantity`; legacy lines default to 1.
-    //    Keyed by a config signature so two configurations of one item each
-    //    keep their own (different) line price.
-    function lineSig(l) {
-        const choices = (l.choices || []).map(c => String(c)).slice().sort();
-        const addons = (l.addons || []).slice().sort((a, b) => String(a.menu_addon_id).localeCompare(String(b.menu_addon_id)))
-            .map(a => a.menu_addon_id + 'x' + (parseInt(a.quantity, 10) || 1));
-        return String(l.menu_item_id) + '|' + choices.join(',') + '|' + addons.join(',');
-    }
-    const grouped = cart.reduce((acc, item) => {
-        const key = lineSig(item);
-        const lineQty = parseInt(item.quantity, 10);
-        const qty = isNaN(lineQty) || lineQty < 1 ? 1 : lineQty;
-        if (!acc[key]) {
-            acc[key] = { ...item, quantity: qty };
-        } else {
-            acc[key].quantity += qty;
+    // 3. Show a local estimate immediately, then correct to the server total
+    //    once the signed order-items fetch returns (H3: never trust localStorage).
+    function renderLocalTotal() {
+        function lineSig(l) {
+            const choices = (l.choices || []).map(c => String(c)).slice().sort();
+            const addons = (l.addons || []).slice().sort((a, b) => String(a.menu_addon_id).localeCompare(String(b.menu_addon_id)))
+                .map(a => a.menu_addon_id + 'x' + (parseInt(a.quantity, 10) || 1));
+            return String(l.menu_item_id) + '|' + choices.join(',') + '|' + addons.join(',');
         }
-        return acc;
-    }, {});
+        const grouped = cart.reduce((acc, item) => {
+            const key = lineSig(item);
+            const lineQty = parseInt(item.quantity, 10);
+            const qty = isNaN(lineQty) || lineQty < 1 ? 1 : lineQty;
+            if (!acc[key]) {
+                acc[key] = { ...item, quantity: qty };
+            } else {
+                acc[key].quantity += qty;
+            }
+            return acc;
+        }, {});
 
-    let grandTotal = 0;
-    Object.values(grouped).forEach(item => {
-        const itemTotal = item.quantity * parseFloat(item.price);
-        grandTotal += itemTotal;
-    });
+        let grandTotal = 0;
+        Object.values(grouped).forEach(item => {
+            const itemTotal = item.quantity * parseFloat(item.price);
+            grandTotal += itemTotal;
+        });
 
-    totalAmount.textContent = `₱ ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        totalAmount.textContent = `₱ ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+    }
+    renderLocalTotal();
+
+    // H3: server-side total — fetch the signed order items (authoritative) and
+    // use the server's line prices / total. Falls back to the local estimate.
+    const orderId = localStorage.getItem('lastOrderID');
+    if (orderId) {
+        (async () => {
+            try {
+                const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
+                const itemsUrl = '/backend/payments/get-payment-link.php';
+                const linkResp = await fetch(itemsUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_id: parseInt(orderId), ref: refNumber, purpose: 'items', device_id: deviceId })
+                });
+                const linkData = await linkResp.json();
+                if (!(linkData.success && linkData.sig)) return;
+
+                const itemsResp = await fetch('get_order_items.php?order_id=' + encodeURIComponent(orderId)
+                    + '&ref=' + encodeURIComponent(refNumber) + '&sig=' + encodeURIComponent(linkData.sig));
+                const itemsData = await itemsResp.json();
+                if (!itemsData.success || !itemsData.items) return;
+
+                let serverTotal = 0;
+                itemsData.items.forEach(function (it) {
+                    serverTotal += parseFloat(it.price) * parseInt(it.quantity, 10);
+                });
+                totalAmount.textContent = `₱ ${serverTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            } catch (e) {
+                // Keep the local estimate — the server re-prices at submit anyway.
+            }
+        })();
+    }
 }
 
 // NEW: Pay with GCash QR (signed URL)
@@ -238,8 +272,27 @@ window.editOrder = function () {
     if (lastOrderID) {
         localStorage.setItem('editOrderId', lastOrderID);
         localStorage.setItem('editRefNumber', lastRefNumber);
+        // REQ-050 C1: obtain the signed edit link (bound to this device) so the
+        // update_existing_order.php ownership gate can be satisfied.
+        const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
+        fetch('/backend/payments/get-payment-link.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: parseInt(lastOrderID), ref: String(lastRefNumber), purpose: 'edit', device_id: deviceId })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.sig) {
+                localStorage.setItem('editSig', data.sig);
+            }
+            window.location.href = 'customer.html';
+        })
+        .catch(() => {
+            window.location.href = 'customer.html';
+        });
+    } else {
+        window.location.href = 'customer.html';
     }
-    window.location.href = 'customer.html';
 };
 
 // NEW: Order Again — clear cart and go to customer.html

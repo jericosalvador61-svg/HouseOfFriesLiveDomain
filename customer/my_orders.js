@@ -130,6 +130,8 @@
     }
     // Load order items into cart and go to customer.html
     const deviceId = window.HOFDevice ? HOFDevice.id() : '';
+    // REQ-050 C1: obtain BOTH the items sig (to load the cart) and the edit
+    // sig (required later by update_existing_order.php ownership gate).
     fetch('/backend/payments/get-payment-link.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -148,13 +150,29 @@
           localStorage.setItem('cart', JSON.stringify(data.items));
           localStorage.setItem('editOrderId', orderId);
           localStorage.setItem('editRefNumber', order.ref);
-          window.location.href = 'customer.html';
+          // Fetch the edit sig so the subsequent update passes the gate.
+          return fetch('/backend/payments/get-payment-link.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId, ref: order.ref, purpose: 'edit', device_id: deviceId })
+          });
         } else {
           Swal.fire('Error', 'Could not load order items for editing.', 'error');
+          return null;
         }
       })
+      .then(editResp => {
+        if (editResp && editResp.ok) return editResp.json();
+        return null;
+      })
+      .then(editData => {
+        if (editData && editData.success && editData.sig) {
+          localStorage.setItem('editSig', editData.sig);
+        }
+        window.location.href = 'customer.html';
+      })
       .catch(() => {
-        Swal.fire('Error', 'Could not load order items.', 'error');
+        Swal.fire('Error', 'Could not load order for editing.', 'error');
       });
     })
     .catch(() => {

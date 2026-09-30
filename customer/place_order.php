@@ -249,6 +249,13 @@ try {
             return $a['menu_addon_id'] <=> $b['menu_addon_id'];
         });
         $configured = !empty($item['configured']);
+        // REQ-050 C2: a DB-rebuilt (configured) line is authoritative ONLY if
+        // it carries the order_item_id it came from. A client-forged flag with
+        // no id must NOT skip the required-group gate.
+        $orderItemId = $configured ? (int)($item['order_item_id'] ?? 0) : 0;
+        if ($configured && $orderItemId < 1) {
+            $configured = false;
+        }
 
         $sig = json_encode([
             'i' => $itemId,
@@ -265,7 +272,8 @@ try {
                 'special_instructions' => $instructions,
                 'choices' => $lineChoices,
                 'addons' => $lineAddons,
-                'configured' => $configured
+                'configured' => $configured,
+                'order_item_id' => $orderItemId
             ];
             $sigOrder[] = $sig;
         }
@@ -287,6 +295,9 @@ try {
 
     // 4. Validate every item exists + is Available + replace client prices with DB prices
     //    + validate choices/add-ons + fold add-on price into the line price + compose instructions (REQ-040)
+    //    REQ-050 C2: a `configured` flag only skips the required-group gate when the line
+    //    carries a real order_item_id (enforced during grouping above). New orders are
+    //    always re-priced fresh from the menu — no stored-price resolution applies here.
     $unavailable = [];
     $computedTotal = 0;
     foreach ($groupedCart as $sig => &$item) {
