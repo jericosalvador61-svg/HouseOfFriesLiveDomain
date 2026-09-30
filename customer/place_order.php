@@ -336,10 +336,11 @@ try {
                         status, 
                         reference_number, 
                         order_type, 
+                        subtotal_amount,
                         total_amount, 
                         created_at,
                         ordered_at
-                    ) VALUES (?, ?, ?, 'PENDING', ?, ?, ?, NOW(), NOW())";
+                    ) VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, NOW(), NOW())";
 
         try {
         $stmtOrder = $pdo->prepare($sqlOrder);
@@ -349,6 +350,7 @@ try {
             $customer_name,
             $reference_number,
             $order_type,
+            $computedTotal,
             $computedTotal
         ]);
         $orderId = $pdo->lastInsertId();

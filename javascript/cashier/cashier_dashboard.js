@@ -57,6 +57,9 @@ let confirmedUiTotal = 0;
 // Global tracking for bulk void selection
 let selectedVoidItemIds = new Set();
 
+// REQ-049: tracks whether the active order currently has a discount applied.
+let activeOrderHasDiscount = false;
+
 /**
  * GCASH AUTO-VERIFY
  * While the cashier dashboard is open, poll for QR/web orders whose GCash
@@ -104,6 +107,7 @@ function resetOrderSummaryUI() {
     confirmedCash = 0;
     confirmedUiTotal = 0;
     currentInput = "";
+    activeOrderHasDiscount = false;
 
     const displayEl = document.querySelector('.input-display');
     if (displayEl) displayEl.innerText = "₱0.00";
@@ -118,9 +122,13 @@ function resetOrderSummaryUI() {
         `;
     }
     const subEl = document.getElementById('summary-subtotal');
+    const discountEl = document.getElementById('summary-discount');
     const totalEl = document.getElementById('summary-total');
     if (subEl) subEl.innerText = '₱0.00';
+    if (discountEl) discountEl.innerText = '₱0.00';
     if (totalEl) totalEl.innerText = '₱0.00';
+    const discountBtn = document.getElementById('discount-toggle-btn');
+    if (discountBtn) discountBtn.innerText = 'DISCOUNT';
 }
 
 function updateDisplay() {
@@ -303,11 +311,25 @@ function fetchOrderDetails(id) {
                     });
                 }
 
+                // REQ-049: subtotal stays GROSS, discount shows -₱, total shows NET.
+                const subtotal = parseFloat(data.order_info.subtotal_amount ?? data.order_info.total_amount).toFixed(2);
+                const discountAmount = data.order_info.discount_amount != null
+                    ? parseFloat(data.order_info.discount_amount).toFixed(2)
+                    : null;
                 const total = parseFloat(data.order_info.total_amount).toFixed(2);
+
                 const subEl = document.getElementById('summary-subtotal');
+                const discountEl = document.getElementById('summary-discount');
                 const totalEl = document.getElementById('summary-total');
-                if (subEl) subEl.innerText = `₱${total}`;
+                const discountBtn = document.getElementById('discount-toggle-btn');
+                if (subEl) subEl.innerText = `₱${subtotal}`;
+                if (discountEl) discountEl.innerText = discountAmount != null ? `-₱${discountAmount}` : '₱0.00';
                 if (totalEl) totalEl.innerText = `₱${total}`;
+
+                activeOrderHasDiscount = discountAmount != null;
+                if (discountBtn) {
+                    discountBtn.innerText = activeOrderHasDiscount ? 'REMOVE DISCOUNT' : 'DISCOUNT';
+                }
             }
         });
 }
@@ -552,6 +574,197 @@ function executeVoid(orderId, authData) {
         });
 }
 
+// ============================================================
+// REQ-049 — COUNTER DISCOUNT (Senior / PWD)
+// ============================================================
+// The cashier clicks DISCOUNT (or REMOVE DISCOUNT when already applied).
+// Applying or removing a discount always requires Admin/Supervisor
+// credentials ON THE SPOT — the exact VOID authorization flow.
+function handleDiscountClick() {
+    if (!activeOrderId) {
+        Swal.fire('Error', 'Please select an order first.', 'error');
+        return;
+    }
+
+    if (activeOrderHasDiscount) {
+        showDiscountAuthModal(activeOrderId, 'Remove the discount from this order?', 'remove');
+    } else {
+        loadActiveDiscountTypes().then(types => {
+            if (!types || types.length === 0) {
+                Swal.fire('No Discount Types', 'No active discount types found. Ask an Admin to add one in Settings.', 'info');
+                return;
+            }
+            showDiscountAuthModal(activeOrderId, 'Apply a discount to this order?', 'apply', types);
+        });
+    }
+}
+
+function loadActiveDiscountTypes() {
+    return fetch('/backend/cashier/get_discount_types.php')
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) throw new Error(data.message || 'Could not load discount types.');
+            return data.types || [];
+        })
+        .catch(err => {
+            console.error('Error loading discount types:', err);
+            Swal.fire('Error', err.message || 'Could not load discount types.', 'error');
+            return [];
+        });
+}
+
+function showDiscountAuthModal(orderId, message, mode, types) {
+    const typeOptions = (types || []).map(t =>
+        `<option value="${t.discount_type_id}">${escapeHtml(t.name)} (${parseFloat(t.percent).toFixed(2)}%)</option>`
+    ).join('');
+
+    const typeField = mode === 'apply'
+        ? `
+            <div class="mb-3">
+                <label class="form-label fw-bold">Discount Type:</label>
+                <select id="swal-discount-type" class="form-select">
+                    ${typeOptions || '<option value="">No active discount types</option>'}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">ID Number:</label>
+                <input type="text" id="swal-discount-id" class="form-control" placeholder="Senior / PWD ID number" maxlength="50">
+            </div>
+        `
+        : '';
+
+    Swal.fire({
+        title: mode === 'apply' ? 'Apply Discount' : 'Remove Discount',
+        html: `
+            <div class="text-start">
+                <p class="text-muted mb-3">${message}</p>
+                ${typeField}
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Authorizer Username:</label>
+                    <input type="text" id="swal-auth-user" class="form-control" placeholder="Admin or Supervisor username">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Password:</label>
+                    <input type="password" id="swal-auth-pass" class="form-control" placeholder="Enter password">
+                </div>
+            </div>
+        `,
+        icon: mode === 'apply' ? 'info' : 'warning',
+        showCancelButton: true,
+        confirmButtonColor: mode === 'apply' ? '#0d6efd' : '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: mode === 'apply' ? 'Authorize & Apply Discount' : 'Authorize & Remove Discount',
+        preConfirm: () => {
+            const username = document.getElementById('swal-auth-user').value.trim();
+            const password = document.getElementById('swal-auth-pass').value;
+            const discountTypeId = mode === 'apply' ? document.getElementById('swal-discount-type').value : null;
+            const discountIdNumber = mode === 'apply' ? document.getElementById('swal-discount-id').value.trim() : null;
+
+            if (!username || !password) {
+                Swal.showValidationMessage('Please enter both authorizer username and password.');
+                return false;
+            }
+            if (mode === 'apply' && !discountTypeId) {
+                Swal.showValidationMessage('Please select a discount type.');
+                return false;
+            }
+            if (mode === 'apply' && !discountIdNumber) {
+                Swal.showValidationMessage('Please enter the customer\'s discount ID number.');
+                return false;
+            }
+            return { username, password, discountTypeId, discountIdNumber };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            if (mode === 'apply') {
+                applyDiscount(orderId, result.value);
+            } else {
+                removeDiscount(orderId, result.value);
+            }
+        }
+    });
+}
+
+function applyDiscount(orderId, authData) {
+    const token = localStorage.getItem('hof_token');
+
+    Swal.showLoading();
+
+    fetch('/backend/cashier/apply_discount.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            order_id: orderId,
+            discount_type_id: authData.discountTypeId,
+            discount_id_number: authData.discountIdNumber,
+            authorizer_username: authData.username,
+            authorizer_password: authData.password,
+            token: token
+        })
+    })
+        .then(res => res.json())
+        .then(data => {
+            Swal.close();
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Discount Applied!',
+                    text: data.message || 'Discount applied.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                fetchOrderDetails(orderId);
+                loadPendingOrders();
+            } else {
+                Swal.fire('Discount Failed', data.message, 'error');
+            }
+        })
+        .catch(err => {
+            Swal.close();
+            console.error('Discount apply error:', err);
+            Swal.fire('Error', 'An unexpected error occurred while applying the discount.', 'error');
+        });
+}
+
+function removeDiscount(orderId, authData) {
+    const token = localStorage.getItem('hof_token');
+
+    Swal.showLoading();
+
+    fetch('/backend/cashier/remove_discount.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            order_id: orderId,
+            authorizer_username: authData.username,
+            authorizer_password: authData.password,
+            token: token
+        })
+    })
+        .then(res => res.json())
+        .then(data => {
+            Swal.close();
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Discount Removed!',
+                    text: data.message || 'Discount removed.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                fetchOrderDetails(orderId);
+                loadPendingOrders();
+            } else {
+                Swal.fire('Remove Failed', data.message, 'error');
+            }
+        })
+        .catch(err => {
+            Swal.close();
+            console.error('Discount remove error:', err);
+            Swal.fire('Error', 'An unexpected error occurred while removing the discount.', 'error');
+        });
+}
+
 function round2(n) {
     return Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 }
@@ -659,12 +872,20 @@ async function handlePay() {
     // Fetch full order details for receipt (items, cashier name, etc.)
     let receiptItems = [];
     let cashierName = '';
+    let receiptSubtotal = null;
+    let receiptDiscount = null;
     try {
         const detailsResp = await fetch(`/backend/cashier/get_order_details.php?order_id=${activeOrderId}`);
         const detailsData = await detailsResp.json();
         if (detailsData.success) {
             receiptItems = detailsData.items || [];
             cashierName = detailsData.cashier_name || detailsData.order_info?.cashier_name || '';
+            receiptSubtotal = detailsData.order_info?.subtotal_amount != null
+                ? round2(parseFloat(detailsData.order_info.subtotal_amount))
+                : null;
+            receiptDiscount = detailsData.order_info?.discount_amount != null
+                ? round2(parseFloat(detailsData.order_info.discount_amount))
+                : null;
             if (!cashierName) {
                 const token = localStorage.getItem('hof_token');
                 if (token) {
@@ -704,7 +925,11 @@ async function handlePay() {
                     <tbody>${itemsHtml || '<tr><td colspan="4" style="text-align:center;padding:8px;">No items</td></tr>'}</tbody>
                 </table>
                 <hr style="border-top: 1px dashed #000; margin: 4px 0;">
-                <p style="margin:2px 0;display:flex;justify-content:space-between;"><span>TOTAL DUE:</span> <span>₱${serverTotal.toFixed(2)}</span></p>
+                <p style="margin:2px 0;display:flex;justify-content:space-between;"><span>SUBTOTAL:</span> <span>₱${(receiptSubtotal != null ? receiptSubtotal : serverTotal).toFixed(2)}</span></p>
+                ${receiptDiscount != null && receiptDiscount > 0
+                    ? `<p style="margin:2px 0;display:flex;justify-content:space-between;"><span>DISCOUNT:</span> <span>-₱${receiptDiscount.toFixed(2)}</span></p>`
+                    : ''}
+                <p style="margin:2px 0;display:flex;justify-content:space-between;"><span>TOTAL:</span> <span>₱${serverTotal.toFixed(2)}</span></p>
                 <p style="margin:2px 0;display:flex;justify-content:space-between;"><span>CASH RECEIVED:</span> <span>₱${round2(confirmedCash).toFixed(2)}</span></p>
                 <h4 style="margin:4px 0;display:flex;justify-content:space-between;font-weight:bold;"><span>CHANGE:</span> <span>₱${change.toFixed(2)}</span></h4>
                 <hr style="border-top: 1px dashed #000; margin: 4px 0;">
@@ -721,12 +946,12 @@ async function handlePay() {
         if (result.isConfirmed) {
             processPayment(activeOrderId, confirmedCash, serverTotal);
         } else if (result.dismiss === Swal.DismissReason.cancel) {
-            printReceipt(activeOrderId, live.reference, live.customer, cashierName, serverTotal, confirmedCash, change, receiptItems, dateStr, timeStr);
+            printReceipt(activeOrderId, live.reference, live.customer, cashierName, serverTotal, confirmedCash, change, receiptItems, dateStr, timeStr, receiptSubtotal, receiptDiscount);
         }
     });
 }
 
-function printReceipt(orderId, refNumber, customerName, cashierName, total, cash, change, items, dateStr, timeStr) {
+function printReceipt(orderId, refNumber, customerName, cashierName, total, cash, change, items, dateStr, timeStr, subtotal, discount) {
     const itemsRows = items.map(item =>
         `<tr><td style="padding:4px 8px;">${escapeHtml(item.item_name)}</td><td style="padding:4px 8px;text-align:center;">${item.quantity}</td><td style="padding:4px 8px;text-align:right;">₱${parseFloat(item.price).toFixed(2)}</td><td style="padding:4px 8px;text-align:right;">₱${(parseFloat(item.price) * item.quantity).toFixed(2)}</td></tr>`
     ).join('');
@@ -763,7 +988,9 @@ function printReceipt(orderId, refNumber, customerName, cashierName, total, cash
   <div class="line"></div>
   <table><thead><tr><th>Item</th><th class="qty">Qty</th><th class="amount">Price</th><th class="amount">Sub</th></tr></thead><tbody>${itemsRows}</tbody></table>
   <div class="line"></div>
-  <p style="display:flex;justify-content:space-between;"><span>TOTAL DUE:</span><span>₱${total.toFixed(2)}</span></p>
+  <p style="display:flex;justify-content:space-between;"><span>SUBTOTAL:</span><span>₱${(subtotal != null ? subtotal : total).toFixed(2)}</span></p>
+  ${discount != null && discount > 0 ? '<p style="display:flex;justify-content:space-between;"><span>DISCOUNT:</span><span>-₱' + discount.toFixed(2) + '</span></p>' : ''}
+  <p style="display:flex;justify-content:space-between;"><span>TOTAL:</span><span>₱${total.toFixed(2)}</span></p>
   <p style="display:flex;justify-content:space-between;"><span>CASH:</span><span>₱${round2(cash).toFixed(2)}</span></p>
   <p class="total-row" style="display:flex;justify-content:space-between;"><span>CHANGE:</span><span>₱${change.toFixed(2)}</span></p>
   <div class="line"></div>

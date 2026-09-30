@@ -205,8 +205,8 @@ if (!function_exists('hof_waiter_create_order')) {    /**
             $orderStmt = $pdo->prepare("
                 INSERT INTO orders
                     (reference_number, table_id, customer_name, user_id, order_type,
-                     total_amount, status, ordered_at, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'PENDING', NOW(), NOW())
+                     subtotal_amount, total_amount, status, ordered_at, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', NOW(), NOW())
             ");
             $orderStmt->execute([
                 $referenceNumber,
@@ -214,6 +214,7 @@ if (!function_exists('hof_waiter_create_order')) {    /**
                 $customerName,
                 (int)$auth['user_id'],
                 $orderType,
+                $totalAmount,
                 $totalAmount,
             ]);
             $orderId = (int)$pdo->lastInsertId();

@@ -35,8 +35,8 @@ try {
         $newReference = $prefix . str_pad($count, 5, '0', STR_PAD_LEFT);
 
         $insertStmt = $pdo->prepare("
-            INSERT INTO orders (reference_number, order_type, table_id, customer_name, total_amount, status, created_at) 
-            VALUES (:reference_number, :order_type, :table_id, :customer_name, 0.00, 'PENDING', NOW())
+            INSERT INTO orders (reference_number, order_type, table_id, customer_name, subtotal_amount, total_amount, status, created_at) 
+            VALUES (:reference_number, :order_type, :table_id, :customer_name, 0.00, 0.00, 'PENDING', NOW())
         ");
 
         try {
