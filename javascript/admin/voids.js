@@ -45,6 +45,10 @@ const VoidsUI = (function () {
         });
         const token = localStorage.getItem('hof_token');
         if (token) p.append('token', token);
+        // NOTE: 'token' query param is intentionally included here because
+        // this endpoint (admin/voids/get_voids.php) may be called via window.open
+        // print flows where headers cannot be sent. DO NOT_REMOVE without checking
+        // the print flow. The Authorization header is also sent for fetch() calls.
         return p.toString();
     }
 
