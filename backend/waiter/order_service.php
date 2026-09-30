@@ -69,6 +69,9 @@ if (!function_exists('hof_waiter_create_order')) {    /**
         if ($orderType === 'DINE_IN' && $tableId <= 0) {
             return ['success' => false, 'message' => 'Table selection is required for dine-in orders.', 'http' => 400];
         }
+        if ($orderType === 'TAKE_OUT' && $tableId <= 0) {
+            return ['success' => false, 'message' => 'A takeout pickup station must be selected.', 'http' => 400];
+        }
 
         //  2. Server-side price + availability lookup 
         $requestedIds = [];
@@ -187,35 +190,84 @@ if (!function_exists('hof_waiter_create_order')) {    /**
             }
         }
 
+        //  3b. Validate the take-out anchor table. Take-out orders must point
+        //  at a real TAKEOUT anchor (never NULL) so the anchor can be reserved
+        //  and later freed the same way a dine-in table is.
+        if ($orderType === 'TAKE_OUT') {
+            $tStmt = $pdo->prepare("
+                SELECT table_id, table_number, table_type, status
+                FROM restaurant_table
+                WHERE table_id = ? AND table_type = 'TAKEOUT' AND is_deleted = 0
+            ");
+            $tStmt->execute([$tableId]);
+            $table = $tStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$table) {
+                return [
+                    'success' => false,
+                    'message' => 'No takeout table is configured. Ask an administrator to add one.',
+                    'http'    => 404,
+                ];
+            }
+            if ($table['status'] !== 'AVAILABLE') {
+                return [
+                    'success' => false,
+                    'message' => "The takeout pickup station is currently {$table['status']}. Please try again in a moment.",
+                    'http'    => 409,
+                ];
+            }
+        }
+
         //  4. Persist inside a transaction 
         $pdo->beginTransaction();
         try {
             // Reference number HOF<year><00001> - matches the historical format
-            // already stored in the orders table.
+            // already stored in the orders table. MAX+1 is racy, so mirror
+            // create_otc_order.php: retry the sequence on a unique-key clash.
             $prefix = 'HOF' . date('Y');
+            $referenceNumber = null;
             $seqStmt = $pdo->prepare("
                 SELECT COALESCE(MAX(CAST(SUBSTRING(reference_number, ?) AS UNSIGNED)), 0)
                 FROM orders
                 WHERE reference_number LIKE ?
             ");
-            $seqStmt->execute([strlen($prefix) + 1, $prefix . '%']);
-            $nextSeq = ((int)$seqStmt->fetchColumn()) + 1;
-            $referenceNumber = $prefix . str_pad((string)$nextSeq, 5, '0', STR_PAD_LEFT);
-
             $orderStmt = $pdo->prepare("
                 INSERT INTO orders
                     (reference_number, table_id, customer_name, user_id, order_type,
                      total_amount, status, ordered_at, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, 'PENDING', NOW(), NOW())
             ");
-            $orderStmt->execute([
-                $referenceNumber,
-                $orderType === 'DINE_IN' ? $tableId : null,
-                $customerName,
-                (int)$auth['user_id'],
-                $orderType,
-                $totalAmount,
-            ]);
+
+            for ($attempt = 1; $attempt <= 3; $attempt++) {
+                $seqStmt->execute([strlen($prefix) + 1, $prefix . '%']);
+                $nextSeq = ((int)$seqStmt->fetchColumn()) + 1;
+                $candidate = $prefix . str_pad((string)$nextSeq, 5, '0', STR_PAD_LEFT);
+
+                try {
+                    $orderStmt->execute([
+                        $candidate,
+                        $tableId, // dine-in table id OR the takeout anchor id
+                        $customerName,
+                        (int)$auth['user_id'],
+                        $orderType,
+                        $totalAmount,
+                    ]);
+                    $referenceNumber = $candidate;
+                    break;
+                } catch (PDOException $e) {
+                    // SQLSTATE 23000 = integrity constraint violation. Retry
+                    // with a fresh sequence value on the next attempt.
+                    if ($attempt < 3 && (int)$e->getCode() === 23000) {
+                        continue;
+                    }
+                    throw $e;
+                }
+            }
+
+            if ($referenceNumber === null) {
+                throw new RuntimeException('REFERENCE_GEN_RETRIES_EXHAUSTED');
+            }
+
             $orderId = (int)$pdo->lastInsertId();
 
             $itemStmt = $pdo->prepare("
@@ -232,8 +284,10 @@ if (!function_exists('hof_waiter_create_order')) {    /**
                 ]);
             }
 
-            if ($orderType === 'DINE_IN') {
+            if ($orderType === 'DINE_IN' || $orderType === 'TAKE_OUT') {
                 // Guarded UPDATE: only claim the table if it is still AVAILABLE.
+                // For TAKE_OUT the anchor table_type is TAKEOUT; the guard
+                // prevents two take-out orders racing for the same pickup station.
                 $occupy = $pdo->prepare("
                     UPDATE restaurant_table
                     SET status = 'OCCUPIED', updated_at = NOW()
@@ -242,7 +296,7 @@ if (!function_exists('hof_waiter_create_order')) {    /**
                 $occupy->execute([$tableId]);
                 if ($occupy->rowCount() === 0) {
                     // Lost a race with another waiter - abort cleanly.
-                    throw new RuntimeException('TABLE_RACE');
+                    throw new RuntimeException($orderType === 'TAKE_OUT' ? 'TAKEOUT_TABLE_RACE' : 'TABLE_RACE');
                 }
             }
 
@@ -256,6 +310,20 @@ if (!function_exists('hof_waiter_create_order')) {    /**
                     'success' => false,
                     'message' => 'That table was just taken by another staff member. Please pick a different table.',
                     'http'    => 409,
+                ];
+            }
+            if ($e->getMessage() === 'TAKEOUT_TABLE_RACE') {
+                return [
+                    'success' => false,
+                    'message' => 'The takeout pickup station was just taken by another staff member. Please try again.',
+                    'http'    => 409,
+                ];
+            }
+            if ($e->getMessage() === 'REFERENCE_GEN_RETRIES_EXHAUSTED') {
+                return [
+                    'success' => false,
+                    'message' => 'Could not allocate a reference number. Please try again.',
+                    'http'    => 500,
                 ];
             }
             throw $e;

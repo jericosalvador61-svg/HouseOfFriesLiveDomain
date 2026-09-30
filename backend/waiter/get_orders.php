@@ -27,6 +27,8 @@ try {
         'READY'      => ['COMPLETED'],
         'SERVED'     => ['SERVED'],
         'CANCELLED'  => ['CANCELLED'],
+        // All in-flight statuses: waiter dashboard "Active Orders" list.
+        'ACTIVE'     => ['PENDING', 'IN-PROGRESS', 'COOKING', 'COMPLETED', 'SERVED'],
     ];
 
     // Raw statuses that may be requested directly

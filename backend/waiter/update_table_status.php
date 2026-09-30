@@ -40,25 +40,52 @@ try {
     // A table with a live order (pending / in kitchen / served) may not be
     // released to AVAILABLE by any role. Backend-enforced.
     if ($status === 'AVAILABLE') {
-        $blocking = hof_get_blocking_order_for_table($pdo, $tableId);
-        if ($blocking) {
-            http_response_code(409);
-            echo json_encode([
-                'success' => false,
-                'status'  => 'error',
-                'error'   => 'TABLE_HAS_ACTIVE_ORDER',
-                'message' => hof_table_block_message($blocking)
-            ]);
-            exit;
-        }
-    }
+        // Wrap the block-check + update in a transaction with SELECT ... FOR
+        // UPDATE so a concurrent new order cannot be placed between them and
+        // get its table stomped back to AVAILABLE (TOCTOU hardening).
+        $pdo->beginTransaction();
+        try {
+            $lockStmt = $pdo->prepare("
+                SELECT status FROM restaurant_table
+                WHERE table_id = ? AND is_deleted = 0
+                FOR UPDATE
+            ");
+            $lockStmt->execute([$tableId]);
 
-    $stmt = $pdo->prepare("
-        UPDATE restaurant_table 
-        SET status = :status, updated_at = NOW()
-        WHERE table_id = :table_id AND is_deleted = 0
-    ");
-    $stmt->execute(['status' => $status, 'table_id' => $tableId]);
+            $blocking = hof_get_blocking_order_for_table($pdo, $tableId);
+            if ($blocking) {
+                $pdo->rollBack();
+                http_response_code(409);
+                echo json_encode([
+                    'success' => false,
+                    'status'  => 'error',
+                    'error'   => 'TABLE_HAS_ACTIVE_ORDER',
+                    'message' => hof_table_block_message($blocking)
+                ]);
+                exit;
+            }
+
+            $stmt = $pdo->prepare("
+                UPDATE restaurant_table 
+                SET status = :status, updated_at = NOW()
+                WHERE table_id = :table_id AND is_deleted = 0
+            ");
+            $stmt->execute(['status' => $status, 'table_id' => $tableId]);
+            $pdo->commit();
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    } else {
+        $stmt = $pdo->prepare("
+            UPDATE restaurant_table 
+            SET status = :status, updated_at = NOW()
+            WHERE table_id = :table_id AND is_deleted = 0
+        ");
+        $stmt->execute(['status' => $status, 'table_id' => $tableId]);
+    }
 
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_STATUS', "Table #{$tableNumber} -> {$status}", 'restaurant_table', $tableId);
 
