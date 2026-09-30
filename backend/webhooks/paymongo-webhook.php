@@ -47,7 +47,15 @@ function logWebhook($message) {
 $rawBody = file_get_contents('php://input');
 $input = json_decode($rawBody, true);
 
-logWebhook('Webhook received: ' . json_encode($input));
+// REQ-050 (Phase 4): NEVER log the full payload (card/BIN/last4 risk).
+// Log only event type + order reference (if present) + a SHA-256 hash of the body.
+$eventTypeForLog = $input['data']['type'] ?? 'unknown';
+$refForLog = '';
+if (is_array($input['data']['attributes']['data']['attributes']['metadata'] ?? null)) {
+    $refForLog = $input['data']['attributes']['data']['attributes']['metadata']['reference_number'] ?? '';
+}
+$bodyHash = hash('sha256', $rawBody);
+logWebhook("Webhook received: event={$eventTypeForLog} order_ref=" . ($refForLog ?: 'n/a') . " sha256={$bodyHash}");
 
 if (!$input || !isset($input['data'])) {
     http_response_code(400);
@@ -95,18 +103,22 @@ if (abs(time() - (int)$timestamp) > 300) {
     exit;
 }
 
-if (PAYMONGO_WEBHOOK_SECRET !== '') {
-    $expectedSignature = hash_hmac('sha256', $timestamp . '.' . $rawBody, PAYMONGO_WEBHOOK_SECRET);
-    if (!hash_equals($expectedSignature, $signature)) {
-        http_response_code(401);
-        logWebhook('Rejected: invalid signature');
-        echo json_encode(['success' => false, 'message' => 'Invalid signature']);
-        exit;
-    }
-} else {
-    // Sandbox/demo only — PayMongo webhooks cannot reach localhost anyway.
-    // Set PAYMONGO_WEBHOOK_SECRET before go-live.
-    logWebhook('WARNING: PAYMONGO_WEBHOOK_SECRET empty — signature verification skipped (sandbox only)');
+if (PAYMONGO_WEBHOOK_SECRET === '') {
+    // REQ-050 C4: never skip signature verification. A missing secret is a
+    // misconfiguration — reject the webhook so a payment can never be flipped
+    // by a forged payload.
+    http_response_code(403);
+    logWebhook('Rejected: PAYMONGO_WEBHOOK_SECRET is not configured');
+    echo json_encode(['success' => false, 'message' => 'Webhook not configured']);
+    exit;
+}
+
+$expectedSignature = hash_hmac('sha256', $timestamp . '.' . $rawBody, PAYMONGO_WEBHOOK_SECRET);
+if (!hash_equals($expectedSignature, $signature)) {
+    http_response_code(401);
+    logWebhook('Rejected: invalid signature');
+    echo json_encode(['success' => false, 'message' => 'Invalid signature']);
+    exit;
 }
 
 try {
@@ -225,6 +237,7 @@ try {
         $paymentData = $resource['attributes'] ?? [];
         $metadata    = $paymentData['metadata'] ?? [];
         $orderId     = $metadata['order_id'] ?? null;
+        $refNumber   = $metadata['reference_number'] ?? null;
 
         if ($orderId) {
             $stmt = $pdo->prepare("
@@ -235,7 +248,12 @@ try {
             ");
             $stmt->execute([$orderId]);
 
-            logWebhook("Payment failed for Order #$orderId");
+            // REQ-050: log failed payment
+            logActivity($pdo, null, 'SYSTEM', 'SYSTEM',
+                'PAYMENT_FAILED', "{$eventType}: payment failed for #" . ($refNumber ?? $orderId),
+                'order', (int)$orderId, $refNumber, 'FAILED');
+
+            logWebhook("Payment failed for Order #$orderId ($refNumber)");
         }
 
         echo json_encode([

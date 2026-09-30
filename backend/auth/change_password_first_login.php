@@ -4,6 +4,7 @@
 
 require_once __DIR__ . "/../db.php";
 require_once __DIR__ . "/../secret.php"; // JWT_SECRET used to verify temp tokens & sign new ones
+require_once __DIR__ . "/../log_activity_helper.php"; // REQ-050
 
 header("Content-Type: application/json");
 
@@ -117,6 +118,11 @@ try {
     $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
     $stmt = $pdo->prepare("UPDATE users SET password = ?, must_change_password = 0, temp_code = NULL WHERE user_id = ?");
     $stmt->execute([$hashedPassword, $userId]);
+
+    // REQ-050: log password change (actor derived from validated temp token, server-side)
+    logActivity($pdo, (int)$userId, $userData['username'] ?? 'unknown', $userData['role'] ?? 'User',
+        'USER_PASSWORD_CHANGE', "User " . ($userData['username'] ?? '') . " changed password (first login)",
+        'users', (int)$userId, $userData['username'] ?? null, 'COMPLETED');
 
     // Generate new JWT token with updated payload
     $newPayload = [

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../auth_middleware.php';
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../db.php';
+require_once __DIR__ . '/../../log_activity_helper.php'; // REQ-050
 
 $auth = authenticate(['Inventory Staff', 'Admin', 'Supervisor']);
 $user_id = (int)$auth['user_id'];
@@ -50,6 +51,12 @@ try {
     }
 
     $pdo->commit();
+
+    // REQ-050: log return request (PENDING)
+    logActivity($pdo, $user_id, $auth['username'] ?? 'inventory', $auth['role'] ?? 'Inventory Staff', 'RETURN',
+        "Return request {$ref_number} submitted (pending approval)",
+        'return', (int)$return_id, $ref_number, 'PENDING', null, "return_type " . ($return_type ?: 'OTHER'));
+
     echo json_encode([
         'success' => true,
         'message' => 'Return request submitted for approval',

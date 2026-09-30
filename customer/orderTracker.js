@@ -3,8 +3,8 @@ let hasPlayedReadySound = false;
 let trackedOrders = [];
 let pusherChannel = null;
 let pollingFallbackInterval = null;
-let trackSig = null;
-let itemsSig = null;
+const trackSigs = {};
+const itemsSigs = {};
 
 function escapeHtml(text) {
   if (!text) return '';
@@ -166,8 +166,8 @@ function initTracker() {
             obtainTrackSig(singleOrderId),
             obtainItemsSig(singleOrderId)
         ]).then(([track, items]) => {
-            trackSig = track;
-            itemsSig = items;
+            trackSigs[singleOrderId] = track;
+            itemsSigs[singleOrderId] = items;
             trackedOrders.forEach(id => fetchAndRenderOrder(id));
         }).catch(() => {
             trackedOrders.forEach(id => fetchAndRenderOrder(id));
@@ -212,10 +212,12 @@ function initTracker() {
 async function fetchAndRenderOrder(orderId) {
     try {
         let statusUrl = 'get_order_status.php?order_id=' + orderId;
+        const trackSig = trackSigs[orderId];
         if (trackSig) {
             statusUrl += '&sig=' + encodeURIComponent(trackSig);
         }
         let itemsUrl = 'get_order_items.php?order_id=' + orderId;
+        const itemsSig = itemsSigs[orderId];
         if (itemsSig) {
             let ref = orderId;
             if (window.HOFDevice) {
@@ -242,7 +244,8 @@ async function fetchAndRenderOrder(orderId) {
                     remaining: data.prep_remaining,
                     total: data.prep_estimate_total,
                     startedEpoch: data.cooking_started_epoch,
-                    started: !!data.prep_started
+                    started: !!data.prep_started,
+                    orderedAt: data.ordered_at || null
                 };
             }
         }
@@ -251,6 +254,11 @@ async function fetchAndRenderOrder(orderId) {
             itemsData = await itemsResp.json();
             if (itemsData && itemsData.total_prep_minutes) {
                 prepMinutes = itemsData.total_prep_minutes;
+            }
+            // L2: prefer the server's authoritative ordered_at for the 15-min
+            // auto-cancel countdown anchor over any localStorage value.
+            if (itemsData && itemsData.ordered_at) {
+                window._orderedAtAnchor = itemsData.ordered_at;
             }
         }
 
@@ -392,8 +400,11 @@ function renderOrderCard(orderId, status, itemsData, prepMinutes, prep) {
         // Start countdown for PENDING unpaid orders
         if (status === 'PENDING' && !paid) {
             var created = new Date();
-            // Use ordered_at if available from items data
-            if (itemsData && itemsData.ordered_at) {
+            // Use ordered_at if available (L2): anchor to the server's
+            // authoritative order timestamp, not local device time.
+            if (prep && prep.orderedAt) {
+                created = new Date(prep.orderedAt);
+            } else if (itemsData && itemsData.ordered_at) {
                 created = new Date(itemsData.ordered_at);
             }
             var expires = new Date(created.getTime() + 15 * 60 * 1000);
@@ -680,15 +691,35 @@ async function obtainReceiptSig(orderId) {
         const order = HOFDevice.orders().find(o => o.order_id == orderId);
         if (order && order.ref) ref = order.ref;
     }
-    const data = await resp.json();
-    return data.success && data.sig ? data.sig : null;
+    try {
+        const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
+        const resp = await fetch('/backend/payments/get-payment-link.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'receipt', device_id: deviceId })
+        });
+        const data = await resp.json();
+        return data.success && data.sig ? data.sig : null;
+    } catch (e) {
+        return null;
+    }
 }
 
 // ── Customer Receipt Functions (E1) ──
 window.viewReceipt = async function(orderId) {
     try {
+        const sig = await obtainReceiptSig(orderId);
         const deviceId = window.HOFDevice ? HOFDevice.id() : '';
-        const resp = await fetch('/backend/customer/get_receipt.php?order_id=' + orderId + '&device_id=' + encodeURIComponent(deviceId));
+        let url = '/backend/customer/get_receipt.php?order_id=' + encodeURIComponent(orderId) + '&device_id=' + encodeURIComponent(deviceId);
+        if (sig) {
+            let ref = orderId;
+            if (window.HOFDevice) {
+                const order = HOFDevice.orders().find(o => o.order_id == orderId);
+                if (order && order.ref) ref = order.ref;
+            }
+            url += '&ref=' + encodeURIComponent(String(ref)) + '&sig=' + encodeURIComponent(sig);
+        }
+        const resp = await fetch(url);
         const data = await resp.json();
         if (!data.success) throw new Error(data.message);
         showReceiptModal(data);

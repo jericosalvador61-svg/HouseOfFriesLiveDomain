@@ -4,6 +4,7 @@ header("Content-Type: application/json; charset=utf-8");
 require_once __DIR__ . '/../../auth_middleware.php';
 require_once __DIR__ . '/../../db.php';
 require_once __DIR__ . '/../../notifications/notification_helper.php';
+require_once __DIR__ . '/../../log_activity_helper.php'; // REQ-050
 
 try {
     // ─── AUTHENTICATION ───
@@ -81,6 +82,11 @@ try {
     }
 
     $pdo->commit();
+
+    // REQ-050: log staff PENDING stock-in request
+    logActivity($pdo, $user_id, $auth['username'] ?? 'inventory', $auth['role'] ?? 'Inventory Staff', 'STOCK_IN',
+        "Stock in #{$stock_in_id} submitted (pending approval)",
+        'stock_in', (int)$stock_in_id, null, 'PENDING', null, "total_cost ₱" . number_format($total_cost, 2));
 
     // Notify Supervisor: stock in request awaiting approval
     hof_notify_roles($pdo, 'pending_approval', 'Stock In Approval Needed',

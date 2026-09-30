@@ -1,6 +1,7 @@
 <?php
 require_once "db.php";
 require_once "secret.php";
+require_once __DIR__ . "/log_activity_helper.php"; // REQ-050
 
 header("Content-Type: application/json");
 
@@ -213,7 +214,19 @@ try {
     if (!$user || !password_verify($password, $user['password'])) {
         // Record failed attempt
         $failResult = recordFailedAttempt($pdo, $username);
-        
+
+        // REQ-050: log failed login / lockout
+        $failedUserId = ($user && isset($user['user_id'])) ? (int)$user['user_id'] : null;
+        if (!empty($failResult['locked'])) {
+            logActivity($pdo, $failedUserId, $username, $user ? ($user['role_name'] ?? '') : '',
+                'LOCKOUT', "Account {$username} locked out after repeated failed logins",
+                'users', $failedUserId, $username, 'LOCKED');
+        } else {
+            logActivity($pdo, $failedUserId, $username, $user ? ($user['role_name'] ?? '') : '',
+                'LOGIN_FAILED', "Failed login attempt for username {$username}",
+                'users', $failedUserId, $username, 'FAILED');
+        }
+
         // Generate new captcha for next attempt
         $num1 = rand(0, 9);
         $num2 = rand(0, 9);
@@ -267,7 +280,6 @@ try {
         clearAttempts($pdo, $username);
 
         // Log successful login to activity_logs
-        require_once __DIR__ . '/log_activity_helper.php';
         logActivity($pdo, $user['user_id'], $user['username'], $user['role_name'], 'LOGIN_SUCCESS',
             "User {$user['username']} ({$user['role_name']}) logged in successfully",
             'users', $user['user_id'], $user['username'], 'COMPLETED');

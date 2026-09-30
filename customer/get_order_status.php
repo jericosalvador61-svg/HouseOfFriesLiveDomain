@@ -26,6 +26,7 @@ try {
     // values, so a 30s poll still gives a smooth per-second display.
     $stmt = $pdo->prepare("
         SELECT status,
+               ordered_at,
                UNIX_TIMESTAMP(updated_at) AS updated_epoch,
                UNIX_TIMESTAMP(cooking_started_at) AS cooking_started_epoch,
                COALESCE(total_estimated_prep_time, 0) AS prep_remaining,
@@ -52,6 +53,7 @@ try {
 
     echo json_encode([
         'status' => $result['status'] ?? 'PENDING',
+        'ordered_at' => $result['ordered_at'] ?? null,
         'updated_epoch' => $result['updated_epoch'] ? (int)$result['updated_epoch'] : null,
         'prep_remaining' => $prepRemaining,
         'prep_estimate_total' => $prepTotal,

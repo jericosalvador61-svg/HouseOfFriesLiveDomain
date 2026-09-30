@@ -1,7 +1,8 @@
 /**
- * Activity Logs - Admin Module
- * Handles loading, filtering, pagination, and export of system activity logs
- * Works with the new activity_logs table (with UNION fallback for historical data)
+ * Activity Logs - Supervisor Module
+ * Handles loading, filtering, pagination, export, and print of system activity logs
+ * Works with the activity_logs table (single source of truth — REQ-050)
+ * REQ-049: supervisor access locked to the last 31 days
  */
 document.addEventListener('DOMContentLoaded', function() {
     // State
@@ -11,10 +12,14 @@ document.addEventListener('DOMContentLoaded', function() {
         date_to: '',
         action_type: '',
         role: '',
+        module: '',
+        status: '',
         user_search: ''
     };
     let actionTypes = [];
     let roles = [];
+    let modules = [];
+    let statuses = [];
 
     // DOM Elements
     const tableBody = document.getElementById('activityTableBody');
@@ -23,9 +28,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateTo = document.getElementById('dateTo');
     const actionTypeSelect = document.getElementById('actionType');
     const roleFilterSelect = document.getElementById('roleFilter');
+    const moduleFilterSelect = document.getElementById('moduleFilter');
+    const statusFilterSelect = document.getElementById('statusFilter');
     const userSearch = document.getElementById('userSearch');
     const resetFiltersBtn = document.getElementById('resetFilters');
     const exportBtn = document.getElementById('exportBtn');
+    const printBtn = document.getElementById('printBtn');
     const pagination = document.getElementById('pagination');
     const paginationInfo = document.getElementById('paginationInfo');
     const totalRecords = document.getElementById('totalRecords');
@@ -63,38 +71,68 @@ document.addEventListener('DOMContentLoaded', function() {
     dateFrom.value = firstDayOfMonth.toISOString().split('T')[0];
     dateTo.value = today.toISOString().split('T')[0];
 
-    // Category badge mapping
-    const categoryBadges = {
-        'ORDER': '<span class="badge badge-category badge-order">Order</span>',
-        'INVENTORY': '<span class="badge badge-category badge-inventory">Inventory</span>',
-        'SALES': '<span class="badge badge-category badge-sales">Sales</span>',
-        'USER_MGMT': '<span class="badge badge-category badge-user_mgmt">User Mgmt</span>',
-        'AUTH': '<span class="badge badge-category badge-auth">Auth</span>',
-        'MENU': '<span class="badge badge-category badge-menu">Menu</span>',
-        'SETTINGS': '<span class="badge badge-category badge-settings">Settings</span>',
-        'SYSTEM': '<span class="badge badge-category badge-system">System</span>'
+    // REQ-050: escapeHtml — XSS-safe escaping for EVERY rendered data field
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return '';
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Category badge mapping (safe map — never interpolate raw category into the badge)
+    const categoryBadgeClasses = {
+        'ORDER': 'badge-order',
+        'INVENTORY': 'badge-inventory',
+        'SALES': 'badge-sales',
+        'USER_MGMT': 'badge-user_mgmt',
+        'AUTH': 'badge-auth',
+        'TABLE': 'badge-table',
+        'KITCHEN': 'badge-kitchen',
+        'MENU': 'badge-menu',
+        'SETTINGS': 'badge-settings',
+        'SYSTEM': 'badge-system'
+    };
+    const categoryBadgeLabels = {
+        'ORDER': 'Order',
+        'INVENTORY': 'Inventory',
+        'SALES': 'Sales',
+        'USER_MGMT': 'User Mgmt',
+        'AUTH': 'Auth',
+        'TABLE': 'Table',
+        'KITCHEN': 'Kitchen',
+        'MENU': 'Menu',
+        'SETTINGS': 'Settings',
+        'SYSTEM': 'System'
     };
 
-    // Status badge mapping
-    const statusBadges = {
-        'PENDING': '<span class="badge bg-warning text-dark status-badge">Pending</span>',
-        'APPROVED': '<span class="badge bg-success status-badge">Approved</span>',
-        'REJECTED': '<span class="badge bg-danger status-badge">Rejected</span>',
-        'COMPLETED': '<span class="badge bg-success status-badge">Completed</span>',
-        'FAILED': '<span class="badge bg-danger status-badge">Failed</span>',
-        'CANCELLED': '<span class="badge bg-secondary status-badge">Cancelled</span>',
-        'SERVED': '<span class="badge bg-info text-dark status-badge">Served</span>',
-        'IN-PROGRESS': '<span class="badge bg-primary status-badge">In Progress</span>',
-        'COOKING': '<span class="badge bg-primary status-badge">Cooking</span>',
-        'Active': '<span class="badge bg-success status-badge">Active</span>',
-        'Inactive': '<span class="badge bg-secondary status-badge">Inactive</span>',
-        'DAMAGED': '<span class="badge bg-danger status-badge">Damaged</span>',
-        'EXCESS': '<span class="badge bg-warning text-dark status-badge">Excess</span>',
-        'OTHER': '<span class="badge bg-secondary status-badge">Other</span>',
-        'SPOILAGE': '<span class="badge bg-danger status-badge">Spoilage</span>',
-        'WASTE': '<span class="badge bg-warning text-dark status-badge">Waste</span>',
-        'ADD': '<span class="badge bg-success status-badge">Add</span>',
-        'REMOVE': '<span class="badge bg-danger status-badge">Remove</span>'
+    // Status badge mapping (safe map — badge built from known classes, label escaped)
+    const statusBadgeClasses = {
+        'PENDING': 'bg-warning text-dark',
+        'APPROVED': 'bg-success',
+        'REJECTED': 'bg-danger',
+        'COMPLETED': 'bg-success',
+        'FAILED': 'bg-danger',
+        'CANCELLED': 'bg-secondary',
+        'SERVED': 'bg-info text-dark',
+        'IN-PROGRESS': 'bg-primary',
+        'COOKING': 'bg-primary',
+        'Active': 'bg-success',
+        'Inactive': 'bg-secondary',
+        'DAMAGED': 'bg-danger',
+        'EXCESS': 'bg-warning text-dark',
+        'OTHER': 'bg-secondary',
+        'SPOILAGE': 'bg-danger',
+        'WASTE': 'bg-warning text-dark',
+        'ADD': 'bg-success',
+        'REMOVE': 'bg-danger',
+        'LOCKED': 'bg-danger',
+        'READ': 'bg-success',
+        'Pending': 'bg-warning text-dark',
+        'Approved': 'bg-success',
+        'Rejected': 'bg-danger'
     };
 
     // Show/hide loading
@@ -117,14 +155,25 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Get status badge
+    // Get status badge (label escaped; safe fallback for unknown statuses)
     function getStatusBadge(status) {
-        return statusBadges[status] || `<span class="badge bg-secondary status-badge">${status || '-'}</span>`;
+        if (!status) return '-';
+        const cls = statusBadgeClasses[status] || 'bg-secondary';
+        return `<span class="badge ${cls} status-badge">${escapeHtml(status)}</span>`;
     }
 
-    // Get category badge
+    // Get category badge (from safe maps; raw category never interpolated unescaped)
     function getCategoryBadge(category) {
-        return categoryBadges[category] || `<span class="badge badge-category bg-secondary">${category || '-'}</span>`;
+        const key = category || '';
+        const cls = categoryBadgeClasses[key] || 'bg-secondary';
+        const label = categoryBadgeLabels[key] || escapeHtml(category || '-');
+        return `<span class="badge badge-category ${cls}">${label}</span>`;
+    }
+
+    // Style the before→after arrow in descriptions (optional, cheap)
+    function renderDescription(description) {
+        const safe = escapeHtml(description || '-');
+        return safe.replace(/ → /g, ' <span class="diff-arrow">→</span> ');
     }
 
     // Load activity logs
@@ -139,6 +188,8 @@ document.addEventListener('DOMContentLoaded', function() {
             date_to: currentFilters.date_to,
             action_type: currentFilters.action_type,
             role: currentFilters.role,
+            module: currentFilters.module,
+            status: currentFilters.status,
             user_search: currentFilters.user_search
         });
 
@@ -165,6 +216,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (data.filters.roles && data.filters.roles.length > 0) {
                         roles = data.filters.roles;
                         populateSelect(roleFilterSelect, roles);
+                    }
+                    if (data.filters.modules && data.filters.modules.length > 0) {
+                        modules = data.filters.modules;
+                        populateSelect(moduleFilterSelect, modules);
+                    }
+                    if (data.filters.statuses && data.filters.statuses.length > 0) {
+                        statuses = data.filters.statuses;
+                        populateSelect(statusFilterSelect, statuses);
                     }
                 }
             } else {
@@ -193,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
         select.value = currentValue;
     }
 
-    // Render table rows
+    // Render table rows — EVERY interpolated field goes through escapeHtml (REQ-050 XSS fix)
     function renderTable(activities) {
         if (!activities || activities.length === 0) {
             tableBody.innerHTML = `
@@ -208,23 +267,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         tableBody.innerHTML = activities.map(activity => {
-            // Support both the new activity_logs table format and the old UNION format
             const actor = activity.username || activity.actor_name || activity.actor_username || '-';
             const role = activity.user_role || activity.actor_role || '-';
             const refNum = activity.reference_number || '-';
             const category = activity.action_category || '-';
             const status = activity.status || null;
+            const action = activity.action_type || '-';
+            const desc = activity.description || '-';
             
             return `
             <tr>
-                <td class="text-nowrap">${formatDateTime(activity.activity_date)}</td>
+                <td class="text-nowrap">${escapeHtml(formatDateTime(activity.activity_date))}</td>
                 <td>${getCategoryBadge(category)}</td>
-                <td class="text-nowrap"><small>${activity.action_type || '-'}</small></td>
-                <td class="text-nowrap"><code class="small">${refNum}</code></td>
-                <td><small>${activity.description || '-'}</small></td>
-                <td class="text-nowrap"><small>${actor}</small></td>
-                <td class="text-nowrap"><small class="text-muted">${role}</small></td>
-                <td>${status ? getStatusBadge(status) : '-'}</td>
+                <td class="text-nowrap"><small>${escapeHtml(action)}</small></td>
+                <td class="text-nowrap"><code class="small">${escapeHtml(refNum)}</code></td>
+                <td><small>${renderDescription(desc)}</small></td>
+                <td class="text-nowrap"><small>${escapeHtml(actor)}</small></td>
+                <td class="text-nowrap"><small class="text-muted">${escapeHtml(role)}</small></td>
+                <td>${getStatusBadge(status)}</td>
             </tr>
         `}).join('');
     }
@@ -309,15 +369,17 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    // Export to CSV
+    // Export to CSV — REQ-050: pass export=1 so the server returns the FULL filtered set (no 100-row clamp)
     function exportCSV() {
         const params = new URLSearchParams({
             page: 1,
-            limit: 10000, // Large limit to get all
+            export: 1,
             date_from: currentFilters.date_from,
             date_to: currentFilters.date_to,
             action_type: currentFilters.action_type,
             role: currentFilters.role,
+            module: currentFilters.module,
+            status: currentFilters.status,
             user_search: currentFilters.user_search
         });
 
@@ -361,6 +423,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Print / PDF — REQ-050: print-friendly view via window.print()
+    function printLogs() {
+        window.print();
+    }
+
     // Show toast notification
     function showToast(message, type = 'info') {
         // loading.js exposes toasts as `Toast` (success/error/warning/info).
@@ -385,6 +452,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 date_to: dateTo.value,
                 action_type: actionTypeSelect.value,
                 role: roleFilterSelect.value,
+                module: moduleFilterSelect.value,
+                status: statusFilterSelect.value,
                 user_search: userSearch.value.trim()
             };
             Swal.fire({ icon: 'error', title: 'Invalid Date Range', text: 'Supervisor access is limited to the last 31 days.' });
@@ -395,6 +464,8 @@ document.addEventListener('DOMContentLoaded', function() {
             date_to: dateTo.value,
             action_type: actionTypeSelect.value,
             role: roleFilterSelect.value,
+            module: moduleFilterSelect.value,
+            status: statusFilterSelect.value,
             user_search: userSearch.value.trim()
         };
         loadActivityLogs(1);
@@ -405,18 +476,23 @@ document.addEventListener('DOMContentLoaded', function() {
         dateTo.value = today.toISOString().split('T')[0];
         actionTypeSelect.value = '';
         roleFilterSelect.value = '';
+        moduleFilterSelect.value = '';
+        statusFilterSelect.value = '';
         userSearch.value = '';
         currentFilters = {
             date_from: dateFrom.value,
             date_to: dateTo.value,
             action_type: '',
             role: '',
+            module: '',
+            status: '',
             user_search: ''
         };
         loadActivityLogs(1);
     });
 
     exportBtn.addEventListener('click', exportCSV);
+    if (printBtn) printBtn.addEventListener('click', printLogs);
 
     // Initial load
     loadActivityLogs(1);

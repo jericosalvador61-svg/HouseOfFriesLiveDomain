@@ -2,6 +2,21 @@
 
 body { font-family: 'Poppins', sans-serif; background: #fcfcfc; }
                 .status-badge { font-size: .7rem; font-weight: 500; }
+
+        /* REQ-050: category badge colors (action_category = module dimension) */
+        .badge-category { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+        .badge-order { background: #ffc107; color: #1a1512; }
+        .badge-inventory { background: #20c997; color: #fff; }
+        .badge-sales { background: #0dcaf0; color: #1a1512; }
+        .badge-user_mgmt { background: #6f42c1; color: #fff; }
+        .badge-auth { background: #e74c3c; color: #fff; }
+        .badge-table { background: #fd7e14; color: #fff; }
+        .badge-kitchen { background: #d63384; color: #fff; }
+        .badge-menu { background: #198754; color: #fff; }
+        .badge-settings { background: #6c757d; color: #fff; }
+        .badge-system { background: #343a40; color: #fff; }
+        .diff-arrow { color: #b8860b; font-weight: bold; }
+
         #loadingOverlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,.6); z-index: 2000; align-items: center; justify-content: center; }
         #loadingOverlay.active { display: flex; }
         .pagination .page-link { color: #1a1512; }

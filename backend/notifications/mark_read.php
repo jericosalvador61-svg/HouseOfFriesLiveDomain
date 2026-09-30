@@ -10,6 +10,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth_middleware.php';
+require_once __DIR__ . '/../log_activity_helper.php'; // REQ-050
 $user = authenticate();
 
 $data = json_decode(file_get_contents('php://input'), true);
@@ -40,6 +41,11 @@ try {
         echo json_encode(['success' => false, 'message' => 'Nothing to mark']);
         exit;
     }
+
+    // REQ-050: log notification read (low-priority, still a user action)
+    logActivity($pdo, (int)$user['user_id'], $user['username'] ?? 'user', $user['role'] ?? 'User',
+        'NOTIFICATION_READ', $all ? 'Marked all notifications as read' : ("Marked notification #{$id} as read"),
+        'notification', $all ? null : (int)$id, null, 'READ');
 
     echo json_encode(['success' => true]);
 } catch (Exception $e) {

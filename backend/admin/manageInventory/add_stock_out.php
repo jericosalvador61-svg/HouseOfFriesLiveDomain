@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../db.php';
 require_once __DIR__ . '/../../auth_middleware.php';
 require_once __DIR__ . '/../../inventory_helpers.php';
 require_once __DIR__ . '/../../notifications/notification_helper.php';
+require_once __DIR__ . '/../../log_activity_helper.php'; // REQ-050
 
 header('Content-Type: application/json');
 
@@ -81,6 +82,11 @@ try {
     $pdo->commit();
 
     hof_check_low_stock($pdo, array_map(function ($i) { return intval($i['id'] ?? 0); }, $items));
+
+    // REQ-050: log admin auto-approved stock out
+    logActivity($pdo, (int)$auth['user_id'], $auth['username'] ?? 'admin', $auth['role'] ?? 'Admin', 'STOCK_OUT',
+        "Stock out {$ref} recorded (auto-approved)",
+        'stock_out', (int)$stock_out_id, $ref, 'APPROVED', null, "remarks " . ($remarks ?: 'none'));
 
     echo json_encode(['status' => 'success', 'message' => 'Stock Out recorded successfully']);
 } catch (Exception $e) {

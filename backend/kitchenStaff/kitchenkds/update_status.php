@@ -6,6 +6,7 @@ require_once __DIR__ . '/Kitchen.php';
 require_once __DIR__ . '/../../pusher_helper.php';
 require_once __DIR__ . '/../../db.php';
 require_once __DIR__ . '/../../notifications/notification_helper.php';
+require_once __DIR__ . '/../../log_activity_helper.php';
 
 /**
  * Update order status
@@ -50,19 +51,29 @@ if (!in_array($newStatus, $validStatuses, true)) {
 }
 
 $kitchen = new Kitchen();
+
+// REQ-050: capture the CURRENT order status before the update for before→after diff
+$oldStatus = null;
+$orderRow = null;
+$refStmt = $pdo->prepare("SELECT status, reference_number, table_id FROM orders WHERE order_id = ?");
+$refStmt->execute([$orderId]);
+$orderRow = $refStmt->fetch(PDO::FETCH_ASSOC);
+$oldStatus = $orderRow ? $orderRow['status'] : null;
+$orderRef = ($orderRow && $orderRow['reference_number']) ? $orderRow['reference_number'] : ('#' . $orderId);
+
 $result = $kitchen->updateStatus($orderId, $newStatus);
 
 // Broadcast to Pusher for real-time updates
 if ($result['success']) {
     broadcastOrderUpdate($orderId, $newStatus, $newStatus);
 
+    // REQ-050: log the status transition (before → after)
+    logActivity($pdo, $user['user_id'] ?? null, $user['username'] ?? 'kitchen', $user['role'] ?? 'Kitchen Staff',
+        'ORDER_STATUS', "Order {$orderRef} status updated by kitchen",
+        'order', (int)$orderId, $orderRef, $newStatus, $oldStatus, $newStatus);
+
     // Role-based DB notifications for status transitions
     try {
-        $refStmt = $pdo->prepare("SELECT reference_number, table_id FROM orders WHERE order_id = ?");
-        $refStmt->execute([$orderId]);
-        $orderRow = $refStmt->fetch(PDO::FETCH_ASSOC);
-        $orderRef = ($orderRow && $orderRow['reference_number']) ? $orderRow['reference_number'] : ('#' . $orderId);
-
         if ($newStatus === 'COMPLETED') {
             // Food is done - Waiter must serve it to the table
             hof_notify_roles($pdo, 'order_ready', 'Order Ready to Serve',

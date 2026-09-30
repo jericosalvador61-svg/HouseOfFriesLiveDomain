@@ -13,6 +13,7 @@ require_once __DIR__ . '/../config/paymongo_config.php';
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../rate_limit.php';
 require_once __DIR__ . '/../log_activity_helper.php';
+require_once __DIR__ . '/../url_signer.php';
 
 // Rate limit: 5 GCash payment creations per 60 seconds per IP
 // (PayMongo intents cost money — strict limit)
@@ -33,6 +34,47 @@ if (!$input || empty($input['order_id']) || empty($input['amount']) || empty($in
 $order_id = (int)$input['order_id'];
 $amount = (float)$input['amount'];
 $reference_number = $input['reference_number'];
+$sig = isset($input['sig']) ? trim($input['sig']) : '';
+$device_id = isset($input['device_id']) ? trim($input['device_id']) : '';
+
+// ── OWNERSHIP GATE (REQ-050 H2) ──
+// A signed payload (purpose='pay', issued for THIS order + device by
+// get-payment-link.php) is required. Knowing the order id + ref alone is
+// never enough — otherwise any stranger could mint PayMongo intents on
+// someone else's order.
+if (empty($sig)) {
+    http_response_code(403);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Missing signature — please start from the payment page'
+    ]);
+    exit;
+}
+try {
+    // purpose='pay' links are signed WITHOUT device_id by get-payment-link.php;
+    // verify exactly the same param set the issuer used.
+    $verifyParams = ['order_id' => $order_id, 'ref' => (string)$reference_number, 'purpose' => 'pay'];
+    hof_require_signed_params($verifyParams, $sig, false, true);
+} catch (Throwable $e) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Invalid or expired link']);
+    exit;
+}
+
+// ── REFERENCE VALIDATION (REQ-050 H2) ──
+// The reference_number must belong to the order — a mismatched ref means the
+// payload was crafted for a different order than the one being charged.
+$refStmt = $pdo->prepare("SELECT reference_number FROM orders WHERE order_id = ?");
+$refStmt->execute([$order_id]);
+$dbRef = $refStmt->fetchColumn();
+if ($dbRef === false || $dbRef !== (string)$reference_number) {
+    http_response_code(403);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Reference mismatch'
+    ]);
+    exit;
+}
 
 try {
     $pdo->beginTransaction();

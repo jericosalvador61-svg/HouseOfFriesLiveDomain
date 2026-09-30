@@ -4,6 +4,7 @@ ob_start();
 
 require_once __DIR__ . '/../../db.php';
 require_once __DIR__ . '/../../auth_middleware.php';
+require_once __DIR__ . '/../../log_activity_helper.php'; // REQ-050
 $auth = authenticate(['Admin']);
 
 // Set script timeout thresholds high enough to accommodate expanding enterprise datasets safely
@@ -54,6 +55,11 @@ try {
     }
 
     $sqlDumpOutput .= "SET FOREIGN_KEY_CHECKS=1;\n";
+
+    // REQ-050: log backup action (before streaming; not inside the dump loop)
+    logActivity($pdo, (int)$auth['user_id'], $auth['username'] ?? 'admin', $auth['role'] ?? 'Admin',
+        'SETTINGS_BACKUP', "Database " . ($action === 'hourly_auto_save' ? 'auto-saved (hourly)' : 'exported (manual download)') . " by " . ($auth['username'] ?? 'admin'),
+        null, null, null, 'COMPLETED');
 
     // Clear output buffering data before streaming payload handles
     ob_clean();

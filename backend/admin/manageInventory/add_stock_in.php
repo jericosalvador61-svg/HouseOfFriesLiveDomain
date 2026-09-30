@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../auth_middleware.php';
 require_once __DIR__ . '/../../db.php';        // Provides the $pdo instance
+require_once __DIR__ . '/../../log_activity_helper.php'; // REQ-050
 
 header("Content-Type: application/json");
 
@@ -106,6 +107,11 @@ try {
     }
 
     $pdo->commit();
+
+    // REQ-050: log admin auto-approved stock in ($auth already authenticated at the top)
+    logActivity($pdo, $auth['user_id'] ?? $user_id, $auth['username'] ?? 'admin', $auth['role'] ?? 'Admin', 'STOCK_IN',
+        "Stock in #{$stock_in_id} recorded (auto-approved)",
+        'stock_in', (int)$stock_in_id, null, 'APPROVED', null, "total_cost ₱" . number_format($total_cost, 2));
 
     echo json_encode([
         "success" => true,

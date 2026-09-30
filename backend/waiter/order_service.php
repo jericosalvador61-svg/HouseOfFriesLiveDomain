@@ -234,10 +234,9 @@ if (!function_exists('hof_waiter_create_order')) {    /**
             $orderStmt = $pdo->prepare("
                 INSERT INTO orders
                     (reference_number, table_id, customer_name, user_id, order_type,
-                     total_amount, status, ordered_at, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'PENDING', NOW(), NOW())
+                     subtotal_amount, total_amount, status, ordered_at, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', NOW(), NOW())
             ");
-
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 $seqStmt->execute([strlen($prefix) + 1, $prefix . '%']);
                 $nextSeq = ((int)$seqStmt->fetchColumn()) + 1;
@@ -250,6 +249,7 @@ if (!function_exists('hof_waiter_create_order')) {    /**
                         $customerName,
                         (int)$auth['user_id'],
                         $orderType,
+                        $totalAmount,
                         $totalAmount,
                     ]);
                     $referenceNumber = $candidate;
@@ -267,7 +267,6 @@ if (!function_exists('hof_waiter_create_order')) {    /**
             if ($referenceNumber === null) {
                 throw new RuntimeException('REFERENCE_GEN_RETRIES_EXHAUSTED');
             }
-
             $orderId = (int)$pdo->lastInsertId();
 
             $itemStmt = $pdo->prepare("

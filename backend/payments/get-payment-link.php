@@ -19,7 +19,7 @@ if (!$order_id || !$ref) {
     exit;
 }
 
-if (!in_array($purpose, ['pay', 'track', 'check', 'items', 'dining', 'cancel', 'receipt'], true)) {
+if (!in_array($purpose, ['pay', 'track', 'check', 'items', 'dining', 'cancel', 'receipt', 'edit'], true)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Invalid purpose']);
     exit;
@@ -47,9 +47,21 @@ if ($order['status'] === 'CANCELLED' && $purpose === 'pay') {
     exit;
 }
 
-$params = in_array($purpose, ['check', 'track'], true)
-    ? ['order_id' => $order_id, 'purpose' => $purpose]
-    : ['order_id' => $order_id, 'ref' => $ref, 'purpose' => $purpose];
+// device_id is bound into the signature for ownership purposes so a signed
+// URL issued for one device cannot be replayed from another (REQ-050 C1/C3).
+if ($purpose === 'edit' && empty($device_id)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'device_id is required for edit links']);
+    exit;
+}
+
+$params = ['order_id' => $order_id, 'ref' => $ref, 'purpose' => $purpose];
+if (in_array($purpose, ['edit', 'receipt'], true)) {
+    $params['device_id'] = $device_id;
+}
+if (in_array($purpose, ['check', 'track'], true)) {
+    $params = ['order_id' => $order_id, 'purpose' => $purpose];
+}
 $sig = hof_sign_params($params);
 
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
