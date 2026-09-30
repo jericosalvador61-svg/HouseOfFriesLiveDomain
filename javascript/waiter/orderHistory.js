@@ -115,6 +115,14 @@ function renderOrderHistoryPagination(pagination) {
 }
 
 function orderHistoryFormatDate(value) {
+    if (!value || String(value).startsWith('0000-00-00')) return '-';
+    const d = new Date(String(value).replace(' ', 'T'));
+    if (isNaN(d.getTime())) return orderHistoryEscape(value);
+    return d.toLocaleString('en-PH', {
+        year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: true
+    });
+}
 
 /** Fetch and render the current page of order history. */
 async function loadOrderHistory() {
@@ -154,7 +162,7 @@ async function loadOrderHistory() {
 
 /** Read the filter controls and reload from page 1. Bound to the Search button. */
 function applyFilters() {
-    const searchInput = document.getElementById('historySearchInput');
+    const searchInput = document.getElementById('searchInput');
     const statusFilter = document.getElementById('statusFilter');
     const ownershipFilter = document.getElementById('ownershipFilter');
 
@@ -168,7 +176,7 @@ function applyFilters() {
 
 /** Live search: re-query shortly after the user stops typing. */
 function setupOrderHistoryEvents() {
-    const searchInput = document.getElementById('historySearchInput');
+    const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         let timer;
         searchInput.addEventListener('input', () => {
@@ -181,17 +189,33 @@ function setupOrderHistoryEvents() {
 document.addEventListener('DOMContentLoaded', () => {
     // Only initialise on the order-history page.
     if (!document.getElementById('orderHistoryTableBody')) return;
+    applyRoleRestrictions();
     setupOrderHistoryEvents();
     loadOrderHistory();
 });
 
-    if (!value || String(value).startsWith('0000-00-00')) return '-';
-    const d = new Date(String(value).replace(' ', 'T'));
-    if (isNaN(d.getTime())) return orderHistoryEscape(value);
-    return d.toLocaleString('en-PH', {
-        year: 'numeric', month: 'short', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', hour12: true
-    });
+// Only Admin/Supervisor may view all staff orders (the server also hard-blocks
+// with a 403). For anyone else, disable the "All Staff" option and keep the
+// scope on 'mine'.
+function applyRoleRestrictions() {
+    const ownershipFilter = document.getElementById('ownershipFilter');
+    if (!ownershipFilter) return;
+    const token = localStorage.getItem('hof_token') || '';
+    fetch('../../backend/check_session.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+    })
+        .then(r => r.json())
+        .then(data => {
+            const role = String(data && data.role ? data.role : '').toLowerCase();
+            if (role !== 'admin' && role !== 'supervisor') {
+                const allOption = ownershipFilter.querySelector('option[value="all"]');
+                if (allOption) allOption.disabled = true;
+                if (orderHistoryState.scope === 'all') orderHistoryState.scope = 'mine';
+            }
+        })
+        .catch(() => { /* keep default mine */ });
 }
 
 function orderHistoryFormatPeso(amount) {

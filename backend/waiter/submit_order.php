@@ -60,7 +60,9 @@ foreach (($data['items'] ?? []) as $item) {
 
 $result = hof_waiter_create_order($pdo, $auth_user, [
     'order_type'    => $orderType,
-    'table_id'      => $orderType === 'DINE_IN' ? (int)($data['tableId'] ?? 0) : 0,
+    // For DINE_IN this is the chosen table; for TAKE_OUT it is the takeout
+    // pickup-station anchor (must be >0 — order_service validates it).
+    'table_id'      => (int)($data['tableId'] ?? 0),
     'customer_name' => (string)($data['customerName'] ?? ''),
     'items'         => $items,
 ]);

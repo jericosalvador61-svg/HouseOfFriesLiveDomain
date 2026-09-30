@@ -9,6 +9,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth_middleware.php';
 require_once __DIR__ . '/../log_activity_helper.php';
+require_once __DIR__ . '/../pusher_helper.php';
 
 $auth = authenticate(['Waiter', 'Admin', 'Supervisor']);
 $waiterId = (int)$auth['user_id'];
@@ -30,6 +31,9 @@ try {
         $refStmt->execute([$orderId]);
         $ref = $refStmt->fetchColumn();
         logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'ORDER_CLAIM', "Waiter claimed order #{$ref}", 'order', $orderId, $ref);
+        // Broadcast so other waiters' screens refresh immediately (they reload
+        // orders on any Pusher message).
+        broadcastOrderUpdate($orderId, "Order #{$ref} claimed");
         echo json_encode(['success' => true, 'claimed' => true, 'message' => 'Order assigned to you.']);
     } else {
         echo json_encode(['success' => true, 'claimed' => false, 'message' => 'This order was already taken.']);

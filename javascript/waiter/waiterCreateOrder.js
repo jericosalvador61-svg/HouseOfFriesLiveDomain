@@ -82,8 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     tableSelect.appendChild(option);
 
-                    // Auto-select if table_id matches URL param
-                    if (preselectedTableId && String(table.id) === preselectedTableId) {
+                    // Auto-select only if the URL table_id points at an
+                    // AVAILABLE (non-disabled) option. A disabled option is
+                    // occupied — selecting it would fail server-side review.
+                    if (preselectedTableId && String(table.id) === preselectedTableId && !option.disabled) {
                         tableSelect.value = table.id;
                     }
                 });
@@ -402,6 +404,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.removeItem('waiter_cart');
                     document.getElementById('customerName').value = '';
                     tableSelect.selectedIndex = 0;
+                    // The takeout anchor is now OCCUPIED until the order is
+                    // served — reset so the next Take Out re-queries for a
+                    // free anchor (see selectOrderType).
+                    window.takeoutTableId = null;
                     updateCartUI();
                     fetchTables(); // Refresh table statuses
                 });

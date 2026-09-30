@@ -68,23 +68,42 @@ try {
 
     // When served, free the table ONLY if no other live order still needs it.
     // The shared helper in table_state_helper.php is the single source of truth
-    // for which statuses block a table from being freed.
+    // for which statuses block a table from being freed. The check + free are
+    // wrapped in a transaction with SELECT ... FOR UPDATE so a concurrent new
+    // order cannot slip in between the COUNT and the UPDATE (TOCTOU).
     if ($status === 'SERVED' && $tableId) {
-        $stillBusy = $pdo->prepare("
-            SELECT COUNT(*) FROM orders
-            WHERE table_id = ?
-              AND order_id <> ?
-              AND status IN ('PENDING', 'IN-PROGRESS', 'COOKING')
-        ");
-        $stillBusy->execute([$tableId, $orderId]);
-
-        if ((int)$stillBusy->fetchColumn() === 0) {
-            $free = $pdo->prepare("
-                UPDATE restaurant_table
-                SET status = 'AVAILABLE', updated_at = NOW()
-                WHERE table_id = ? AND is_deleted = 0 AND status = 'OCCUPIED'
+        $pdo->beginTransaction();
+        try {
+            // Lock the table row so the still-busy check + free UPDATE are atomic.
+            $lockStmt = $pdo->prepare("
+                SELECT status FROM restaurant_table
+                WHERE table_id = ? AND is_deleted = 0
+                FOR UPDATE
             ");
-            $free->execute([$tableId]);
+            $lockStmt->execute([$tableId]);
+
+            $stillBusy = $pdo->prepare("
+                SELECT COUNT(*) FROM orders
+                WHERE table_id = ?
+                  AND order_id <> ?
+                  AND status IN ('PENDING', 'IN-PROGRESS', 'COOKING')
+            ");
+            $stillBusy->execute([$tableId, $orderId]);
+
+            if ((int)$stillBusy->fetchColumn() === 0) {
+                $free = $pdo->prepare("
+                    UPDATE restaurant_table
+                    SET status = 'AVAILABLE', updated_at = NOW()
+                    WHERE table_id = ? AND is_deleted = 0 AND status = 'OCCUPIED'
+                ");
+                $free->execute([$tableId]);
+            }
+            $pdo->commit();
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
         }
     }
 

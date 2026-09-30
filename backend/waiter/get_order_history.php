@@ -9,6 +9,7 @@ header('Content-Type: application/json');
 
 $auth = authenticate(['Waiter', 'Admin', 'Supervisor']);
 $waiterId = (int)$auth['user_id'];
+$role = strtolower(trim((string)($auth['role'] ?? '')));
 
 try {
     $page = max(1, (int)($_GET['page'] ?? 1));
@@ -16,6 +17,14 @@ try {
     $search = trim($_GET['search'] ?? '');
     $status = trim($_GET['status'] ?? 'all');
     $scope = trim($_GET['scope'] ?? 'mine');
+
+    // Hard-block: only Admin / Supervisor may view all staff orders. Any other
+    // role requesting scope=all is DENIED with a 403 (never silently coerced).
+    if ($scope === 'all' && !in_array($role, ['admin', 'supervisor'], true)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Only Admin/Supervisor can view all staff orders.']);
+        exit;
+    }
 
     // Hard-code today boundary
     $today = date('Y-m-d');
@@ -38,8 +47,11 @@ try {
     }
 
     if ($search) {
+        // Escape LIKE metacharacters (mirror search.php) so a user cannot turn
+        // the search box into a wildcard table scan.
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
         $whereConditions[] = "(o.reference_number LIKE :search OR o.customer_name LIKE :search)";
-        $params[':search'] = "%$search%";
+        $params[':search'] = "%$escaped%";
     }
 
     $whereClause = implode(' AND ', $whereConditions);

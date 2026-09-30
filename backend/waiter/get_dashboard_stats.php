@@ -83,7 +83,14 @@ try {
         $order['items'] = $itemStmt->fetchAll();
     }
 
-    // All tables
+    // All tables — a true COUNT so the "Total Tables" tile is never truncated
+    // by the LIMIT 20 used for the recent-tables sidebar list.
+    $totalTables = (int)$pdo->query("
+        SELECT COUNT(*) FROM restaurant_table
+        WHERE is_deleted = 0
+    ")->fetchColumn();
+
+    // Recent tables (sidebar list) — capped at 20 rows.
     $tableStmt = $pdo->query("
         SELECT
             table_id,
@@ -96,7 +103,6 @@ try {
         LIMIT 20
     ");
     $tables = $tableStmt->fetchAll();
-    $totalTables = count($tables);
 
     echo json_encode([
         'success' => true,

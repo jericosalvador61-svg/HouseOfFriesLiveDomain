@@ -238,13 +238,11 @@ async function loadRecentTables() {
     } catch (e) { console.error('Failed to load recent tables:', e); }
 }
 
-// â”€â”€ Load Active Orders (dashboard) - only Ready to Deliver (COMPLETED) â”€â”€
+// â”€â”€ Load Active Orders (dashboard) - all in-flight orders â”€â”€
 async function loadActiveOrders() {
     try {
-        // 'ready' is the tab key that maps to COMPLETED in get_orders.php.
-        // The old code sent status=COMPLETED, which was not a known tab key,
-        // so the endpoint applied NO filter and returned every recent order.
-        const res = await hofFetch('get_orders.php?status=ready');
+        // 'active' maps server-side to PENDING,IN-PROGRESS,COOKING,COMPLETED,SERVED.
+        const res = await hofFetch('get_orders.php?status=active');
         const data = await res.json();
         if (!data.success) return;
 
@@ -252,7 +250,7 @@ async function loadActiveOrders() {
         if (!container) return;
 
         if (!data.orders || data.orders.length === 0) {
-            container.innerHTML = '<div class="empty-state"><i class="bi bi-inbox"></i><p>No orders ready to deliver</p></div>';
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-inbox"></i><p>No active orders right now</p></div>';
             return;
         }
 
@@ -262,13 +260,16 @@ async function loadActiveOrders() {
             const itemNames = (o.items || []).map(i => `${Number(i.quantity)}x ${escapeHtml(i.item_name)}`).join(', ');
             const pillClass = getStatusPillClass(o.status);
             const pillLabel = getStatusLabel(o.status);
+            const tableLabel = (o.order_type === 'TAKE_OUT')
+                ? 'Take Out'
+                : ('Table ' + escapeHtml(o.table_number || 'N/A'));
 
             return `
                 <div class="order-card">
                     <div class="order-header">
                         <div>
                             <div class="o-title">${escapeHtml(o.reference_number || '#' + o.order_id)}</div>
-                            <div class="o-sub">${escapeHtml(o.order_type)} \u00B7 Table ${escapeHtml(o.table_number || 'N/A')} \u00B7 ${timeAgo(o.ordered_at_epoch)}</div>
+                            <div class="o-sub">${escapeHtml(o.order_type)} \u00B7 ${tableLabel} \u00B7 ${timeAgo(o.ordered_at_epoch)}</div>
                         </div>
                         <span class="pill ${pillClass}">${pillLabel}</span>
                     </div>
@@ -515,6 +516,9 @@ function renderOrderCards(orders, isUnclaimed) {
         const itemNames = (o.items || []).map(i => `${i.quantity}x ${escapeHtml(i.item_name)}`).join(', ');
         const pillClass = getStatusPillClass(o.status);
         const pillLabel = getStatusLabel(o.status);
+        const tableLabel = (o.order_type === 'TAKE_OUT')
+            ? 'Take Out'
+            : ('Table ' + escapeHtml(o.table_number || 'N/A'));
 
         let actionBtn = '';
         if (isUnclaimed) {
@@ -534,7 +538,7 @@ function renderOrderCards(orders, isUnclaimed) {
                 <div class="order-header">
                     <div>
                         <div class="o-title">${escapeHtml(o.reference_number || '#' + o.order_id)}</div>
-                        <div class="o-sub">${escapeHtml(o.order_type)} \u00B7 Table ${escapeHtml(o.table_number || 'N/A')} \u00B7 ${timeAgo(o.ordered_at_epoch)}</div>
+                        <div class="o-sub">${escapeHtml(o.order_type)} \u00B7 ${tableLabel} \u00B7 ${timeAgo(o.ordered_at_epoch)}</div>
                     </div>
                     <span class="pill ${pillClass}">${pillLabel}</span>
                 </div>
@@ -648,6 +652,7 @@ function showNotification(title, message, type = 'info') {
         icon: type,
         title: `${title}: ${message}`
     });
+}
 
 // ── Logout ──
 /**
@@ -669,6 +674,9 @@ function logout() {
 }
 
 // ── Notification bell (role-filtered, DB-backed) ──
+// Builds a small self-contained Bootstrap dropdown around the `.bell` button
+// and fills it from get_notifications.php (role-filtered). Clicking an item
+// marks it read via backend/notifications/mark_read.php.
 async function loadNotificationBadge() {
     const bell = document.querySelector('.bell');
     if (!bell) return;
@@ -676,13 +684,14 @@ async function loadNotificationBadge() {
         const res = await hofFetch('get_notifications.php');
         const data = await res.json();
         if (!data.success) return;
+
         const unread = parseInt(data.unread_count, 10) || 0;
         let badge = bell.querySelector('.badge-dot');
         if (unread > 0) {
             if (!badge) {
                 badge = document.createElement('span');
                 badge.className = 'badge-dot';
-                badge.style.cssText = 'position:absolute;top:4px;right:4px;background:#dc3545;color:#fff;border-radius:50%;font-size:0.6rem;padding:1px 5px;';
+                badge.style.cssText = 'position:absolute;top:4px;right:4px;background:#dc3545;color:#fff;border-radius:50%;font-size:0.6rem;padding:1px 5px;z-index:5;';
                 bell.style.position = 'relative';
                 bell.appendChild(badge);
             }
@@ -690,7 +699,76 @@ async function loadNotificationBadge() {
         } else if (badge) {
             badge.remove();
         }
+
+        renderWaiterNotificationDropdown(bell, data);
     } catch (e) { /* badge is non-critical */ }
+}
+
+// Populate / lazily build the bell dropdown. `data` = {items, ...} from
+// get_notifications.php; each item has {id, type, title, message, url,
+// created_at, read}.
+function renderWaiterNotificationDropdown(bell, data) {
+    // Lazily create the Bootstrap dropdown wrapper + menu only if not present.
+    let wrapper = bell.closest('.dropdown');
+    let menu = wrapper ? wrapper.querySelector('.dropdown-menu') : null;
+    if (!wrapper || !menu) {
+        if (!wrapper) {
+            wrapper = document.createElement('div');
+            wrapper.className = 'dropdown d-inline-block';
+            if (bell.parentNode) bell.parentNode.insertBefore(wrapper, bell);
+            wrapper.appendChild(bell);
+        }
+        bell.classList.add('dropdown-toggle');
+        bell.setAttribute('data-bs-toggle', 'dropdown');
+        bell.setAttribute('aria-expanded', 'false');
+        menu = document.createElement('ul');
+        menu.className = 'dropdown-menu dropdown-menu-end shadow border mt-2';
+        menu.id = 'waiterNotifMenu';
+        menu.style.cssText = 'width:340px;max-height:420px;overflow-y:auto;';
+        wrapper.appendChild(menu);
+    }
+
+    const items = Array.isArray(data.items) ? data.items : [];
+    let html = '<li class="dropdown-header border-bottom fw-bold text-dark">Notifications</li>';
+    if (items.length === 0) {
+        html += '<li><span class="dropdown-item text-muted text-center py-3">All clear!</span></li>';
+    } else {
+        html += items.map(item => {
+            const isNew = !item.read ? '<span class="badge bg-warning rounded-pill ms-2">New</span>' : '';
+            const href = (item.url && item.url !== '#') ? item.url : '#';
+            return `
+                <li>
+                    <a class="dropdown-item d-flex justify-content-between align-items-center py-2 ${item.read ? '' : 'fw-bold'}"
+                       href="${escapeHtml(href)}" data-notification-id="${encodeURIComponent(item.id)}">
+                        <span class="small text-truncate">${escapeHtml(item.message || item.title || 'Notification')}</span>
+                        ${isNew}
+                    </a>
+                </li>`;
+        }).join('');
+    }
+    menu.innerHTML = html;
+
+    // Mark a notification as read when clicked.
+    menu.querySelectorAll('[data-notification-id]').forEach(el => {
+        el.addEventListener('click', () => markWaiterNotificationRead(el.getAttribute('data-notification-id')));
+    });
+}
+
+// POST /backend/notifications/mark_read.php {id} then refresh badge+list.
+async function markWaiterNotificationRead(id) {
+    if (!id) return;
+    try {
+        const token = localStorage.getItem('hof_token') || '';
+        const res = await fetch('../../backend/notifications/mark_read.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify({ id })
+        });
+        if ((await res.json()).success) loadNotificationBadge();
+    } catch (e) { /* non-critical */ }
 }
 
 // ── Init ──
@@ -709,10 +787,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadNotificationBadge();
 
-    // Keep the dashboard fresh without a manual refresh.
+    // Keep the dashboard fresh without a manual refresh. Refresh orders too:
+    // Pusher can silently drop events, and this is the network-failure fallback.
     setInterval(() => {
-        if (document.getElementById('statActiveOrders')) loadDashboardStats();
-        loadNotificationBadge();
+        if (window.__hofRefreshing) return; // skip if the previous tick is still running
+        window.__hofRefreshing = true;
+        try {
+            loadOrders();
+            if (document.getElementById('statActiveOrders')) loadDashboardStats();
+            loadNotificationBadge();
+        } finally {
+            window.__hofRefreshing = false;
+        }
     }, 60000);
 });
 
@@ -775,5 +861,3 @@ function filterTables(statusFilter) {
 window.takeOrder = function (tableId) {
     window.location.href = 'new_order.html?table_id=' + encodeURIComponent(tableId);
 };
-
-}
