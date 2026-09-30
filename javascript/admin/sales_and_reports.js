@@ -273,6 +273,7 @@ function loadStats() {
                 animateCurrency('totalRevenue', stats.total_revenue);
                 animateNumber('totalOrders', stats.total_orders);
                 animateCurrency('avgOrderValue', stats.avg_order_value);
+                if (typeof stats.total_discount !== 'undefined') animateCurrency('totalDiscount', stats.total_discount);
 
                 if (stats.best_seller) {
                     document.getElementById('bestSeller').textContent = stats.best_seller.item_name;
