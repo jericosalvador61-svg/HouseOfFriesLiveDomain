@@ -72,8 +72,8 @@ try {
                 $stmt->execute([$newStatus, $userId, $requestId]);
                 $pdo->commit();
                 logActivity($pdo, $userId, $userName, $userRole,
-                    'ADJUSTMENT_APPROVED', "Approved inventory adjustment #{$requestId}",
-                    'adjustment', $requestId);
+                    'ADJUSTMENT_APPROVED', "Inventory adjustment #{$requestId} approved by {$userName}",
+                    'adjustment', $requestId, null, 'APPROVED', 'PENDING', 'APPROVED');
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE adjustments 
@@ -81,6 +81,12 @@ try {
                     WHERE adjustment_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
+                // REQ-050 / Cline N1: only log when the UPDATE actually matched a PENDING row
+                if ($stmt->rowCount() > 0) {
+                    logActivity($pdo, $userId, $userName, $userRole,
+                        'ADJUSTMENT_REJECTED', "Inventory adjustment #{$requestId} rejected by {$userName}",
+                        'adjustment', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
+                }
             }
             break;
 
@@ -106,12 +112,17 @@ try {
                     WHERE return_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
+                if ($stmt->rowCount() > 0) {
+                    logActivity($pdo, $userId, $userName, $userRole,
+                        'RETURN_REJECTED', "Return request #{$requestId} rejected by {$userName}",
+                        'return', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
+                }
             }
             $pdo->commit();
             if ($newStatus === 'APPROVED') {
                 logActivity($pdo, $userId, $userName, $userRole,
-                    'RETURN_APPROVED', "Approved return request #{$requestId}",
-                    'return', $requestId);
+                    'RETURN_APPROVED', "Return request #{$requestId} approved by {$userName}",
+                    'return', $requestId, null, 'APPROVED', 'PENDING', 'APPROVED');
             }
             break;
 
@@ -137,12 +148,17 @@ try {
                     WHERE void_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
+                if ($stmt->rowCount() > 0) {
+                    logActivity($pdo, $userId, $userName, $userRole,
+                        'VOID_REJECTED', "Void request #{$requestId} rejected by {$userName}",
+                        'void', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
+                }
             }
             $pdo->commit();
             if ($newStatus === 'APPROVED') {
                 logActivity($pdo, $userId, $userName, $userRole,
-                    'VOID_APPROVED', "Approved void request #{$requestId}",
-                    'void', $requestId);
+                    'VOID_APPROVED', "Void request #{$requestId} approved by {$userName}",
+                    'void', $requestId, null, 'APPROVED', 'PENDING', 'APPROVED');
             }
             break;
 
@@ -189,8 +205,8 @@ try {
                 $stmt->execute([$newStatus, $userId, $requestId]);
                 $pdo->commit();
                 logActivity($pdo, $userId, $userName, $userRole,
-                    'STOCK_IN_APPROVED', "Approved stock-in #{$requestId}",
-                    'stock_in', $requestId);
+                    'STOCK_IN_APPROVED', "Stock-in #{$requestId} approved by {$userName}",
+                    'stock_in', $requestId, null, 'APPROVED', 'PENDING', 'APPROVED');
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE stock_in 
@@ -198,6 +214,11 @@ try {
                     WHERE stock_in_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
+                if ($stmt->rowCount() > 0) {
+                    logActivity($pdo, $userId, $userName, $userRole,
+                        'STOCK_IN_REJECTED', "Stock-in #{$requestId} rejected by {$userName}",
+                        'stock_in', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
+                }
             }
             break;
 
@@ -243,8 +264,8 @@ try {
                 $stmt->execute([$newStatus, $userId, $requestId]);
                 $pdo->commit();
                 logActivity($pdo, $userId, $userName, $userRole,
-                    'STOCK_OUT_APPROVED', "Approved stock-out #{$requestId}",
-                    'stock_out', $requestId);
+                    'STOCK_OUT_APPROVED', "Stock-out #{$requestId} approved by {$userName}",
+                    'stock_out', $requestId, null, 'APPROVED', 'PENDING', 'APPROVED');
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE stock_out 
@@ -252,6 +273,11 @@ try {
                     WHERE stock_out_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
+                if ($stmt->rowCount() > 0) {
+                    logActivity($pdo, $userId, $userName, $userRole,
+                        'STOCK_OUT_REJECTED', "Stock-out #{$requestId} rejected by {$userName}",
+                        'stock_out', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
+                }
             }
             break;
 
@@ -289,6 +315,7 @@ try {
                     WHERE spoilage_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $userId, $requestId]);
+                $spoilApplied = $stmt->rowCount() > 0;
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE spoilage 
@@ -296,12 +323,18 @@ try {
                     WHERE spoilage_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
+                // REQ-050 / Cline N1: only log when the UPDATE actually matched a PENDING row
+                $spoilApplied = $stmt->rowCount() > 0;
             }
             $pdo->commit();
             if ($newStatus === 'APPROVED') {
                 logActivity($pdo, $userId, $userName, $userRole,
-                    'SPOILAGE_APPROVED', "Approved spoilage report #{$requestId}",
-                    'spoilage', $requestId);
+                    'SPOILAGE_APPROVED', "Spoilage report #{$requestId} approved by {$userName}",
+                    'spoilage', $requestId, null, 'APPROVED', 'PENDING', 'APPROVED');
+            } else if ($spoilApplied) {
+                logActivity($pdo, $userId, $userName, $userRole,
+                    'SPOILAGE_REJECTED', "Spoilage report #{$requestId} rejected by {$userName}",
+                    'spoilage', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
             }
             break;
 
@@ -309,31 +342,24 @@ try {
             // purchase_plans.status uses TITLE CASE ('Pending','Approved','Rejected','Cancelled')
             // and has NO approved_by column — audit attribution goes to activity_logs only
             $ppStatus = ($newStatus === 'APPROVED') ? 'Approved' : 'Rejected';
+            $stmt = $pdo->prepare("
+                UPDATE purchase_plans 
+                SET status = ?, updated_at = NOW() 
+                WHERE plan_id = ? AND status = 'Pending'
+            ");
+            $stmt->execute([$ppStatus, $requestId]);
+            if ($stmt->rowCount() === 0) {
+                echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
+                exit;
+            }
             if ($newStatus === 'APPROVED') {
-                $stmt = $pdo->prepare("
-                    UPDATE purchase_plans 
-                    SET status = ?, updated_at = NOW() 
-                    WHERE plan_id = ? AND status = 'Pending'
-                ");
-                $stmt->execute([$ppStatus, $requestId]);
-                if ($stmt->rowCount() === 0) {
-                    echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
-                    exit;
-                }
                 logActivity($pdo, $userId, $userName, $userRole,
-                    'PURCHASE_PLAN_EVALUATE', "Approved purchase plan #{$requestId}",
-                    'purchase_plan', $requestId);
+                    'PURCHASE_PLAN_APPROVED', "Purchase plan #{$requestId} approved by {$userName}",
+                    'purchase_plan', $requestId, null, 'Approved', 'Pending', 'Approved');
             } else {
-                $stmt = $pdo->prepare("
-                    UPDATE purchase_plans 
-                    SET status = ?, updated_at = NOW() 
-                    WHERE plan_id = ? AND status = 'Pending'
-                ");
-                $stmt->execute([$ppStatus, $requestId]);
-                if ($stmt->rowCount() === 0) {
-                    echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
-                    exit;
-                }
+                logActivity($pdo, $userId, $userName, $userRole,
+                    'PURCHASE_PLAN_REJECTED', "Purchase plan #{$requestId} rejected by {$userName}",
+                    'purchase_plan', $requestId, null, 'Rejected', 'Pending', 'Rejected');
             }
             break;
 

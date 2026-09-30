@@ -7,11 +7,15 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth_middleware.php';
 require_once __DIR__ . '/log_activity_helper.php';
+require_once __DIR__ . '/rate_limit.php'; // REQ-050 (Phase 4)
 
 header('Content-Type: application/json');
 
 try {
     $user = authenticate(); // Will 401 if token invalid
+
+    // REQ-050 (Phase 4): rate-limit repeated logout calls
+    hof_rate_limit('logout', 30, 60);
 
     $userId   = $user['user_id'] ?? null;
     $username = $user['username'] ?? 'unknown';

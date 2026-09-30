@@ -7,6 +7,13 @@
  * Usage:
  *   require_once __DIR__ . '/../log_activity_helper.php';
  *   logActivity($pdo, $userId, $username, $role, $actionType, $description, $refType, $refId, $refNumber, $status);
+ *   logActivity($pdo, $userId, $username, $role, $actionType, $description, $refType, $refId, $refNumber, $status, $before, $after);
+ *
+ * REQ-050 (2026-09-30):
+ *   - action_category is now the MODULE dimension (TABLE/KITCHEN/MATERIAL/SUPPLIER events no longer fall into SYSTEM).
+ *   - description is capped at 1000 chars, user_agent at 255 chars (kills unbounded growth).
+ *   - Optional $before/$after params: when either is non-null the helper appends
+ *     ' | ' . $before . ' → ' . $after to the description (before the cap). Backward compatible.
  */
 
 function logActivity(
@@ -19,10 +26,20 @@ function logActivity(
     string $referenceType = null,
     ?int $referenceId = null,
     string $referenceNumber = null,
-    string $status = null
+    string $status = null,
+    string $before = null,
+    string $after = null
 ): bool {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+    if ($before !== null || $after !== null) {
+        $description .= ' | ' . ($before ?? '') . ' → ' . ($after ?? '');
+    }
+
+    // Cap growth: description 1000 chars, user_agent 255 chars (column is TEXT; no schema change needed)
+    $description = mb_substr($description, 0, 1000);
+    $ua = mb_substr($ua, 0, 255);
 
     $stmt = $pdo->prepare("
         INSERT INTO activity_logs 
@@ -32,15 +49,19 @@ function logActivity(
             (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     ");
 
-    // Derive a sensible category from the action type prefix
+    // Derive a sensible category (module dimension) from the action type prefix
     $category = 'SYSTEM';
-    if (str_starts_with($actionType, 'LOGIN_') || str_starts_with($actionType, 'LOGOUT')) {
+    if (str_starts_with($actionType, 'LOGIN_') || str_starts_with($actionType, 'LOGOUT') || str_starts_with($actionType, 'LOCKOUT')) {
         $category = 'AUTH';
-    } elseif (str_starts_with($actionType, 'ORDER_')) {
+    } elseif (str_starts_with($actionType, 'ORDER_') || in_array($actionType, ['ADD_ITEM_TO_ORDER', 'UPDATE_ITEM_QTY', 'UPDATE_DINING_PREFERENCE'])) {
         $category = 'ORDER';
     } elseif (str_starts_with($actionType, 'PAYMENT_')) {
         $category = 'SALES';
-    } elseif (str_starts_with($actionType, 'STOCK_') || str_starts_with($actionType, 'INVENTORY_') || str_starts_with($actionType, 'SPOILAGE') || str_starts_with($actionType, 'ADJUSTMENT') || str_starts_with($actionType, 'RETURN') || str_starts_with($actionType, 'PURCHASE_PLAN')) {
+    } elseif (str_starts_with($actionType, 'TABLE_')) {
+        $category = 'TABLE';
+    } elseif (str_starts_with($actionType, 'KITCHEN_')) {
+        $category = 'KITCHEN';
+    } elseif (str_starts_with($actionType, 'STOCK_') || str_starts_with($actionType, 'INVENTORY_') || str_starts_with($actionType, 'SPOILAGE') || str_starts_with($actionType, 'ADJUSTMENT') || str_starts_with($actionType, 'RETURN') || str_starts_with($actionType, 'PURCHASE_PLAN') || str_starts_with($actionType, 'MATERIAL_') || str_starts_with($actionType, 'SUPPLIER_')) {
         $category = 'INVENTORY';
     } elseif (str_starts_with($actionType, 'USER_')) {
         $category = 'USER_MGMT';

@@ -18,6 +18,27 @@
     
     <link rel="stylesheet" href="/css/staff-sidebar.css">
     <link rel="stylesheet" href="/css/supervisor/activity_logs.css">
+    <style>
+        /* REQ-050: print-friendly CSS — hide chrome, full-width table, page-break rules */
+        @media print {
+            .mobile-topbar, #sidebar, .sidebar-overlay, .topbar, .filter-card,
+            .card.filters, #filterForm, .pagination, .no-print, #loadingOverlay, footer {
+                display: none !important;
+            }
+            .content-wrapper, .app-shell {
+                margin-left: 0 !important;
+                width: 100% !important;
+                padding: 0 !important;
+            }
+            .card { border: none !important; box-shadow: none !important; }
+            table { width: 100% !important; font-size: 11px; }
+            thead { display: table-header-group; }
+            tr { page-break-inside: avoid; }
+            body { background: #fff !important; }
+            .diff-arrow { color: #b8860b; font-weight: bold; }
+        }
+        .diff-arrow { color: #b8860b; font-weight: bold; }
+    </style>
 </head><body>
     <div class="mobile-topbar">
         <div class="d-flex align-items-center">
@@ -84,14 +105,14 @@
             <!-- PAGE CONTENT -->
             <div class="p-4">
                 <h2 class="fw-bold">Activity Logs</h2>
-                <p class="text-muted">All system activity across modules — searchable and filterable by date, action, role, and user.</p>
+                <p class="text-muted">All system activity across modules — searchable and filterable by date, module, action, role, user, and status.</p>
 
                 <!-- FILTER CARD -->
-                <div class="card border-0 shadow-sm p-4 rounded-4 bg-white mb-4">
+                <div class="card border-0 shadow-sm p-4 rounded-4 bg-white mb-4 filter-card no-print">
                     <form id="filterForm" class="row g-3 align-items-end">
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">Search (keyword / reference)</label>
-                            <input type="text" id="userSearch" class="form-control" placeholder="e.g. ORDER-1042, username...">
+                            <label class="form-label small fw-bold">Search (description / user / reference)</label>
+                            <input type="text" id="userSearch" class="form-control" placeholder="e.g. ORDER-1042, username, keywords...">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold">From Date</label>
@@ -102,6 +123,10 @@
                             <input type="date" id="dateTo" class="form-control">
                         </div>
                         <div class="col-md-2">
+                            <label class="form-label small fw-bold">Module / Category</label>
+                            <select id="moduleFilter" class="form-select"><option value="">All</option></select>
+                        </div>
+                        <div class="col-md-2">
                             <label class="form-label small fw-bold">Action Type</label>
                             <select id="actionType" class="form-select"><option value="">All</option></select>
                         </div>
@@ -109,12 +134,17 @@
                             <label class="form-label small fw-bold">Role</label>
                             <select id="roleFilter" class="form-select"><option value="">All</option></select>
                         </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">Status</label>
+                            <select id="statusFilter" class="form-select"><option value="">All</option></select>
+                        </div>
                         <div class="col-md-1 d-grid">
                             <button type="submit" class="btn btn-warning"><i class="bi bi-funnel"></i></button>
                         </div>
                         <div class="col-md-12 d-flex gap-2">
                             <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
                             <button type="button" id="exportBtn" class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i>Export CSV</button>
+                            <button type="button" id="printBtn" class="btn btn-outline-primary btn-sm"><i class="bi bi-printer me-1"></i>Print / PDF</button>
                             <span id="totalRecords" class="ms-auto align-self-center small text-muted"></span>
                         </div>
                     </form>

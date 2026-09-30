@@ -47,7 +47,15 @@ function logWebhook($message) {
 $rawBody = file_get_contents('php://input');
 $input = json_decode($rawBody, true);
 
-logWebhook('Webhook received: ' . json_encode($input));
+// REQ-050 (Phase 4): NEVER log the full payload (card/BIN/last4 risk).
+// Log only event type + order reference (if present) + a SHA-256 hash of the body.
+$eventTypeForLog = $input['data']['type'] ?? 'unknown';
+$refForLog = '';
+if (is_array($input['data']['attributes']['data']['attributes']['metadata'] ?? null)) {
+    $refForLog = $input['data']['attributes']['data']['attributes']['metadata']['reference_number'] ?? '';
+}
+$bodyHash = hash('sha256', $rawBody);
+logWebhook("Webhook received: event={$eventTypeForLog} order_ref=" . ($refForLog ?: 'n/a') . " sha256={$bodyHash}");
 
 if (!$input || !isset($input['data'])) {
     http_response_code(400);
@@ -225,6 +233,7 @@ try {
         $paymentData = $resource['attributes'] ?? [];
         $metadata    = $paymentData['metadata'] ?? [];
         $orderId     = $metadata['order_id'] ?? null;
+        $refNumber   = $metadata['reference_number'] ?? null;
 
         if ($orderId) {
             $stmt = $pdo->prepare("
@@ -235,7 +244,12 @@ try {
             ");
             $stmt->execute([$orderId]);
 
-            logWebhook("Payment failed for Order #$orderId");
+            // REQ-050: log failed payment
+            logActivity($pdo, null, 'SYSTEM', 'SYSTEM',
+                'PAYMENT_FAILED', "{$eventType}: payment failed for #" . ($refNumber ?? $orderId),
+                'order', (int)$orderId, $refNumber, 'FAILED');
+
+            logWebhook("Payment failed for Order #$orderId ($refNumber)");
         }
 
         echo json_encode([

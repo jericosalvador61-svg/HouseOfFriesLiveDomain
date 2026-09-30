@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../auth_middleware.php';
 $auth = authenticate(['Inventory Staff', 'Admin', 'Supervisor']);
 require_once __DIR__ . '/../../db.php'; // PDO instance
+require_once __DIR__ . '/../../log_activity_helper.php'; // REQ-050
 
 header('Content-Type: application/json');
 
@@ -101,6 +102,13 @@ try {
     $msg = "Successfully added " . count($added) . " item(s).";
     if (count($skipped) > 0) {
         $msg .= " (" . count($skipped) . " duplicates skipped).";
+    }
+
+    // REQ-050: log raw material additions
+    if (count($added) > 0) {
+        logActivity($pdo, (int)$auth['user_id'], $auth['username'] ?? 'inventory', $auth['role'] ?? 'Inventory Staff',
+            'MATERIAL_ADD', "Added raw material(s): " . implode(', ', array_slice($added, 0, 5)) . (count($added) > 5 ? ' (+' . (count($added) - 5) . ' more)' : ''),
+            'raw_material', null, null, null, null, null);
     }
 
     echo json_encode(['status' => 'success', 'message' => $msg]);

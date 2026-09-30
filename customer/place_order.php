@@ -5,6 +5,7 @@ require_once __DIR__ . "/../backend/pusher_helper.php";
 require_once __DIR__ . "/../backend/geofence_config.php"; // US-SYS-013 geofence
 require_once __DIR__ . "/../backend/rate_limit.php";
 require_once __DIR__ . "/../backend/choices_addons_helper.php"; // REQ-040
+require_once __DIR__ . "/../backend/log_activity_helper.php"; // REQ-050
 
 // Load dynamic location from DB for geofence gate
 $storeLoc = hof_get_store_location_from_db($pdo);
@@ -403,6 +404,12 @@ $orderSuccess = true;
         if (function_exists('broadcastOrderUpdate')) {
             broadcastOrderUpdate($orderId, "New Order #$reference_number received. Awaiting counter payment.", 'PENDING');
         }
+
+        // REQ-050: log order creation (GUEST actor — customer path, no authenticated user).
+        // before is null (no prior state) so compose the after-snapshot WITHOUT a leading " → ".
+        logActivity($pdo, null, 'GUEST', 'Customer', 'ORDER_CREATED',
+            "Order {$reference_number} placed - total ₱" . number_format($computedTotal, 2, '.', '') . " status PENDING",
+            'order', $orderId, $reference_number, 'PENDING');
 
         echo json_encode([
             'success' => true,

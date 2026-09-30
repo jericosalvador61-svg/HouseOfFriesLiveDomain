@@ -11,6 +11,7 @@
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../pusher_helper.php';
+require_once __DIR__ . '/../log_activity_helper.php'; // REQ-050
 
 try {
     date_default_timezone_set('Asia/Manila');
@@ -76,7 +77,12 @@ try {
         if (function_exists('broadcastOrderUpdate')) {
             broadcastOrderUpdate($order['order_id'], "Cancelled — not paid within 15 minutes", 'CANCELLED');
         }
-        
+
+        // REQ-050: log auto-cancel (SYSTEM actor)
+        logActivity($pdo, null, 'SYSTEM', 'SYSTEM',
+            'ORDER_CANCELLED', "Order #{$order['reference_number']} auto-cancelled (not paid within 15 minutes)",
+            'order', (int)$order['order_id'], $order['reference_number'], 'CANCELLED', 'PENDING', 'CANCELLED');
+
         // Log
         $logEntry = date('Y-m-d H:i:s') . " - CANCELLED order #{$order['reference_number']} (ID: {$order['order_id']})";
         if ($order['table_id']) {
@@ -121,7 +127,12 @@ try {
             
             $pdo->commit();
             $purgedCount++;
-            
+
+            // REQ-050: log purge (SYSTEM actor)
+            logActivity($pdo, null, 'SYSTEM', 'SYSTEM',
+                'ORDER_PURGED', "Order #{$order['reference_number']} hard-deleted (CANCELLED > 60 days)",
+                'order', (int)$order['order_id'], $order['reference_number'], 'CANCELLED', 'CANCELLED', 'PURGED');
+
             $logEntry = date('Y-m-d H:i:s') . " - PURGED stale CANCELLED order #{$order['reference_number']} (ID: {$order['order_id']}) - older than 60 days\n";
             file_put_contents($logFile, $logEntry, FILE_APPEND);
         } catch (Exception $e) {
