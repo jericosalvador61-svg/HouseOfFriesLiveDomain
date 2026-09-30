@@ -44,7 +44,6 @@ const VoidsUI = (function () {
             ...extra
         });
         const token = localStorage.getItem('hof_token');
-        if (token) p.append('token', token);
         return p.toString();
     }
 
