@@ -5,6 +5,6 @@
  */
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth_middleware.php';
-$user = authenticate(['Kitchen Staff']);
+$user = authenticate(['Kitchen Staff', 'Admin', 'Supervisor']);
 require_once __DIR__ . '/../notifications/api.php';
 hof_notifications_api(25);

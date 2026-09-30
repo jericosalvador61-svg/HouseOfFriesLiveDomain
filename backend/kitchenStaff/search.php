@@ -7,7 +7,7 @@ require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth_middleware.php';
 header('Content-Type: application/json');
 
-authenticate(['Kitchen Staff']);
+authenticate(['Kitchen Staff', 'Admin', 'Supervisor']);
 $query = trim($_GET['q'] ?? '');
 if (strlen($query) < 2) {
     echo json_encode(['success' => true, 'results' => []]);
