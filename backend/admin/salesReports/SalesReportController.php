@@ -28,6 +28,7 @@ class SalesReportController {
             $window = hof_month_window($start ?: null, $end ?: null);
             if ($window['blocked']) {
                 $this->respond(['success' => false, 'message' => 'Supervisor access is limited to the last 31 days.'], 400);
+                exit; // respond() already exits; explicit for clarity + safety
             }
             list($start, $end) = [$window['from'], $window['to']];
         }

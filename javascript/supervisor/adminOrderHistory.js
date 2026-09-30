@@ -566,6 +566,21 @@ const AdminOrderHistoryUI = (function () {
         loadData();
     }
 
+    function applyFilters() {
+        // REQ-049: guard the Apply button like the change handlers — an
+        // out-of-window range typed manually must not fire a fetch.
+        const df = elements.dateFrom ? elements.dateFrom.value : '';
+        const dt = elements.dateTo ? elements.dateTo.value : '';
+        if (df && dt && !isWithinWindow(df, dt)) {
+            Swal.fire({ icon: 'error', title: 'Invalid Date Range', text: 'Supervisor access is limited to the last 31 days.' });
+            return;
+        }
+        if (df) state.filters.dateFrom = df;
+        if (dt) state.filters.dateTo = dt;
+        state.pagination.page = 1;
+        loadData();
+    }
+
     function clearFilters() {
         state.filters = { search: '', status: '', type: '', paymentMethod: '', cashier: '', dateFrom: '', dateTo: '' };
         if (elements.searchInput) elements.searchInput.value = '';
@@ -729,6 +744,7 @@ const AdminOrderHistoryUI = (function () {
     return {
         init,
         loadData,
+        applyFilters,
         toggleDetail,
         goToPage,
         clearFilters,
