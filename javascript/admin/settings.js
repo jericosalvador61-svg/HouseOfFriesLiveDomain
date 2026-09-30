@@ -216,7 +216,235 @@ function checkDailyBackupStatus() {
 document.addEventListener('DOMContentLoaded', () => {
     checkDailyBackupStatus();
     loadBackupHistory();
+    loadDiscountTypes();
 });
+
+// ====================================================================
+// REQ-049 — DISCOUNT TYPES CRUD
+// ====================================================================
+const DISCOUNT_TYPES_ENDPOINT = '/backend/admin/settings/discount_types.php';
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+async function loadDiscountTypes() {
+    const container = document.getElementById('discountTypesContainer');
+    if (!container) return;
+
+    try {
+        const res = await fetch(DISCOUNT_TYPES_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'list' })
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+            container.innerHTML = '<p class="text-muted small text-center py-3">Failed to load discount types.</p>';
+            return;
+        }
+
+        renderDiscountTypes(data.types || []);
+    } catch (err) {
+        console.error('Failed to load discount types:', err);
+        container.innerHTML = '<p class="text-muted small text-center py-3">Failed to load discount types.</p>';
+    }
+}
+
+function renderDiscountTypes(types) {
+    const container = document.getElementById('discountTypesContainer');
+    if (!container) return;
+
+    if (!types || types.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-percent fs-1 mb-2"></i>
+                <p class="mb-0 small">No discount types yet. Click "Add Type" to create one.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Percent</th>
+                        <th>Active</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${types.map(t => `
+                        <tr>
+                            <td class="fw-medium">${escapeHtml(t.name)}</td>
+                            <td>${parseFloat(t.percent).toFixed(2)}%</td>
+                            <td>
+                                <span class="badge ${parseInt(t.is_active, 10) === 1 ? 'bg-success' : 'bg-secondary'}">
+                                    ${parseInt(t.is_active, 10) === 1 ? 'Active' : 'Inactive'}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-warning me-1" onclick="editDiscountType(${t.discount_type_id})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deactivateDiscountType(${t.discount_type_id})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function openDiscountTypeModal(mode, type) {
+    const isEdit = mode === 'edit';
+    const currentName = isEdit ? (type.name || '') : '';
+    const currentPercent = isEdit ? parseFloat(type.percent).toFixed(2) : '';
+
+    Swal.fire({
+        title: isEdit ? 'Edit Discount Type' : 'Add Discount Type',
+        html: `
+            <div class="text-start">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Name:</label>
+                    <input type="text" id="swal-dtype-name" class="form-control" maxlength="50" value="${escapeHtml(currentName)}" placeholder="e.g., Senior Citizen">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Percent (%):</label>
+                    <input type="number" id="swal-dtype-percent" class="form-control" min="0" max="100" step="0.01" value="${currentPercent}" placeholder="e.g., 10.00">
+                </div>
+                ${isEdit ? `<div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="swal-dtype-active" ${parseInt(type.is_active, 10) === 1 ? 'checked' : ''}>
+                        <label class="form-check-label fw-bold" for="swal-dtype-active">Active</label>
+                    </div>
+                </div>` : ''}
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: isEdit ? 'Save Changes' : 'Add Type',
+        confirmButtonColor: '#ffc107',
+        cancelButtonColor: '#6c757d',
+        preConfirm: () => {
+            const name = document.getElementById('swal-dtype-name').value.trim();
+            const percent = parseFloat(document.getElementById('swal-dtype-percent').value);
+
+            if (!name) {
+                Swal.showValidationMessage('Discount type name is required.');
+                return false;
+            }
+            if (isNaN(percent) || percent < 0 || percent > 100) {
+                Swal.showValidationMessage('Percent must be between 0.00 and 100.00.');
+                return false;
+            }
+            return { name, percent };
+        }
+    }).then(async (result) => {
+        if (!result.isConfirmed) return;
+
+        const { name, percent } = result.value;
+        const payload = isEdit
+            ? {
+                  action: 'update',
+                  discount_type_id: type.discount_type_id,
+                  name: name,
+                  percent: percent,
+                  is_active: document.getElementById('swal-dtype-active').checked ? 1 : 0
+              }
+            : { action: 'create', name: name, percent: percent };
+
+        try {
+            const res = await fetch(DISCOUNT_TYPES_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                Swal.fire('Saved!', isEdit ? 'Discount type updated.' : 'Discount type added.', 'success');
+                loadDiscountTypes();
+            } else {
+                Swal.fire('Error', data.message || 'Could not save discount type.', 'error');
+            }
+        } catch (err) {
+            console.error('Save discount type error:', err);
+            Swal.fire('Error', 'Could not save discount type.', 'error');
+        }
+    });
+}
+
+function editDiscountType(typeId) {
+    // We re-fetch the list to get the freshest row, then open the edit modal.
+    fetch(DISCOUNT_TYPES_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'list' })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                Swal.fire('Error', 'Could not load discount types.', 'error');
+                return;
+            }
+            const type = (data.types || []).find(t => parseInt(t.discount_type_id, 10) === parseInt(typeId, 10));
+            if (!type) {
+                Swal.fire('Error', 'Discount type not found.', 'error');
+                return;
+            }
+            openDiscountTypeModal('edit', type);
+        })
+        .catch(err => {
+            console.error('Edit discount type error:', err);
+            Swal.fire('Error', 'Could not load discount type.', 'error');
+        });
+}
+
+async function deactivateDiscountType(typeId) {
+    const result = await Swal.fire({
+        title: 'Deactivate Discount Type?',
+        text: 'This will hide it from the cashier counter. Existing discounts already applied are not affected.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, deactivate it!'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const res = await fetch(DISCOUNT_TYPES_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', discount_type_id: typeId })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            Swal.fire('Deactivated!', 'Discount type deactivated.', 'success');
+            loadDiscountTypes();
+        } else {
+            Swal.fire('Error', data.message || 'Could not deactivate discount type.', 'error');
+        }
+    } catch (err) {
+        console.error('Deactivate discount type error:', err);
+        Swal.fire('Error', 'Could not deactivate discount type.', 'error');
+    }
+}
 
 // ==========================================
 // 🌟 FIXED COMMENT LINE AND NOTIFICATION LIVE ALERTS COMPILER

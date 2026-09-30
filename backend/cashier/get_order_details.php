@@ -13,7 +13,7 @@ $order_id = $_GET['order_id'];
 
 try {
     // 1. Fetch Order Info (Tweak: Included customer_name in the column selection)
-    $orderQuery = "SELECT order_id, reference_number, total_amount, order_type, customer_name FROM orders WHERE order_id = :order_id";
+    $orderQuery = "SELECT order_id, reference_number, total_amount, subtotal_amount, discount_amount, discount_type_id, order_type, customer_name FROM orders WHERE order_id = :order_id";
     $stmt = $pdo->prepare($orderQuery);
     $stmt->execute(['order_id' => $order_id]);
     $orderInfo = $stmt->fetch(PDO::FETCH_ASSOC);

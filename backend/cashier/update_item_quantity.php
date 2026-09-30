@@ -47,11 +47,12 @@ try {
 
     $updateOrder = $pdo->prepare("
         UPDATE orders 
-        SET total_amount = (SELECT SUM(subtotal) FROM order_items WHERE order_id = ? AND is_deleted = 0),
+        SET subtotal_amount = (SELECT COALESCE(SUM(subtotal), 0) FROM order_items WHERE order_id = ? AND is_deleted = 0),
+            total_amount = (SELECT COALESCE(SUM(subtotal), 0) FROM order_items WHERE order_id = ? AND is_deleted = 0) - COALESCE(discount_amount, 0),
             updated_at = NOW()
         WHERE order_id = ?
     ");
-    $updateOrder->execute([$orderId, $orderId]);
+    $updateOrder->execute([$orderId, $orderId, $orderId]);
 
     $pdo->commit();
 
