@@ -75,19 +75,37 @@ function displayCurrentTable() {
 }
 
 // 3. Logic to Group and Render Items
+// A stored line is now { menu_item_id, quantity, price, special_instructions,
+// choices[], addons[] } (REQ-040). Legacy carts hold one line per unit without
+// a `quantity` field — those still render (backward compatible).
+
+// Config signature so two lines of the SAME base item with different flavors /
+// add-ons stay separate lines (REQ-040 MEDIUM-3).
+function lineSignature(line) {
+    const choices = (line.choices || []).map(c => String(c)).slice().sort();
+    const addons = (line.addons || []).slice().sort((a, b) => String(a.menu_addon_id).localeCompare(String(b.menu_addon_id)))
+        .map(a => a.menu_addon_id + 'x' + (parseInt(a.quantity, 10) || 1));
+    return line.menu_item_id + '|' + choices.join(',') + '|' + addons.join(',');
+}
+
+// Attach/refresh line_key on a line so cart ops can target one configuration.
+function withLineKey(line) {
+    const clone = Object.assign({}, line);
+    clone.line_key = lineSignature(clone);
+    return clone;
+}
+
 function renderCart() {
     const rawCart = JSON.parse(localStorage.getItem('cart')) || [];
 
     const groupedCart = rawCart.reduce((acc, item) => {
-        if (!acc[item.menu_item_id]) {
-            acc[item.menu_item_id] = { ...item, quantity: 1 };
+        const line = withLineKey(item);
+        const qty = parseInt(line.quantity, 10);
+        const lineQty = isNaN(qty) || qty < 1 ? 1 : qty;
+        if (!acc[line.line_key]) {
+            acc[line.line_key] = { ...line, quantity: lineQty };
         } else {
-            acc[item.menu_item_id].quantity += 1;
-            const inc = (item.special_instructions || '').trim();
-            if (inc) {
-                const cur = (acc[item.menu_item_id].special_instructions || '').trim();
-                acc[item.menu_item_id].special_instructions = cur ? cur + '; ' + inc : inc;
-            }
+            acc[line.line_key].quantity += lineQty;
         }
         return acc;
     }, {});
@@ -115,52 +133,37 @@ function renderCart() {
         let filename = item.image_url ? item.image_url.split('/').pop() : '';
         let imageSrc = filename ? `/images/menu/${filename}` : '';
 
-        // Special instructions — compact control. When the line has no
-        // instruction, we show a small "+ Add Instruction" button instead of
-        // a large empty textarea. (Uses the shared window.* helpers below.)
-        const specialInstructions = (item.special_instructions || '').trim();
-        const safeInstr = escapeHtmlAttr(specialInstructions);
-        const instrHtml = `
-            <div class="instr-wrap" id="instr-${item.menu_item_id}">
-                <div class="instr-view" style="${specialInstructions ? '' : 'display:none;'}">
-                    <div class="instr-saved">${escapeHtmlAttr(specialInstructions) || '<span class="text-muted">No instruction</span>'}</div>
-                    <div class="instr-actions">
-                        <button type="button" class="instr-btn" onclick="toggleInstructionEditor(${item.menu_item_id}, true)">Edit</button>
-                        <button type="button" class="instr-btn instr-btn-danger" onclick="removeInstruction(${item.menu_item_id})">Remove</button>
-                    </div>
-                </div>
-                <div class="instr-edit" style="${specialInstructions ? 'display:none;' : ''}">
-                    <button type="button" class="instr-add-btn" onclick="toggleInstructionEditor(${item.menu_item_id}, true)">+ Add Instruction</button>
-                    <div class="instr-editor" style="display:none;">
-                        <textarea class="special-instructions-input" placeholder="e.g., less spicy, no sauce, extra cheese" data-menu-item-id="${item.menu_item_id}" oninput="updateSpecialInstructions(this)">${safeInstr}</textarea>
-                        <div class="instr-actions">
-                            <button type="button" class="instr-btn instr-btn-primary" onclick="saveInstruction(${item.menu_item_id})">Save</button>
-                            <button type="button" class="instr-btn" onclick="toggleInstructionEditor(${item.menu_item_id}, false)">Cancel</button>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
+        // Display composed options text: prefer the popup's display-only
+        // `composed_instructions`; fall back to the server/legacy composed
+        // `special_instructions`. The two are kept separate so the free-text
+        // box in the popup isn't re-composed (REQ-040).
+        const displayInstr = (item.composed_instructions || item.special_instructions || '').trim();
+        const instrHtml = displayInstr
+            ? `<div class="instr-wrap"><div class="instr-saved">${escapeHtmlAttr(displayInstr)}</div></div>`
+            : '';
 
-        // Double-nested DOM layout architecture matching touch swiping expectations
+        // Double-nested DOM layout architecture matching touch swiping expectations.
+        // The item-details area is tappable to reopen the choice/add-on popup
+        // (REQ-040); the swipe-delete + quantity steppers keep working as before.
         const card = `
-            <div class="swipe-item-wrapper" id="wrapper-${item.menu_item_id}">
-                <div class="swipe-delete-action" onclick="removeItem(${item.menu_item_id})">
+            <div class="swipe-item-wrapper" id="wrapper-${item.line_key}">
+                <div class="swipe-delete-action" onclick="removeItem('${item.line_key}', event)">
                     <i class="fa-solid fa-trash-can"></i>
                 </div>
                 <div class="cart-item-content">
-                <img src="${imageSrc}" alt="${item.item_name}" onerror="this.style.display='none';">
-                    <div class="item-details">
+                <img src="${imageSrc}" alt="${escapeHtmlAttr(item.item_name)}" onerror="this.style.display='none';">
+                    <div class="item-details" onclick="editCartLine('${item.line_key}')">
                         <div>
-                            <h3>${item.item_name}</h3>
-                            <p>${item.description || 'Delicious side or entry option.'}</p>
+                            <h3>${escapeHtmlAttr(item.item_name)}</h3>
+                            <p>${escapeHtmlAttr(item.description || 'Delicious side or entry option.')}</p>
                         </div>
                         ${instrHtml}
                         <div class="item-price-tag">₱ ${(parseFloat(item.price)).toFixed(2)}</div>
                     </div>
                     <div class="cart-controls">
-                        <button class="btn-ctrl minus" ${minusStyle} onclick="changeQty(${item.menu_item_id}, -1, event)">-</button>
+                        <button class="btn-ctrl minus" ${minusStyle} onclick="changeQty('${item.line_key}', -1, event)">-</button>
                         <div class="qty-label">${item.quantity}</div>
-                        <button class="btn-ctrl plus" onclick="changeQty(${item.menu_item_id}, 1, event)">+</button>
+                        <button class="btn-ctrl plus" onclick="changeQty('${item.line_key}', 1, event)">+</button>
                     </div>
                 </div>
             </div>
@@ -179,40 +182,90 @@ function updateTotals(count, amount) {
 }
 
 // Added target event suppression so tapping quantity adjustments doesn't trigger swipe closures
-window.changeQty = function (id, delta, event) {
+window.changeQty = function (lineKey, delta, event) {
     if (event) event.stopPropagation();
 
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    const index = cart.findIndex(i => (withLineKey(i).line_key) === lineKey);
+    if (index === -1) return;
+
+    const originalItem = cart[index];
+    const q = parseInt(originalItem.quantity, 10);
+    const qty = isNaN(q) || q < 1 ? 1 : q;
+
     if (delta === 1) {
-        const originalItem = cart.find(i => i.menu_item_id == id);
-        if (originalItem) {
-            cart.push({ ...originalItem });
-        }
+        cart[index].quantity = qty + 1;
     } else {
-        const currentQty = cart.filter(i => i.menu_item_id == id).length;
-        if (currentQty > 1) {
-            const index = cart.findIndex(i => i.menu_item_id == id);
-            if (index > -1) cart.splice(index, 1);
+        if (qty > 1) {
+            cart[index].quantity = qty - 1;
         } else {
-            return;
+            cart.splice(index, 1);
         }
     }
     localStorage.setItem('cart', JSON.stringify(cart));
     renderCart();
 };
 
-window.removeItem = function (id) {
+window.removeItem = function (lineKey, event) {
+    if (event) event.stopPropagation();
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
-    cart = cart.filter(i => i.menu_item_id != id);
+    cart = cart.filter(i => (withLineKey(i).line_key) !== lineKey);
     localStorage.setItem('cart', JSON.stringify(cart));
     renderCart();
 };
 
+// --- REQ-040: reopen the choice/add-on popup from the cart line ---
+// The item-details area of each cart line is tappable. The stored line is
+// passed as `initial` so the popup pre-fills the current configuration.
+// On confirm the line is replaced in place (preserving other lines).
+let cartMenuCache = null;
+async function editCartLine(lineKey) {
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    const existingIndex = cart.findIndex(i => (withLineKey(i).line_key) === lineKey);
+    if (existingIndex === -1) return;
+
+    const initial = cart[existingIndex];
+    const menuItemId = initial.menu_item_id;
+
+    // Load the menu (once) so we can pass the full item with choices/add-ons.
+    if (!cartMenuCache) {
+        try {
+            const res = await fetch('get_menu.php');
+            cartMenuCache = await res.json();
+        } catch (e) {
+            alert("We couldn't load the menu. Please try again.");
+            return;
+        }
+    }
+    const item = cartMenuCache.find(p => String(p.menu_item_id) === String(menuItemId));
+    if (!item) {
+        alert("Sorry, this item is no longer on the menu.");
+        return;
+    }
+
+    window.HOFChoicePopup.open({
+        item: item,
+        initial: initial,
+        onConfirm: function (line) {
+            // Preserve the DB-rebuilt (configured) marker so a resume/edit line
+            // keeps skipping the required-group gate on re-submit (HIGH-3).
+            const enriched = Object.assign({}, withLineKey(line), {
+                configured: !!initial.configured,
+                item_name: item.item_name,
+                description: item.description,
+                image_url: item.image_url
+            });
+            const idx = cart.findIndex(i => (withLineKey(i).line_key) === lineKey);
+            if (idx !== -1) cart.splice(idx, 1, enriched);
+            localStorage.setItem('cart', JSON.stringify(cart));
+            renderCart();
+        }
+    });
+}
+
 // --- Compact special-instructions control ("+ Add Instruction") ---
-// Per line we render ONE of:
-//   (a) no instructions   -> a small "+ Add Instruction" button
-//   (b) has instructions  -> the saved text + Edit / Remove buttons
-//   (c) editing           -> textarea + Save / Cancel
+// Each line renders one of: add-instruction button, saved text + Edit/Remove,
+// or an inline textarea while editing.
 function escapeHtmlAttr(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -221,71 +274,6 @@ function escapeHtmlAttr(value) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
-
-// Update special instructions in localStorage (live textarea, unchanged behavior)
-window.updateSpecialInstructions = function (textarea) {
-    const menuItemId = parseInt(textarea.dataset.menuItemId);
-    const newInstructions = textarea.value.trim();
-
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
-    const itemIndex = cart.findIndex(i => i.menu_item_id === menuItemId);
-
-    if (itemIndex !== -1) {
-        cart[itemIndex].special_instructions = newInstructions;
-        localStorage.setItem('cart', JSON.stringify(cart));
-    }
-};
-
-// --- Compact "+ Add Instruction" toggle ---
-// item wrapper id = `instr-<menu_item_id>` (rendered by renderCart)
-window.toggleInstructionEditor = function (menuItemId, show) {
-    const wrap = document.getElementById('instr-' + menuItemId);
-    if (!wrap) return;
-    const view = wrap.querySelector('.instr-view');
-    const edit = wrap.querySelector('.instr-edit');
-    if (!view || !edit) return;
-    view.style.display = show ? 'none' : '';
-    edit.style.display = show ? '' : 'none';
-    // The editor body starts collapsed next to the "+ Add Instruction" label;
-    // reveal or hide it together with the editor pane.
-    const editorBody = edit.querySelector('.instr-editor');
-    if (editorBody) editorBody.style.display = show ? '' : 'none';
-    if (show) {
-        const ta = edit.querySelector('textarea');
-        if (ta) ta.focus();
-    }
-};
-
-// Persist the text typed into the inline editor, then re-render.
-window.saveInstruction = function (menuItemId) {
-    const wrap = document.getElementById('instr-' + menuItemId);
-    if (!wrap) return;
-    const ta = wrap.querySelector('textarea');
-    const text = ta ? ta.value.trim() : '';
-
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
-    const itemIndex = cart.findIndex(i => i.menu_item_id === menuItemId);
-    if (itemIndex !== -1) {
-        cart[itemIndex].special_instructions = text;
-        localStorage.setItem('cart', JSON.stringify(cart));
-    }
-    renderCart();
-};
-
-// Clear the instruction and collapse the editor.
-window.cancelInstruction = function (menuItemId) {
-    window.toggleInstructionEditor(menuItemId, false);
-};
-
-window.removeInstruction = function (menuItemId) {
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
-    const itemIndex = cart.findIndex(i => i.menu_item_id === menuItemId);
-    if (itemIndex !== -1) {
-        cart[itemIndex].special_instructions = '';
-        localStorage.setItem('cart', JSON.stringify(cart));
-    }
-    renderCart();
-};
 
 // Touch-gesture tracking logic decoupled natively into the JS file
 function setupSwipeGestures() {
@@ -366,15 +354,23 @@ async function rebuildCartFromOrder(orderId) {
   if (!data.success || !data.items) throw new Error('Invalid order items response');
   localStorage.setItem('cart', JSON.stringify(data.items));
   const grouped = data.items.reduce((acc, item) => {
+    const line = withLineKey(item);
     const id = item.menu_item_id;
-    if (!acc[id]) { acc[id] = { menu_item_id: id, price: parseFloat(item.price), quantity: 1, special_instructions: item.special_instructions || '' }; }
-    else {
-      acc[id].quantity += 1;
-      const inc = (item.special_instructions || '').trim();
-      if (inc) {
-        const cur = (acc[id].special_instructions || '').trim();
-        acc[id].special_instructions = cur ? cur + '; ' + inc : inc;
-      }
+    const lineQty = parseInt(item.quantity, 10);
+    const qty = isNaN(lineQty) || lineQty < 1 ? 1 : lineQty;
+    if (!acc[line.line_key]) {
+      acc[line.line_key] = {
+        menu_item_id: id,
+        price: parseFloat(item.price),
+        quantity: qty,
+        special_instructions: item.special_instructions || '',
+        composed_instructions: item.composed_instructions || item.special_instructions || '',
+        choices: item.choices || [],
+        addons: item.addons || [],
+        configured: !!item.configured
+      };
+    } else {
+      acc[line.line_key].quantity += qty;
     }
     return acc;
   }, {});
@@ -394,21 +390,22 @@ function setupCartNavigation() {
             }
 
             const grouped = rawCart.reduce((acc, item) => {
-                const id = item.menu_item_id;
-                if (!acc[id]) {
-                    acc[id] = {
+                const line = withLineKey(item);
+                const id = line.menu_item_id;
+                const lineQty = parseInt(line.quantity, 10);
+                const qty = isNaN(lineQty) || lineQty < 1 ? 1 : lineQty;
+                if (!acc[line.line_key]) {
+                    acc[line.line_key] = {
                         menu_item_id: id,
-                        price: parseFloat(item.price),
-                        quantity: 1,
-                        special_instructions: item.special_instructions || ''
+                        price: parseFloat(line.price),
+                        quantity: qty,
+                        special_instructions: line.special_instructions || '',
+                        choices: line.choices || [],
+                        addons: line.addons || [],
+                        configured: !!line.configured
                     };
                 } else {
-                    acc[id].quantity += 1;
-                    const inc = (item.special_instructions || '').trim();
-                    if (inc) {
-                        const cur = (acc[id].special_instructions || '').trim();
-                        acc[id].special_instructions = cur ? cur + '; ' + inc : inc;
-                    }
+                    acc[line.line_key].quantity += qty;
                 }
                 return acc;
             }, {});

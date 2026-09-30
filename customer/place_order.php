@@ -4,6 +4,7 @@ require_once __DIR__ . "/../backend/db.php";
 require_once __DIR__ . "/../backend/pusher_helper.php";
 require_once __DIR__ . "/../backend/geofence_config.php"; // US-SYS-013 geofence
 require_once __DIR__ . "/../backend/rate_limit.php";
+require_once __DIR__ . "/../backend/choices_addons_helper.php"; // REQ-040
 
 // Load dynamic location from DB for geofence gate
 $storeLoc = hof_get_store_location_from_db($pdo);
@@ -219,30 +220,62 @@ try {
     }
 
     // 2. Group Cart Items Backend-Side (Prevents duplicate row inserts)
+    //    REQ-040: keyed by a CONFIGURATION SIGNATURE so two lines of the same
+    //    base item with different flavors/add-ons never collapse into one
+    //    (each config keeps its own choices/add-ons/price).
     $groupedCart = [];
+    $sigOrder = []; // preserve first-seen order for stable output
     foreach ($data['cart'] as $item) {
-        $itemId = $item['menu_item_id'];
+        $itemId = (int)($item['menu_item_id'] ?? 0);
+        if ($itemId < 1) {
+            throw new Exception('Invalid cart item.');
+        }
         $instructions = trim($item['special_instructions'] ?? '');
-        if (!isset($groupedCart[$itemId])) {
-            $groupedCart[$itemId] = [
+        $lineChoices = [];
+        foreach (($item['choices'] ?? []) as $cid) {
+            $lineChoices[] = (int)$cid;
+        }
+        sort($lineChoices);
+        $lineAddons = [];
+        foreach (($item['addons'] ?? []) as $addon) {
+            if (!is_array($addon)) continue;
+            $lineAddons[] = [
+                'menu_addon_id' => (int)($addon['menu_addon_id'] ?? 0),
+                'quantity'      => max(1, (int)($addon['quantity'] ?? 1))
+            ];
+        }
+        usort($lineAddons, function ($a, $b) {
+            return $a['menu_addon_id'] <=> $b['menu_addon_id'];
+        });
+        $configured = !empty($item['configured']);
+
+        $sig = json_encode([
+            'i' => $itemId,
+            'c' => $lineChoices,
+            'a' => $lineAddons,
+            's' => $configured ? '__configured__' : $instructions
+        ], JSON_UNESCAPED_SLASHES);
+
+        if (!isset($groupedCart[$sig])) {
+            $groupedCart[$sig] = [
                 'menu_item_id' => $itemId,
                 'quantity' => 0,
-                'price' => (float)$item['price'],
-                'special_instructions' => $instructions
+                'price' => 0.0,
+                'special_instructions' => $instructions,
+                'choices' => $lineChoices,
+                'addons' => $lineAddons,
+                'configured' => $configured
             ];
-        } else {
-            if ($instructions !== '') {
-                $existing = $groupedCart[$itemId]['special_instructions'];
-                $groupedCart[$itemId]['special_instructions'] = $existing !== ''
-                    ? $existing . '; ' . $instructions
-                    : $instructions;
-            }
+            $sigOrder[] = $sig;
         }
-        $groupedCart[$itemId]['quantity'] += isset($item['quantity']) ? (int)$item['quantity'] : 1;
+        // Always accumulate quantity — the first occurrence included.
+        $groupedCart[$sig]['quantity'] += isset($item['quantity']) ? (int)$item['quantity'] : 1;
     }
 
     // 3. Fetch real prices from DB (server-authoritative, never trust client prices)
-    $menuIds = array_keys($groupedCart);
+    $menuIds = array_values(array_unique(array_map(function ($g) {
+        return (int)$g['menu_item_id'];
+    }, $groupedCart)));
     $placeholders = implode(',', array_fill(0, count($menuIds), '?'));
     $stmtPrices = $pdo->prepare("SELECT menu_item_id, price, item_name, status FROM menu_items WHERE menu_item_id IN ($placeholders)");
     $stmtPrices->execute($menuIds);
@@ -251,10 +284,12 @@ try {
         $dbItems[(int)$row['menu_item_id']] = $row;
     }
 
-    // 4. Validate every item exists + is Available + replace client prices with DB prices + compute total
+    // 4. Validate every item exists + is Available + replace client prices with DB prices
+    //    + validate choices/add-ons + fold add-on price into the line price + compose instructions (REQ-040)
     $unavailable = [];
     $computedTotal = 0;
-    foreach ($groupedCart as $itemId => &$item) {
+    foreach ($groupedCart as $sig => &$item) {
+        $itemId = (int)$item['menu_item_id'];
         if (!isset($dbItems[$itemId])) {
             throw new Exception('Menu item not found: ' . $itemId);
         }
@@ -262,7 +297,21 @@ try {
             $unavailable[] = $dbItems[$itemId]['item_name'];
             continue;
         }
-        $item['price'] = (float)$dbItems[$itemId]['price'];
+        $validated = hof_validate_choices_addons(
+            $pdo,
+            $itemId,
+            $item['special_instructions'],
+            $item['choices'],
+            $item['addons'],
+            !empty($item['configured'])
+        );
+        if (!$validated['ok']) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'message' => $validated['message']]);
+            exit;
+        }
+        $item['price'] = (float)$dbItems[$itemId]['price'] + $validated['addon_total'];
+        $item['special_instructions'] = $validated['special_instructions'];
         $computedTotal += $item['quantity'] * $item['price'];
     }
     unset($item);

@@ -17,12 +17,19 @@
  *      'DINE_IN' and still be 'AVAILABLE' (prevents double-booking).
  *   5. The table is only flipped to OCCUPIED inside the same transaction.
  *
+ * REQ-040 (choices + add-ons) is enforced through the shared helper
+ * backend/choices_addons_helper.php — validation, add-on price folding
+ * and instruction composition can never drift from the customer paths.
+ * Configured (resume/edit) lines are passed through with the stored
+ * snapshot preserved verbatim by the helper ($configured flag).
+ *
  * Status enums use HYPHENS: 'IN-PROGRESS', 'COOKING' (never underscores).
  * ============================================================
  */
 
-if (!function_exists('hof_waiter_create_order')) {
-    /**
+require_once __DIR__ . '/../choices_addons_helper.php';
+
+if (!function_exists('hof_waiter_create_order')) {    /**
      * Create a PENDING order for a waiter.
      *
      * @param PDO   $pdo
@@ -95,6 +102,18 @@ if (!function_exists('hof_waiter_create_order')) {
             $menuItemId = (int)($item['id'] ?? 0);
             $quantity   = (int)($item['quantity'] ?? 1);
             $special    = trim((string)($item['special_instructions'] ?? ''));
+            $lineChoices = [];
+            foreach (($item['choices'] ?? []) as $cid) {
+                $lineChoices[] = (int)$cid;
+            }
+            $lineAddons = [];
+            foreach (($item['addons'] ?? []) as $addon) {
+                if (!is_array($addon)) continue;
+                $lineAddons[] = [
+                    'menu_addon_id' => (int)($addon['menu_addon_id'] ?? 0),
+                    'quantity'      => (int)($addon['quantity'] ?? 1)
+                ];
+            }
 
             if (!isset($menuLookup[$menuItemId])) {
                 return ['success' => false, 'message' => "Menu item #$menuItemId no longer exists.", 'http' => 400];
@@ -113,16 +132,28 @@ if (!function_exists('hof_waiter_create_order')) {
             if (mb_strlen($special) > 500) {
                 $special = mb_substr($special, 0, 500);
             }
+            $configured = !empty($item['configured']);
+
+            // REQ-040: validate choices + add-ons server-side, fold add-on price into the line.
+            $validated = hof_validate_choices_addons($pdo, $menuItemId, $special, $lineChoices, $lineAddons, $configured);
+            if (!$validated['ok']) {
+                return [
+                    'success' => false,
+                    'message' => $validated['message'],
+                    'http'    => 400,
+                ];
+            }
 
             // Price ALWAYS comes from the database, never from the payload.
-            $price = (float)$menuItem['price'];
+            // Add-on price is folded in so subtotal = quantity * price still holds.
+            $price = (float)$menuItem['price'] + $validated['addon_total'];
 
             $validItems[] = [
                 'menu_item_id'         => $menuItemId,
                 'item_name'            => $menuItem['item_name'],
                 'quantity'             => $quantity,
                 'price'                => $price,
-                'special_instructions' => $special,
+                'special_instructions' => $validated['special_instructions'],
             ];
             $totalAmount += $price * $quantity;
         }

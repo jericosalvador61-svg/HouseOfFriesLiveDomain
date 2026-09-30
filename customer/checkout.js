@@ -149,12 +149,24 @@ function renderReceipt() {
         tableDisplay.textContent = `Table: ${tableNumber}`;
     }
 
-    // 3. Group items to accurately calculate the grand total price
+    // 3. Group items to accurately calculate the grand total price.
+    //    REQ-040 lines carry their own `quantity`; legacy lines default to 1.
+    //    Keyed by a config signature so two configurations of one item each
+    //    keep their own (different) line price.
+    function lineSig(l) {
+        const choices = (l.choices || []).map(c => String(c)).slice().sort();
+        const addons = (l.addons || []).slice().sort((a, b) => String(a.menu_addon_id).localeCompare(String(b.menu_addon_id)))
+            .map(a => a.menu_addon_id + 'x' + (parseInt(a.quantity, 10) || 1));
+        return String(l.menu_item_id) + '|' + choices.join(',') + '|' + addons.join(',');
+    }
     const grouped = cart.reduce((acc, item) => {
-        if (!acc[item.menu_item_id]) {
-            acc[item.menu_item_id] = { ...item, quantity: 1 };
+        const key = lineSig(item);
+        const lineQty = parseInt(item.quantity, 10);
+        const qty = isNaN(lineQty) || lineQty < 1 ? 1 : lineQty;
+        if (!acc[key]) {
+            acc[key] = { ...item, quantity: qty };
         } else {
-            acc[item.menu_item_id].quantity += 1;
+            acc[key].quantity += qty;
         }
         return acc;
     }, {});

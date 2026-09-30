@@ -28,7 +28,8 @@ try {
                     oi.order_item_id, 
                     mi.item_name, 
                     oi.quantity, 
-                    oi.price 
+                    oi.price,
+                    oi.special_instructions 
                    FROM order_items oi
                    JOIN menu_items mi ON oi.menu_item_id = mi.menu_item_id
                    WHERE oi.order_id = :order_id 

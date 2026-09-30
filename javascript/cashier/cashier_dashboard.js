@@ -154,7 +154,7 @@ function loadItems(catId = 'all') {
                     const btn = document.createElement('button');
                     btn.className = 'cat-btn';
                     btn.innerText = item.item_name;
-                    btn.onclick = () => addItemToCurrentOrder(item);
+                    btn.onclick = () => openItemPopup(item);
                     itemGrid.appendChild(btn);
                 });
             }
@@ -281,7 +281,10 @@ function fetchOrderDetails(id) {
                         <tr>
                             <td class="fs-5">
                                 <input type="checkbox" class="form-check-input void-checkbox me-2" style="display: ${voidControlsDisplay}; width: 20px; height: 20px; vertical-align: middle;" value="${item.order_item_id}" ${isChecked} onchange="toggleItemSelection('${item.order_item_id}')">
-                                ${item.item_name}
+                                ${escapeHtml(item.item_name)}
+                                ${(item.special_instructions || '').trim()
+                                    ? `<div class="small text-muted fw-normal">${escapeHtml(item.special_instructions)}</div>`
+                                    : ''}
                             </td>
                             <td class="text-center fw-bold fs-5">${item.quantity}</td>
                             <td class="text-center fw-bold fs-5">₱${parseFloat(item.price).toFixed(2)}</td>
@@ -333,20 +336,47 @@ function updateQty(e, orderId, orderItemId, action) {
         });
 }
 
-function addItemToCurrentOrder(item) {
+function openItemPopup(item) {
+    if (typeof window.HOFChoicePopup === 'undefined') {
+        Swal.fire('Missing Component', 'The choice popup is not loaded on this page.', 'error');
+        return;
+    }
+    window.HOFChoicePopup.open({
+        item: {
+            menu_item_id: item.menu_item_id,
+            item_name: item.item_name,
+            description: item.description,
+            price: item.price,
+            choices: item.choices || [],
+            addons: item.addons || []
+        },
+        onConfirm: (line) => {
+            addItemToCurrentOrder(item, line);
+        }
+    });
+}
+
+function addItemToCurrentOrder(item, line) {
     if (!activeOrderId) {
         Swal.fire('Wait!', 'Please select an order from the left panel first.', 'info');
         return;
     }
 
+    const payload = {
+        order_id: activeOrderId,
+        menu_item_id: item.menu_item_id,
+        price: (line && Number(line.price)) || item.price,
+        quantity: (line && Number(line.quantity)) || 1,
+        choices: (line && Array.isArray(line.choices)) ? line.choices : [],
+        addons: (line && Array.isArray(line.addons)) ? line.addons : [],
+        special_instructions: (line && line.special_instructions) || '',
+        configured: !!(line && line.configured)
+    };
+
     fetch('/backend/cashier/add_item_to_order.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            order_id: activeOrderId,
-            menu_item_id: item.menu_item_id,
-            price: item.price
-        })
+        body: JSON.stringify(payload)
     })
         .then(res => res.json())
         .then(data => {
