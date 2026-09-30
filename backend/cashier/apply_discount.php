@@ -84,7 +84,7 @@ try {
 
     // 2. Lock the order and read its current gross subtotal
     $orderStmt = $pdo->prepare("
-        SELECT subtotal_amount, total_amount, payment_status, discount_amount
+        SELECT subtotal_amount, total_amount, payment_status, discount_amount, payment_intent_id
         FROM orders
         WHERE order_id = ?
         FOR UPDATE
@@ -98,6 +98,13 @@ try {
 
     if (strtoupper(trim((string)$order['payment_status'])) === 'COMPLETED') {
         throw new Exception('This order is already paid. A discount cannot be applied after payment.');
+    }
+
+    // REQ-049 (Jerico rule): discounts are CASH-counter only. GCash/QRPh orders
+    // carry a payment_intent_id — a discount on those would silently discount the
+    // PayMongo charge (create-qrph-payment.php reads total_amount). Refuse.
+    if (!empty($order['payment_intent_id'])) {
+        throw new Exception('This order is paid via GCash. Discounts apply to cash payments at the counter only.');
     }
 
     if ($order['discount_amount'] !== null) {

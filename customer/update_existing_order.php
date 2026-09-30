@@ -179,9 +179,20 @@ try {
         ]);
     }
 
-    // 8. Update orders.total_amount
-    $updateOrder = $pdo->prepare("UPDATE orders SET total_amount = ?, ordered_at = NOW(), updated_at = NOW() WHERE order_id = ?");
-    $updateOrder->execute([$newTotal, $orderId]);
+    // 7. Update orders.total_amount + subtotal_amount
+    // REQ-049: preserve any counter-applied discount. The customer can only edit
+    // PENDING unpaid orders; if a discount is already on the order, keep it and
+    // recompute the net total from the fresh gross subtotal, exactly like the
+    // cashier recalc sites do. discount columns stay untouched.
+    $updateOrder = $pdo->prepare("
+        UPDATE orders
+        SET subtotal_amount = ?,
+            total_amount = ? - COALESCE(discount_amount, 0),
+            ordered_at = NOW(),
+            updated_at = NOW()
+        WHERE order_id = ?
+    ");
+    $updateOrder->execute([$newTotal, $newTotal, $orderId]);
 
     // 9. If DINE_IN and table_id exists, re-assert OCCUPIED
     if ($order['table_id'] && $order['order_type'] === 'DINE_IN') {
