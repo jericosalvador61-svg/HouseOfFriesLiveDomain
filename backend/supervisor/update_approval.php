@@ -78,7 +78,7 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE adjustments 
                     SET status = ?, updated_at = NOW() 
-                    WHERE adjustment_id = ?
+                    WHERE adjustment_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
             }
@@ -103,7 +103,7 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE returns 
                     SET status = ?, updated_at = NOW() 
-                    WHERE return_id = ?
+                    WHERE return_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
             }
@@ -134,7 +134,7 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE voids 
                     SET status = ?, updated_at = NOW() 
-                    WHERE void_id = ?
+                    WHERE void_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
             }
@@ -195,7 +195,7 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE stock_in 
                     SET status = ?, updated_at = NOW() 
-                    WHERE stock_in_id = ?
+                    WHERE stock_in_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
             }
@@ -249,7 +249,7 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE stock_out 
                     SET status = ?, updated_at = NOW() 
-                    WHERE stock_out_id = ?
+                    WHERE stock_out_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
             }
@@ -293,7 +293,7 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE spoilage 
                     SET status = ?, updated_at = NOW() 
-                    WHERE spoilage_id = ?
+                    WHERE spoilage_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);
             }
@@ -306,13 +306,16 @@ try {
             break;
 
         case 'purchase_plan':
+            // purchase_plans.status uses TITLE CASE ('Pending','Approved','Rejected','Cancelled')
+            // and has NO approved_by column — audit attribution goes to activity_logs only
+            $ppStatus = ($newStatus === 'APPROVED') ? 'Approved' : 'Rejected';
             if ($newStatus === 'APPROVED') {
                 $stmt = $pdo->prepare("
                     UPDATE purchase_plans 
-                    SET status = ?, approved_by = ?, updated_at = NOW() 
+                    SET status = ?, updated_at = NOW() 
                     WHERE plan_id = ? AND status = 'Pending'
                 ");
-                $stmt->execute([$newStatus, $userId, $requestId]);
+                $stmt->execute([$ppStatus, $requestId]);
                 if ($stmt->rowCount() === 0) {
                     echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
                     exit;
@@ -324,9 +327,13 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE purchase_plans 
                     SET status = ?, updated_at = NOW() 
-                    WHERE plan_id = ?
+                    WHERE plan_id = ? AND status = 'Pending'
                 ");
-                $stmt->execute([$newStatus, $requestId]);
+                $stmt->execute([$ppStatus, $requestId]);
+                if ($stmt->rowCount() === 0) {
+                    echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
+                    exit;
+                }
             }
             break;
 
