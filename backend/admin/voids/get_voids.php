@@ -22,7 +22,8 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../db.php';
 require_once __DIR__ . '/../../auth_middleware.php';
-authenticate(['Admin', 'Supervisor']);
+require_once __DIR__ . '/../../date_window_helper.php';
+$user = authenticate(['Admin', 'Supervisor']);
 
 $page  = max(1, (int)($_GET['page'] ?? 1));
 $limit = min(100, max(1, (int)($_GET['limit'] ?? 20)));
@@ -31,6 +32,18 @@ $search = trim($_GET['search'] ?? '');
 $dateFrom = $_GET['date_from'] ?? '';
 $dateTo = $_GET['date_to'] ?? '';
 $isExport = isset($_GET['export']) && $_GET['export'] === 'csv';
+
+// REQ-049: Supervisor hard-block — voids are locked to the 31-day rolling window.
+if (($user['role'] ?? '') === 'Supervisor') {
+    $window = hof_month_window($dateFrom ?: null, $dateTo ?: null);
+    if ($window['blocked']) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Supervisor access is limited to the last 31 days.']);
+        exit;
+    }
+    $dateFrom = $window['from'];
+    $dateTo   = $window['to'];
+}
 
 $where = [];
 $params = [];

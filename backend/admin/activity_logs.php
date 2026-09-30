@@ -8,10 +8,11 @@
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth_middleware.php';
 require_once __DIR__ . '/../log_activity_helper.php';
+require_once __DIR__ . '/../date_window_helper.php';
 header('Content-Type: application/json');
 
 // Auth: Admin or Supervisor
-authenticate(['Admin', 'Supervisor']);
+$user = authenticate(['Admin', 'Supervisor']);
 
 // Parse filters
 $page     = max(1, intval($_GET['page'] ?? 1));
@@ -23,6 +24,18 @@ $date_to      = $_GET['date_to'] ?? date('Y-m-d');
 $action_type  = $_GET['action_type'] ?? '';
 $role_filter  = $_GET['role'] ?? '';
 $user_search  = $_GET['user_search'] ?? '';
+
+// REQ-049: Supervisor hard-block — activity logs are locked to the 31-day rolling window.
+if (($user['role'] ?? '') === 'Supervisor') {
+    $window = hof_month_window($date_from ?: null, $date_to ?: null);
+    if ($window['blocked']) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Supervisor access is limited to the last 31 days.']);
+        exit;
+    }
+    $date_from = $window['from'];
+    $date_to   = $window['to'];
+}
 
 try {
     $db = $pdo;

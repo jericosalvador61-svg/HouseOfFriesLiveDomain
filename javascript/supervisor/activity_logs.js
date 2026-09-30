@@ -34,6 +34,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize date defaults
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    // REQ-049: Supervisor 31-day rolling window bounds (UI prevention)
+    function getWindowBounds() {
+        const max = new Date();
+        const min = new Date();
+        min.setDate(min.getDate() - 31);
+        return {
+            min: `${min.getFullYear()}-${String(min.getMonth() + 1).padStart(2, '0')}-${String(min.getDate()).padStart(2, '0')}`,
+            max: `${max.getFullYear()}-${String(max.getMonth() + 1).padStart(2, '0')}-${String(max.getDate()).padStart(2, '0')}`
+        };
+    }
+    function isWithinWindow(start, end) {
+        if (!start || !end) return true;
+        const bounds = getWindowBounds();
+        if (start < bounds.min || start > bounds.max) return false;
+        if (end < bounds.min || end > bounds.max) return false;
+        const spanDays = Math.round((new Date(end + 'T00:00:00') - new Date(start + 'T00:00:00')) / 86400000);
+        if (spanDays > 31) return false;
+        return true;
+    }
+    const windowBounds = getWindowBounds();
+    dateFrom.min = windowBounds.min;
+    dateFrom.max = windowBounds.max;
+    dateTo.min = windowBounds.min;
+    dateTo.max = windowBounds.max;
+
     dateFrom.value = firstDayOfMonth.toISOString().split('T')[0];
     dateTo.value = today.toISOString().split('T')[0];
 
@@ -353,6 +379,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event Listeners
     filterForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        if (!isWithinWindow(dateFrom.value, dateTo.value)) {
+            currentFilters = {
+                date_from: dateFrom.value,
+                date_to: dateTo.value,
+                action_type: actionTypeSelect.value,
+                role: roleFilterSelect.value,
+                user_search: userSearch.value.trim()
+            };
+            Swal.fire({ icon: 'error', title: 'Invalid Date Range', text: 'Supervisor access is limited to the last 31 days.' });
+            return;
+        }
         currentFilters = {
             date_from: dateFrom.value,
             date_to: dateTo.value,
