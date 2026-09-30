@@ -158,7 +158,31 @@ const VoidsUI = (function () {
             </tr>`;
     }
 
+    // REQ-049: Supervisor 31-day rolling window bounds (UI prevention)
+    function getWindowBounds() {
+        const max = new Date();
+        const min = new Date();
+        min.setDate(min.getDate() - 31);
+        return {
+            min: `${min.getFullYear()}-${String(min.getMonth() + 1).padStart(2, '0')}-${String(min.getDate()).padStart(2, '0')}`,
+            max: `${max.getFullYear()}-${String(max.getMonth() + 1).padStart(2, '0')}-${String(max.getDate()).padStart(2, '0')}`
+        };
+    }
+    function isWithinWindow(start, end) {
+        if (!start || !end) return true;
+        const bounds = getWindowBounds();
+        if (start < bounds.min || start > bounds.max) return false;
+        if (end < bounds.min || end > bounds.max) return false;
+        const spanDays = Math.round((new Date(end + 'T00:00:00') - new Date(start + 'T00:00:00')) / 86400000);
+        if (spanDays > 31) return false;
+        return true;
+    }
+
     function applyFilters() {
+        if (el.dateFrom.value && el.dateTo.value && !isWithinWindow(el.dateFrom.value, el.dateTo.value)) {
+            Swal.fire({ icon: 'error', title: 'Invalid Date Range', text: 'Supervisor access is limited to the last 31 days.' });
+            return;
+        }
         state.filters.search = el.search.value.trim();
         state.filters.status = el.status.value;
         state.filters.dateFrom = el.dateFrom.value;
@@ -208,6 +232,13 @@ const VoidsUI = (function () {
     // ============ INIT ============
     document.addEventListener('DOMContentLoaded', function () {
         cacheElements();
+
+        // REQ-049: constrain date inputs to the 31-day rolling window
+        const windowBounds = getWindowBounds();
+        el.dateFrom.min = windowBounds.min;
+        el.dateFrom.max = windowBounds.max;
+        el.dateTo.min = windowBounds.min;
+        el.dateTo.max = windowBounds.max;
 
         let searchDebounce;
         el.search.addEventListener('input', () => {

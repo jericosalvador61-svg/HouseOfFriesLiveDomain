@@ -2,12 +2,15 @@
 // backend/admin/salesReports/SalesReportController.php
 
 require_once __DIR__ . '/SalesReport.php';
+require_once __DIR__ . '/../../date_window_helper.php';
 
 class SalesReportController {
     private $model;
+    private $user;
 
-    public function __construct() {
+    public function __construct(array $user = []) {
         $this->model = new SalesReport();
+        $this->user = $user;
     }
 
     private function respond($data, $statusCode = 200) {
@@ -20,6 +23,15 @@ class SalesReportController {
     private function getDateRange() {
         $start = $_GET['start_date'] ?? date('Y-m-d', strtotime('-7 days'));
         $end = $_GET['end_date'] ?? date('Y-m-d');
+
+        if (($this->user['role'] ?? '') === 'Supervisor') {
+            $window = hof_month_window($start ?: null, $end ?: null);
+            if ($window['blocked']) {
+                $this->respond(['success' => false, 'message' => 'Supervisor access is limited to the last 31 days.'], 400);
+            }
+            list($start, $end) = [$window['from'], $window['to']];
+        }
+
         return [$start, $end];
     }
 

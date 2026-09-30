@@ -3,7 +3,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../auth_middleware.php';
 require_once __DIR__ . '/Kitchen.php';
-require_once __DIR__ . '/../../supervisor/month_scope.php';
+require_once __DIR__ . '/../../date_window_helper.php';
 
 /**
  * Get kitchen orders history with pagination and filtering
@@ -55,10 +55,16 @@ $dateFrom = $_GET['date_from'] ?? '';
 $dateTo = $_GET['date_to'] ?? '';
 $isExport = isset($_GET['export']) && $_GET['export'] === 'csv';
 
-// ---- Supervisor golden rule: history is locked to the CURRENT month ----
-// (Admin / Kitchen Staff behaviour is unchanged — clamp applies only to Supervisor.)
+// ---- Supervisor golden rule: history is locked to the 31-day rolling window ----
+// (Admin / Kitchen Staff behaviour is unchanged — enforcement applies only to Supervisor.)
 if (($user['role'] ?? '') === 'Supervisor') {
-    [$dateFrom, $dateTo] = hof_month_window($dateFrom, $dateTo);
+    $window = hof_month_window($dateFrom ?: null, $dateTo ?: null);
+    if ($window['blocked']) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Supervisor access is limited to the last 31 days.']);
+        exit;
+    }
+    [$dateFrom, $dateTo] = [$window['from'], $window['to']];
 }
 
 $kitchen = new Kitchen();

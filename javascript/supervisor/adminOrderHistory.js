@@ -211,7 +211,14 @@ const AdminOrderHistoryUI = (function () {
 
         // Date filters
         if (elements.dateFrom) {
+            elements.dateFrom.min = getWindowBounds().min;
+            elements.dateFrom.max = getWindowBounds().max;
             elements.dateFrom.addEventListener('change', () => {
+                if (elements.dateTo.value && !isWithinWindow(elements.dateFrom.value, elements.dateTo.value)) {
+                    Swal.fire({ icon: 'error', title: 'Invalid Date Range', text: 'Supervisor access is limited to the last 31 days.' });
+                    elements.dateFrom.value = state.filters.dateFrom;
+                    return;
+                }
                 state.filters.dateFrom = elements.dateFrom.value;
                 state.pagination.page = 1;
                 loadData();
@@ -219,7 +226,14 @@ const AdminOrderHistoryUI = (function () {
         }
 
         if (elements.dateTo) {
+            elements.dateTo.min = getWindowBounds().min;
+            elements.dateTo.max = getWindowBounds().max;
             elements.dateTo.addEventListener('change', () => {
+                if (elements.dateFrom.value && !isWithinWindow(elements.dateFrom.value, elements.dateTo.value)) {
+                    Swal.fire({ icon: 'error', title: 'Invalid Date Range', text: 'Supervisor access is limited to the last 31 days.' });
+                    elements.dateTo.value = state.filters.dateTo;
+                    return;
+                }
                 state.filters.dateTo = elements.dateTo.value;
                 state.pagination.page = 1;
                 loadData();
@@ -588,6 +602,33 @@ const AdminOrderHistoryUI = (function () {
     }
 
     // ============ HELPERS ============
+    // REQ-049: Supervisor 31-day rolling window bounds + validation
+    function getWindowBounds() {
+        const max = new Date();
+        const min = new Date();
+        min.setDate(min.getDate() - 31);
+        return { min: toISODate(min), max: toISODate(max) };
+    }
+
+    function toISODate(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function isWithinWindow(start, end) {
+        if (!start || !end) return true;
+        const bounds = getWindowBounds();
+        if (start < bounds.min || start > bounds.max) return false;
+        if (end < bounds.min || end > bounds.max) return false;
+        const startMs = new Date(start + 'T00:00:00');
+        const endMs = new Date(end + 'T00:00:00');
+        const spanDays = Math.round((endMs - startMs) / 86400000);
+        if (spanDays > 31) return false;
+        return true;
+    }
+
     function showLoading() {
         if (!elements.tableBody) return;
         elements.tableBody.innerHTML = `

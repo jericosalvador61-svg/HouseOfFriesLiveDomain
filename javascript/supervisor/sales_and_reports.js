@@ -61,6 +61,67 @@ let currentFilters = {
 let autoRefreshInterval = null;
 
 // ==========================================
+// REQ-049: 31-day rolling window bounds (UI prevention)
+// ==========================================
+function getDateWindowBounds() {
+    const maxDate = new Date();
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() - 31);
+    return {
+        min: formatDate(minDate),
+        max: formatDate(maxDate)
+    };
+}
+
+function isWithinWindow(start, end) {
+    const bounds = getDateWindowBounds();
+    if (!start || !end) return true;
+    const startMs = new Date(start + 'T00:00:00');
+    const endMs = new Date(end + 'T00:00:00');
+    const minMs = new Date(bounds.min + 'T00:00:00');
+    const maxMs = new Date(bounds.max + 'T00:00:00');
+    if (startMs < minMs || startMs > maxMs) return false;
+    if (endMs < minMs || endMs > maxMs) return false;
+    const spanDays = Math.round((endMs - startMs) / 86400000);
+    if (spanDays > 31) return false;
+    return true;
+}
+
+function setupDateWindow() {
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    const bounds = getDateWindowBounds();
+    if (startDateInput) {
+        startDateInput.min = bounds.min;
+        startDateInput.max = bounds.max;
+        startDateInput.addEventListener('change', () => {
+            if (startDateInput.value && endDateInput.value && !isWithinWindow(startDateInput.value, endDateInput.value)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid Date Range',
+                    text: 'Supervisor access is limited to the last 31 days.'
+                });
+                startDateInput.value = currentFilters.start_date;
+            }
+        });
+    }
+    if (endDateInput) {
+        endDateInput.min = bounds.min;
+        endDateInput.max = bounds.max;
+        endDateInput.addEventListener('change', () => {
+            if (startDateInput.value && endDateInput.value && !isWithinWindow(startDateInput.value, endDateInput.value)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid Date Range',
+                    text: 'Supervisor access is limited to the last 31 days.'
+                });
+                endDateInput.value = currentFilters.end_date;
+            }
+        });
+    }
+}
+
+// ==========================================
 // INIT
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
@@ -95,6 +156,7 @@ function init() {
     loadMenuItems();
     loadAllData();
     setupEvents();
+    setupDateWindow();
 
     autoRefreshInterval = setInterval(() => {
         loadAllData();
@@ -192,6 +254,15 @@ function applyFilters() {
         return;
     }
 
+    if (!isWithinWindow(startDate, endDate)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid Date Range',
+            text: 'Supervisor access is limited to the last 31 days.'
+        });
+        return;
+    }
+
     currentFilters.start_date = startDate;
     currentFilters.end_date = endDate;
     currentFilters.group_by = groupBy;
@@ -221,6 +292,10 @@ function resetFilters() {
     if (endDateInput) endDateInput.value = formatDate(endDate);
     if (groupByInput) groupByInput.value = 'day';
     if (menuItemInput) menuItemInput.value = '';
+
+    const bounds = getDateWindowBounds();
+    if (startDateInput) { startDateInput.min = bounds.min; startDateInput.max = bounds.max; }
+    if (endDateInput) { endDateInput.min = bounds.min; endDateInput.max = bounds.max; }
 
     currentFilters.start_date = formatDate(startDate);
     currentFilters.end_date = formatDate(endDate);
