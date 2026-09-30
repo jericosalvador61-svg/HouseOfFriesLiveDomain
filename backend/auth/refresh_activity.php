@@ -7,19 +7,17 @@ require_once __DIR__ . "/../secret.php";
 
 header("Content-Type: application/json");
 
-$token = $_POST['token'] ?? $_GET['token'] ?? '';
+$token = '';
 
-if (!$token) {
-    // Try to get from Authorization header
-    $headers = function_exists('getallheaders') ? getallheaders() : [];
-    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-    if (preg_match('/Bearer\s+(.+)$/i', $authHeader, $matches)) {
-        $token = trim($matches[1]);
-    }
-    // Fallback for CGI/FastCGI (InfinityFree) where getallheaders() doesn't exist
-    if (!$token && !empty($_SERVER['HTTP_AUTHORIZATION']) && preg_match('/Bearer\s+(.+)$/i', $_SERVER['HTTP_AUTHORIZATION'], $matches)) {
-        $token = trim($matches[1]);
-    }
+// Get token from Authorization header
+$headers = function_exists('getallheaders') ? getallheaders() : [];
+$authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+if (preg_match('/Bearer\s+(.+)$/i', $authHeader, $matches)) {
+    $token = trim($matches[1]);
+}
+// Fallback for CGI/FastCGI (InfinityFree) where getallheaders() doesn't exist
+if (!$token && !empty($_SERVER['HTTP_AUTHORIZATION']) && preg_match('/Bearer\s+(.+)$/i', $_SERVER['HTTP_AUTHORIZATION'], $matches)) {
+    $token = trim($matches[1]);
 }
 
 if (!$token) {

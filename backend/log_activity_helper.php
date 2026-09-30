@@ -40,7 +40,7 @@ function logActivity(
         $category = 'ORDER';
     } elseif (str_starts_with($actionType, 'PAYMENT_')) {
         $category = 'SALES';
-    } elseif (str_starts_with($actionType, 'STOCK_') || str_starts_with($actionType, 'INVENTORY_') || $actionType === 'SPOILAGE' || $actionType === 'ADJUSTMENT' || $actionType === 'RETURN' || $actionType === 'PURCHASE_PLAN') {
+    } elseif (str_starts_with($actionType, 'STOCK_') || str_starts_with($actionType, 'INVENTORY_') || str_starts_with($actionType, 'SPOILAGE') || str_starts_with($actionType, 'ADJUSTMENT') || str_starts_with($actionType, 'RETURN') || str_starts_with($actionType, 'PURCHASE_PLAN')) {
         $category = 'INVENTORY';
     } elseif (str_starts_with($actionType, 'USER_')) {
         $category = 'USER_MGMT';

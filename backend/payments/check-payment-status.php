@@ -45,12 +45,9 @@ $staffUsername = 'GUEST';
 $staffRole = 'Customer';
 $hasStaffAuth = false;
 $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-$qsToken = $_GET['token'] ?? '';
 $candidate = null;
 if (preg_match('/Bearer\s+(\S+)/i', $authHeader, $m)) {
     $candidate = $m[1];
-} elseif ($qsToken) {
-    $candidate = $qsToken;
 }
 if ($candidate) {
     $parts = explode('.', $candidate);

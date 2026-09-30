@@ -34,12 +34,7 @@ function getBearerTokenFromRequest(): string
         return trim((string) $_COOKIE['hof_token']);
     }
 
-    // 3. Check query parameter ?token=... (works on all servers)
-    if (!empty($_GET['token'])) {
-        return trim((string) $_GET['token']);
-    }
-
-    // 4. Check request body {"token": "..."} - already in $GLOBALS['RAW_HTTP_BODY']
+    // 3. Check request body {"token": "..."} - already in $GLOBALS['RAW_HTTP_BODY']
     if ($rawBody !== '') {
         $body = json_decode($rawBody, true);
         if (is_array($body) && !empty($body['token'])) {
