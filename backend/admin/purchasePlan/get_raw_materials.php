@@ -2,6 +2,8 @@
 // backend/get_raw_materials.php
 header("Content-Type: application/json");
 require_once __DIR__ . '/../../db.php';
+require_once __DIR__ . '/../../auth_middleware.php';
+$user = authenticate(['Admin', 'Supervisor']);
 
 try {
     // 🛠️ FIX: Added cost_per_unit to the SELECT query string below
