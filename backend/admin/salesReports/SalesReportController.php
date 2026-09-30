@@ -84,7 +84,7 @@ class SalesReportController {
         header('Content-Disposition: attachment; filename="sales_report_' . date('Y-m-d') . '.csv"');
 
         $output = fopen('php://output', 'w');
-        fputcsv($output, ['Order ID', 'Reference', 'Date', 'Type', 'Total Amount', 'Status', 'Item', 'Quantity', 'Price', 'Subtotal']);
+        fputcsv($output, ['Order ID', 'Reference', 'Date', 'Type', 'Subtotal', 'Discount', 'Total Amount', 'Status', 'Item', 'Quantity', 'Price', 'Subtotal/Line']);
 
         foreach ($data as $row) {
             fputcsv($output, [
@@ -92,6 +92,8 @@ class SalesReportController {
                 $row['reference_number'],
                 $row['ordered_at'],
                 $row['order_type'],
+                $row['subtotal_amount'] ?? $row['total_amount'],
+                $row['discount_amount'] ?? '0.00',
                 $row['total_amount'],
                 $row['status'],
                 $row['item_name'],
@@ -120,7 +122,7 @@ class SalesReportController {
         echo '<table border="1" cellpadding="5">';
         echo '<tr style="background:#f0f0f0;">';
         echo '<th>Order ID</th><th>Reference</th><th>Date</th><th>Type</th>';
-        echo '<th>Total Amount</th><th>Status</th><th>Item</th><th>Quantity</th><th>Price</th><th>Subtotal</th>';
+        echo '<th>Subtotal</th><th>Discount</th><th>Total Amount</th><th>Status</th><th>Item</th><th>Quantity</th><th>Price</th><th>Subtotal/Line</th>';
         echo '</tr>';
 
         $totalRevenue = 0;
@@ -130,6 +132,8 @@ class SalesReportController {
             echo '<td>' . $row['reference_number'] . '</td>';
             echo '<td>' . $row['ordered_at'] . '</td>';
             echo '<td>' . $row['order_type'] . '</td>';
+            echo '<td>' . number_format($row['subtotal_amount'] ?? $row['total_amount'], 2) . '</td>';
+            echo '<td>' . number_format($row['discount_amount'] ?? 0, 2) . '</td>';
             echo '<td>' . number_format($row['total_amount'], 2) . '</td>';
             echo '<td>' . $row['status'] . '</td>';
             echo '<td>' . $row['item_name'] . '</td>';

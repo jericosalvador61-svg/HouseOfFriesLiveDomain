@@ -80,6 +80,8 @@ try {
         'table_number' => $order['table_number'],
         'cashier' => $order['cashier_name'],
         'payment_method' => $payment['payment_method'] ?? ($order['payment_status'] === 'COMPLETED' ? 'CASH' : 'GCASH'),
+        'subtotal_amount' => $order['subtotal_amount'] ?? $order['total_amount'],
+        'discount_amount' => $order['discount_amount'] ?? 0,
         'total_amount' => $order['total_amount'],
         'amount_paid' => $payment['amount_paid'] ?? $order['total_amount'],
         'change_amount' => $payment['change_given'] ?? 0,

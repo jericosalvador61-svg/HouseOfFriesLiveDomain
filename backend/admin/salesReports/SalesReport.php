@@ -41,7 +41,8 @@ class SalesReport {
                     COALESCE(SUM(p.amount_paid), 0) AS total_revenue,
                     COALESCE(AVG(p.amount_paid), 0) AS avg_order_value,
                     COALESCE(SUM(CASE WHEN UPPER(p.payment_method) IN ('GCASH','ONLINE','CARD') THEN p.amount_paid ELSE 0 END), 0) AS gcash_revenue,
-                    COALESCE(SUM(CASE WHEN UPPER(p.payment_method) = 'CASH' THEN p.amount_paid ELSE 0 END), 0) AS cash_revenue
+                    COALESCE(SUM(CASE WHEN UPPER(p.payment_method) = 'CASH' THEN p.amount_paid ELSE 0 END), 0) AS cash_revenue,
+                    COALESCE(SUM(o.discount_amount), 0) AS total_discount
                 FROM orders o
                 {$this->paidJoin()}
                 WHERE DATE(p.paid_at) BETWEEN :start AND :end";
@@ -74,6 +75,7 @@ class SalesReport {
             'avg_order_value' => (float)$stats['avg_order_value'],
             'gcash_revenue' => (float)$stats['gcash_revenue'],
             'cash_revenue' => (float)$stats['cash_revenue'],
+            'total_discount' => (float)$stats['total_discount'],
             'best_seller' => $bestSeller ? [
                 'item_name' => $bestSeller['item_name'],
                 'total_revenue' => (float)$bestSeller['total_revenue'],
@@ -265,6 +267,9 @@ class SalesReport {
                     o.ordered_at,
                     o.order_type,
                     o.total_amount,
+                    o.subtotal_amount,
+                    o.discount_amount,
+                    COALESCE(dt.name, '') AS discount_type_name,
                     o.status,
                     UPPER(p.payment_method) AS payment_method,
                     p.paid_at,
@@ -278,6 +283,7 @@ class SalesReport {
                 JOIN menu_items mi ON oi.menu_item_id = mi.menu_item_id
                 {$this->paidJoin()}
                 LEFT JOIN users u ON u.user_id = COALESCE(p.user_id, o.user_id)
+                LEFT JOIN discount_types dt ON dt.discount_type_id = o.discount_type_id
                 WHERE DATE(p.paid_at) BETWEEN :start AND :end";
 
         $params = [':start' => $startDate, ':end' => $endDate];

@@ -67,6 +67,8 @@ function logActivity(
         $category = 'USER_MGMT';
     } elseif (str_starts_with($actionType, 'VOID')) {
         $category = 'SALES';
+    } elseif (str_starts_with($actionType, 'DISCOUNT')) {
+        $category = 'SALES';
     } elseif (str_starts_with($actionType, 'MENU_')) {
         $category = 'MENU';
     } elseif (str_starts_with($actionType, 'SETTINGS_')) {

@@ -757,6 +757,10 @@ function showReceiptModal(data) {
     html += '</tbody></table>';
     html += '<hr>';
     html += '<div style="text-align:right;font-size:1.2em;">';
+    if (data.discount_amount && parseFloat(data.discount_amount) > 0) {
+        html += '  <p>Subtotal: ₱' + parseFloat(data.subtotal_amount || data.total_amount).toFixed(2) + '</p>';
+        html += '  <p>Discount: -₱' + parseFloat(data.discount_amount).toFixed(2) + '</p>';
+    }
     html += '  <strong>Total: ₱' + parseFloat(data.total_amount).toFixed(2) + '</strong>';
     html += '</div>';
     if (data.payment_method === 'CASH' && data.change_amount) {
