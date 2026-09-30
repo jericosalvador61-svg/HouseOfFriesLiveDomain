@@ -5,8 +5,12 @@
  */
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth_middleware.php';
+require_once __DIR__ . '/../log_activity_helper.php';
 
 $auth = authenticate(['Supervisor', 'Admin']);
+$userId = $auth['user_id'];
+$userName = $auth['username'] ?? 'Supervisor';
+$userRole = $auth['role'] ?? 'Supervisor';
 header('Content-Type: application/json');
 
 $data = json_decode(file_get_contents('php://input'), true);
@@ -25,6 +29,18 @@ try {
             // Inventory adjustments
             if ($newStatus === 'APPROVED') {
                 $pdo->beginTransaction();
+
+                // Lock the parent row and verify it is still PENDING
+                $lockStmt = $pdo->prepare("
+                    SELECT adjustment_id FROM adjustments 
+                    WHERE adjustment_id = ? AND status = 'PENDING' FOR UPDATE
+                ");
+                $lockStmt->execute([$requestId]);
+                if (!$lockStmt->fetch()) {
+                    $pdo->rollBack();
+                    echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
+                    exit;
+                }
 
                 // Get ALL adjustment items (not just one)
                 $adjStmt = $pdo->prepare("
@@ -51,10 +67,13 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE adjustments 
                     SET status = ?, approved_at = NOW(), approved_by = ?, updated_at = NOW() 
-                    WHERE adjustment_id = ?
+                    WHERE adjustment_id = ? AND status = 'PENDING'
                 ");
-                $stmt->execute([$newStatus, $auth['user_id'], $requestId]);
+                $stmt->execute([$newStatus, $userId, $requestId]);
                 $pdo->commit();
+                logActivity($pdo, $userId, $userName, $userRole,
+                    'ADJUSTMENT_APPROVED', "Approved inventory adjustment #{$requestId}",
+                    'adjustment', $requestId);
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE adjustments 
@@ -72,9 +91,14 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE returns 
                     SET status = ?, approved_at = NOW(), approved_by = ?, updated_at = NOW() 
-                    WHERE return_id = ?
+                    WHERE return_id = ? AND status = 'PENDING'
                 ");
-                $stmt->execute([$newStatus, $auth['user_id'], $requestId]);
+                $stmt->execute([$newStatus, $userId, $requestId]);
+                if ($stmt->rowCount() === 0) {
+                    $pdo->rollBack();
+                    echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
+                    exit;
+                }
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE returns 
@@ -84,6 +108,11 @@ try {
                 $stmt->execute([$newStatus, $requestId]);
             }
             $pdo->commit();
+            if ($newStatus === 'APPROVED') {
+                logActivity($pdo, $userId, $userName, $userRole,
+                    'RETURN_APPROVED', "Approved return request #{$requestId}",
+                    'return', $requestId);
+            }
             break;
 
         case 'void':
@@ -93,9 +122,14 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE voids 
                     SET status = ?, approved_at = NOW(), approved_by = ?, updated_at = NOW() 
-                    WHERE void_id = ?
+                    WHERE void_id = ? AND status = 'PENDING'
                 ");
-                $stmt->execute([$newStatus, $auth['user_id'], $requestId]);
+                $stmt->execute([$newStatus, $userId, $requestId]);
+                if ($stmt->rowCount() === 0) {
+                    $pdo->rollBack();
+                    echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
+                    exit;
+                }
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE voids 
@@ -105,11 +139,28 @@ try {
                 $stmt->execute([$newStatus, $requestId]);
             }
             $pdo->commit();
+            if ($newStatus === 'APPROVED') {
+                logActivity($pdo, $userId, $userName, $userRole,
+                    'VOID_APPROVED', "Approved void request #{$requestId}",
+                    'void', $requestId);
+            }
             break;
 
         case 'stock_in':
             if ($newStatus === 'APPROVED') {
                 $pdo->beginTransaction();
+
+                // Lock the parent row and verify it is still PENDING
+                $lockStmt = $pdo->prepare("
+                    SELECT stock_in_id FROM stock_in 
+                    WHERE stock_in_id = ? AND status = 'PENDING' FOR UPDATE
+                ");
+                $lockStmt->execute([$requestId]);
+                if (!$lockStmt->fetch()) {
+                    $pdo->rollBack();
+                    echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
+                    exit;
+                }
 
                 // Get stock_in items and update raw materials
                 $siStmt = $pdo->prepare("
@@ -133,10 +184,13 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE stock_in 
                     SET status = ?, approved_at = NOW(), approved_by = ?, updated_at = NOW() 
-                    WHERE stock_in_id = ?
+                    WHERE stock_in_id = ? AND status = 'PENDING'
                 ");
-                $stmt->execute([$newStatus, $auth['user_id'], $requestId]);
+                $stmt->execute([$newStatus, $userId, $requestId]);
                 $pdo->commit();
+                logActivity($pdo, $userId, $userName, $userRole,
+                    'STOCK_IN_APPROVED', "Approved stock-in #{$requestId}",
+                    'stock_in', $requestId);
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE stock_in 
@@ -150,6 +204,18 @@ try {
         case 'stock_out':
             if ($newStatus === 'APPROVED') {
                 $pdo->beginTransaction();
+
+                // Lock the parent row and verify it is still PENDING
+                $lockStmt = $pdo->prepare("
+                    SELECT stock_out_id FROM stock_out 
+                    WHERE stock_out_id = ? AND status = 'PENDING' FOR UPDATE
+                ");
+                $lockStmt->execute([$requestId]);
+                if (!$lockStmt->fetch()) {
+                    $pdo->rollBack();
+                    echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
+                    exit;
+                }
 
                 $soStmt = $pdo->prepare("
                     SELECT raw_material_id, quantity 
@@ -172,10 +238,13 @@ try {
                 $stmt = $pdo->prepare("
                     UPDATE stock_out 
                     SET status = ?, approved_at = NOW(), approved_by = ?, updated_at = NOW() 
-                    WHERE stock_out_id = ?
+                    WHERE stock_out_id = ? AND status = 'PENDING'
                 ");
-                $stmt->execute([$newStatus, $auth['user_id'], $requestId]);
+                $stmt->execute([$newStatus, $userId, $requestId]);
                 $pdo->commit();
+                logActivity($pdo, $userId, $userName, $userRole,
+                    'STOCK_OUT_APPROVED', "Approved stock-out #{$requestId}",
+                    'stock_out', $requestId);
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE stock_out 
@@ -190,31 +259,36 @@ try {
             // Spoilage — deduct from inventory when approved
             $pdo->beginTransaction();
             if ($newStatus === 'APPROVED') {
-                // Deduct spoilage from raw material stock
+                // Lock the parent row and verify it is still PENDING
                 $spStmt = $pdo->prepare("
                     SELECT raw_material_id, quantity_lost 
                     FROM spoilage 
-                    WHERE spoilage_id = ?
+                    WHERE spoilage_id = ? AND status = 'PENDING' FOR UPDATE
                 ");
                 $spStmt->execute([$requestId]);
                 $spItem = $spStmt->fetch();
 
-                if ($spItem) {
-                    $updStmt = $pdo->prepare("
-                        UPDATE raw_materials 
-                        SET current_quantity = GREATEST(current_quantity - ?, 0),
-                            updated_at = NOW()
-                        WHERE raw_material_id = ?
-                    ");
-                    $updStmt->execute([$spItem['quantity_lost'], $spItem['raw_material_id']]);
+                if (!$spItem) {
+                    $pdo->rollBack();
+                    echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
+                    exit;
                 }
+
+                // Deduct spoilage from raw material stock
+                $updStmt = $pdo->prepare("
+                    UPDATE raw_materials 
+                    SET current_quantity = GREATEST(current_quantity - ?, 0),
+                        updated_at = NOW()
+                    WHERE raw_material_id = ?
+                ");
+                $updStmt->execute([$spItem['quantity_lost'], $spItem['raw_material_id']]);
 
                 $stmt = $pdo->prepare("
                     UPDATE spoilage 
                     SET status = ?, approved_at = NOW(), approved_by = ?, updated_at = NOW() 
-                    WHERE spoilage_id = ?
+                    WHERE spoilage_id = ? AND status = 'PENDING'
                 ");
-                $stmt->execute([$newStatus, $auth['user_id'], $requestId]);
+                $stmt->execute([$newStatus, $userId, $requestId]);
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE spoilage 
@@ -224,15 +298,36 @@ try {
                 $stmt->execute([$newStatus, $requestId]);
             }
             $pdo->commit();
+            if ($newStatus === 'APPROVED') {
+                logActivity($pdo, $userId, $userName, $userRole,
+                    'SPOILAGE_APPROVED', "Approved spoilage report #{$requestId}",
+                    'spoilage', $requestId);
+            }
             break;
 
         case 'purchase_plan':
-            $stmt = $pdo->prepare("
-                UPDATE purchase_plans 
-                SET status = ?, approved_by = ?, updated_at = NOW() 
-                WHERE plan_id = ?
-            ");
-            $stmt->execute([$newStatus, $auth['user_id'], $requestId]);
+            if ($newStatus === 'APPROVED') {
+                $stmt = $pdo->prepare("
+                    UPDATE purchase_plans 
+                    SET status = ?, approved_by = ?, updated_at = NOW() 
+                    WHERE plan_id = ? AND status = 'Pending'
+                ");
+                $stmt->execute([$newStatus, $userId, $requestId]);
+                if ($stmt->rowCount() === 0) {
+                    echo json_encode(['success' => false, 'message' => 'Request is not pending approval.']);
+                    exit;
+                }
+                logActivity($pdo, $userId, $userName, $userRole,
+                    'PURCHASE_PLAN_EVALUATE', "Approved purchase plan #{$requestId}",
+                    'purchase_plan', $requestId);
+            } else {
+                $stmt = $pdo->prepare("
+                    UPDATE purchase_plans 
+                    SET status = ?, updated_at = NOW() 
+                    WHERE plan_id = ?
+                ");
+                $stmt->execute([$newStatus, $requestId]);
+            }
             break;
 
         default:

@@ -179,7 +179,7 @@ async function loadApprovals(type = 'all') {
                         <td>${escapeHtml(p.submitted_by || 'System')}</td>
                         <td>${statusPill(p.status)}</td>
                         <td>
-                            ${p.status === 'PENDING' ? `
+                            ${(p.status || '').toUpperCase() === 'PENDING' ? `
                                 <button class="btn btn-sm btn-success" onclick="handleApproval('purchase_plan', ${p.request_id}, 'APPROVED')"><i class="bi bi-check-lg"></i></button>
                                 <button class="btn btn-sm btn-outline-danger" onclick="handleApproval('purchase_plan', ${p.request_id}, 'REJECTED')"><i class="bi bi-x-lg"></i></button>
                             ` : '<span class="text-muted">&mdash;</span>'}
