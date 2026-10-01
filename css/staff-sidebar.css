@@ -132,6 +132,90 @@
 .app-shell { display: flex; min-height: 100vh; }
 .content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
+/* --- SHARED TOPBAR (all roles) ---
+   Some pages use .topbar, others use bootstrap nav.navbar. Apply the same
+   sticky shell bar to both so the bar stays pinned while the page scrolls.
+   ~65px default; a "float" variant can be opted into on pages that want a
+   floating pill instead of a full-width strip. */
+.topbar,
+.content-wrapper > nav.navbar.navbar-expand-lg,
+.content-wrapper > .navbar.navbar-expand-lg {
+    position: sticky;
+    top: 0;
+    z-index: 995;
+    min-height: 65px;
+    display: flex;
+    align-items: center;
+}
+.topbar.float-topbar { position: sticky; top: 10px; margin: 10px 12px 0; }
+
+/* Mobile: pin the topbar fixed so content can scroll under it; offset body
+   so the first card doesn't end up hidden behind a big empty gap. */
+@media (max-width: 768px) {
+    .topbar,
+    .content-wrapper > nav.navbar,
+    .content-wrapper > .navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 995;
+    }
+    body { padding-top: 65px; }
+}
+
+/* --- HOVER FLYOUT for the COLLAPSED mini rail (REQ-052 B2-1) ---
+   When collapsed, hovering (or keyboard-focusing) the sidebar temporarily
+   expands it to full width so labels become visible. NOT persisted — it is
+   purely a transient UI state added by navbar-unified.js. */
+#sidebar.collapsed.expanded-on-hover,
+#sidebar.active.expanded-on-hover {
+    min-width: 250px;
+    max-width: 250px;
+}
+#sidebar.collapsed.expanded-on-hover .header-text,
+#sidebar.collapsed.expanded-on-hover .nav-link span,
+#sidebar.collapsed.expanded-on-hover .nav-content p,
+#sidebar.collapsed.expanded-on-hover .nav-section-label,
+#sidebar.collapsed.expanded-on-hover .profile-text,
+#sidebar.active.expanded-on-hover .header-text,
+#sidebar.active.expanded-on-hover .nav-link span,
+#sidebar.active.expanded-on-hover .nav-content p,
+#sidebar.active.expanded-on-hover .nav-section-label,
+#sidebar.active.expanded-on-hover .profile-text {
+    display: block;
+    opacity: 1;
+}
+#sidebar.collapsed.expanded-on-hover .nav-link,
+#sidebar.active.expanded-on-hover .nav-link {
+    justify-content: flex-start;
+    margin: 4px 15px;
+    padding: 12px 20px;
+}
+#sidebar.collapsed.expanded-on-hover .nav-link i,
+#sidebar.active.expanded-on-hover .nav-link i {
+    margin-right: 15px;
+    font-size: 1.1rem;
+}
+#sidebar.collapsed.expanded-on-hover .user-profile,
+#sidebar.active.expanded-on-hover .user-profile {
+    justify-content: flex-start;
+    padding: 15px;
+    margin: 15px;
+}
+#sidebar.collapsed.expanded-on-hover .user-avatar,
+#sidebar.active.expanded-on-hover .user-avatar {
+    margin-right: 12px;
+}
+#sidebar.collapsed.expanded-on-hover .nav-section-label,
+#sidebar.active.expanded-on-hover .nav-section-label {
+    margin: 10px 0;
+    padding: 0;
+    border-top: 1px solid #332a24;
+    height: 1px;
+    width: 100%;
+}
+
 /* --- COLLAPSED OVERRIDES --- */
 /* Hide text labels, section labels become divider lines */
 #sidebar.collapsed .header-text,

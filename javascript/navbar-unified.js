@@ -469,6 +469,30 @@
         }
         if (overlay) overlay.classList.remove('open', 'active');
 
+        // REQ-052 B2-1: hover-expand flyout for the COLLAPSED mini rail.
+        // Transient only (never persisted). Only set up on pages that use the
+        // unified navbar (scope = #unifiedNavbar present); a dataset flag on the
+        // sidebar guarantees we never double-inject listeners if init runs twice.
+        const navbarScope = document.getElementById('unifiedNavbar');
+        if (navbarScope && !sidebar.dataset.hofFlyoutBound) {
+            sidebar.dataset.hofFlyoutBound = '1';
+            let flyoutTimer = null;
+            function expandFlyout() {
+                clearTimeout(flyoutTimer);
+                if (sidebar.classList.contains('collapsed') || sidebar.classList.contains('active')) {
+                    sidebar.classList.add('expanded-on-hover');
+                }
+            }
+            function collapseFlyout() {
+                clearTimeout(flyoutTimer);
+                sidebar.classList.remove('expanded-on-hover');
+            }
+            sidebar.addEventListener('mouseenter', expandFlyout);
+            sidebar.addEventListener('mouseleave', collapseFlyout);
+            sidebar.addEventListener('focusin', expandFlyout);
+            sidebar.addEventListener('focusout', collapseFlyout);
+        }
+
         if (toggle) {
             toggle.addEventListener('click', () => {
                 const mobile = isMobileViewport();
@@ -537,8 +561,11 @@
                 // Update sidebar user info
                 const nameEl = document.querySelector('.user-name');
                 const roleEl = document.querySelector('.user-role');
+                const avatarEl = document.querySelector('.user-avatar');
                 if (nameEl) nameEl.textContent = `${data.first_name} ${data.last_name}`;
                 if (roleEl) roleEl.textContent = data.role;
+                // REQ-052 B2-2: sidebar avatar shows the user's initial
+                if (avatarEl) avatarEl.textContent = (data.first_name || 'U')[0].toUpperCase();
                 
                 // Update navbar user info
                 updateUserInfo();

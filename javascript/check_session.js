@@ -84,9 +84,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Dynamically populates profile layouts
         const nameEl = document.querySelector(".user-name");
         const roleEl = document.querySelector(".user-role");
+        const avatarEl = document.querySelector(".user-avatar");
 
         if (nameEl) nameEl.textContent = `${data.first_name} ${data.last_name}`;
         if (roleEl) roleEl.textContent = data.role;
+        // REQ-052 B2-2: sidebar avatar shows the user's initial
+        if (avatarEl) avatarEl.textContent = (data.first_name || 'U')[0].toUpperCase();
 
         // ==========================================
         // 🔥 AUTOMATIC FOLDER-BASED RBAC SECURITY 🔥
