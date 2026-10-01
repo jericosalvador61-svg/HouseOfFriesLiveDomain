@@ -36,6 +36,8 @@ if (strlen($normalized) === 12 && substr($normalized, 0, 2) === '63') {
 }
 $phone = (strlen($normalized) === 11) ? $normalized : $phone;
 
+$genericMessage = 'Invalid phone number or password.';
+
 // Enforce PH mobile format on login too (mirror register) so non-09
 // 11-digit strings can never be probed/looked up.
 if (!preg_match('/^09\d{9}$/', $phone)) {

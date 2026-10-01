@@ -80,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
             tr.innerHTML = `
                 <td class="px-3 py-3 fw-semibold">${escapeHtml(c.phone_number)}</td>
                 <td>${escapeHtml(c.name)}</td>
-                <td>${escapeHtml(c.orders_count || 0)}</td>
+                <td>${escapeHtml(ordersCount)}</td>
                 <td>${escapeHtml(created)}</td>
                 <td>${statusBadge}</td>
                 <td class="text-end">
