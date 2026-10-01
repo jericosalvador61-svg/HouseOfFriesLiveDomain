@@ -65,6 +65,10 @@ function logActivity(
         $category = 'INVENTORY';
     } elseif (str_starts_with($actionType, 'USER_')) {
         $category = 'USER_MGMT';
+    } elseif (str_starts_with($actionType, 'CUSTOMER_')) {
+        // REQ-052 B3: customer-account events (register/login/reset/lockout)
+        // map to their own category instead of falling through to SYSTEM.
+        $category = 'CUSTOMER';
     } elseif (str_starts_with($actionType, 'VOID')) {
         $category = 'SALES';
     } elseif (str_starts_with($actionType, 'DISCOUNT')) {

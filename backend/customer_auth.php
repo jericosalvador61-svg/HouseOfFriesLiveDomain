@@ -1,0 +1,170 @@
+<?php
+/**
+ * backend/customer_auth.php
+ * REQ-052 Batch 3 — Customer session helpers.
+ *
+ * Customer accounts authenticate with their OWN JWT (signed with
+ * CUSTOMER_JWT_SECRET) so the staff JWT_SECRET stays staff-only.
+ *
+ * A customer token payload carries:
+ *   customer_id, phone_number, name, role: 'customer', exp: time()+24h
+ *   (deliberately NO last_activity — auth_middleware exempts 'customer'
+ *    from the idle timeout, and place_order re-reads freshness directly).
+ */
+
+require_once __DIR__ . '/secret.php';
+
+if (!function_exists('hof_generate_jwt')) {
+    /**
+     * Minimal base64url HS256 JWT builder (mirrors backend/login.php).
+     */
+    function hof_generate_jwt(array $payload, string $secret): string
+    {
+        $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
+        $b64Header  = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+        $b64Payload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode($payload)));
+        $signature  = hash_hmac('sha256', $b64Header . '.' . $b64Payload, $secret, true);
+        $b64Sig     = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+        return $b64Header . '.' . $b64Payload . '.' . $b64Sig;
+    }
+}
+
+if (!function_exists('issueCustomerToken')) {
+    /**
+     * Issue a 24h customer JWT (never signed with the staff JWT_SECRET).
+     *
+     * @param array $customer row from the customers table
+     *                        (customer_id, phone_number, name).
+     * @return string
+     */
+    function issueCustomerToken(array $customer): string
+    {
+        $payload = [
+            'customer_id'  => (int)$customer['customer_id'],
+            'phone_number' => (string)$customer['phone_number'],
+            'name'         => (string)($customer['name'] ?? ''),
+            'role'         => 'customer',
+            'exp'          => time() + (24 * 60 * 60),
+        ];
+        return hof_generate_jwt($payload, CUSTOMER_JWT_SECRET);
+    }
+}
+
+if (!function_exists('hof_decode_customer_token')) {
+    /**
+     * Decode + validate a customer JWT against CUSTOMER_JWT_SECRET.
+     * Returns the payload array on success, or null on any failure
+     * (missing/malformed/bad signature/expired/not-a-customer).
+     *
+     * @param string $token
+     * @return array|null
+     */
+    function hof_decode_customer_token(string $token)
+    {
+        if ($token === '') {
+            return null;
+        }
+        $parts = explode('.', $token);
+        if (count($parts) !== 3) {
+            return null;
+        }
+        list($b64Header, $b64Payload, $b64Signature) = $parts;
+
+        $header  = base64_decode(str_replace(['-', '_'], ['+', '/'], $b64Header), true);
+        $payload = base64_decode(str_replace(['-', '_'], ['+', '/'], $b64Payload), true);
+        $sig     = base64_decode(str_replace(['-', '_'], ['+', '/'], $b64Signature), true);
+        if ($header === false || $payload === false || $sig === false) {
+            return null;
+        }
+
+        $expected = hash_hmac('sha256', $b64Header . '.' . $b64Payload, CUSTOMER_JWT_SECRET, true);
+        if (!hash_equals($expected, $sig)) {
+            return null;
+        }
+
+        $data = json_decode($payload, true);
+        if (!is_array($data)) {
+            return null;
+        }
+        if (strtolower((string)($data['role'] ?? '')) !== 'customer') {
+            return null;
+        }
+        if (!isset($data['customer_id']) || !isset($data['exp']) || (int)$data['exp'] < time()) {
+            return null;
+        }
+
+        return $data;
+    }
+}
+
+if (!function_exists('getCustomerTokenFromRequest')) {
+    /**
+     * Read the customer token from, in order:
+     *   1. Authorization: Bearer <token>
+     *   2. hof_customer_token cookie
+     *   3. {token} in the JSON body
+     *   4. token= form field
+     *
+     * Returns the raw token string ('' when absent).
+     */
+    function getCustomerTokenFromRequest(): string
+    {
+        $rawHeaders = function_exists('getallheaders') ? getallheaders() : [];
+        $headers = is_array($rawHeaders) ? $rawHeaders : [];
+        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        if (preg_match('/Bearer\s+(.+)$/i', $authHeader, $m)) {
+            return trim($m[1]);
+        }
+        if (!empty($_SERVER['HTTP_AUTHORIZATION']) && preg_match('/Bearer\s+(.+)$/i', $_SERVER['HTTP_AUTHORIZATION'], $m)) {
+            return trim($m[1]);
+        }
+        if (!empty($_COOKIE['hof_customer_token'])) {
+            return trim((string)$_COOKIE['hof_customer_token']);
+        }
+        $rawBody = file_get_contents('php://input');
+        if ($rawBody !== '') {
+            $body = json_decode($rawBody, true);
+            if (is_array($body) && !empty($body['token'])) {
+                return trim((string)$body['token']);
+            }
+        }
+        if (!empty($_POST['token'])) {
+            return trim((string)$_POST['token']);
+        }
+        return '';
+    }
+}
+
+if (!function_exists('require_customer')) {
+    /**
+     * Resolve the authenticated customer from the current request.
+     *
+     * On success returns the decoded payload array:
+     *   ['customer_id' => int, 'phone_number' => string, 'name' => string, 'role' => 'customer']
+     *
+     * On failure sends a JSON 401 and exits. The customer identity is ALWAYS
+     * derived server-side from the token — never from client-supplied
+     * customer_id / phone query params.
+     *
+     * @param bool $echo  when true, emit the 401 JSON body (default true).
+     * @return array
+     */
+    function require_customer(bool $echo = true): array
+    {
+        $token = getCustomerTokenFromRequest();
+        $payload = hof_decode_customer_token($token);
+        if (!$payload) {
+            if ($echo) {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Please log in to view your orders.',
+                    'code'    => 'CUSTOMER_AUTH_REQUIRED',
+                ]);
+            }
+            exit;
+        }
+        return $payload;
+    }
+}

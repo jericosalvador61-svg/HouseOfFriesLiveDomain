@@ -6,12 +6,35 @@ require_once __DIR__ . "/../backend/geofence_config.php"; // US-SYS-013 geofence
 require_once __DIR__ . "/../backend/rate_limit.php";
 require_once __DIR__ . "/../backend/choices_addons_helper.php"; // REQ-040
 require_once __DIR__ . "/../backend/log_activity_helper.php"; // REQ-050
+require_once __DIR__ . "/../backend/customer_auth.php"; // REQ-052 B3
 
 // Load dynamic location from DB for geofence gate
 $storeLoc = hof_get_store_location_from_db($pdo);
 
 // Rate limit: 10 order placements per 60 seconds per IP
 hof_rate_limit('place_order', 10, 60);
+
+/* ============================================================
+   REQ-052 B3: OPTIONAL CUSTOMER SESSION
+   If the request carries a VALID customer token, the order is
+   linked to that account via orders.customer_account_id (FK,
+   already in schema). The customer identity is ONLY ever taken
+   from the validated token — never from the client payload.
+   A missing/expired token simply means "guest order".
+   ============================================================ */
+$customerAccountId = null;
+$customerPayload = null;
+$customerToken = '';
+if (function_exists('getCustomerTokenFromRequest')) {
+    $customerToken = getCustomerTokenFromRequest();
+}
+if ($customerToken !== '') {
+    $payload = hof_decode_customer_token($customerToken);
+    if (is_array($payload) && !empty($payload['customer_id'])) {
+        $customerPayload = $payload;
+        $customerAccountId = (int)$payload['customer_id'];
+    }
+}
 
 $data = json_decode(file_get_contents('php://input'), true);
 
@@ -344,6 +367,7 @@ try {
                         table_id, 
                         user_id, 
                         customer_name,
+                        customer_account_id,
                         status, 
                         reference_number, 
                         order_type, 
@@ -351,7 +375,7 @@ try {
                         total_amount, 
                         created_at,
                         ordered_at
-                    ) VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, NOW(), NOW())";
+                    ) VALUES (?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, NOW(), NOW())";
 
         try {
         $stmtOrder = $pdo->prepare($sqlOrder);
@@ -359,6 +383,7 @@ try {
             $table_id,
             $user_id,
             $customer_name,
+            $customerAccountId,
             $reference_number,
             $order_type,
             $computedTotal,
@@ -419,8 +444,10 @@ $orderSuccess = true;
         }
 
         // REQ-050: log order creation (GUEST actor — customer path, no authenticated user).
+        // REQ-052 B3: when a valid customer token is present, log with the customer's phone.
         // before is null (no prior state) so compose the after-snapshot WITHOUT a leading " → ".
-        logActivity($pdo, null, 'GUEST', 'Customer', 'ORDER_CREATED',
+        $actorName = $customerPayload ? ($customerPayload['phone_number'] ?? 'GUEST') : 'GUEST';
+        logActivity($pdo, null, $actorName, 'Customer', 'ORDER_CREATED',
             "Order {$reference_number} placed - total ₱" . number_format($computedTotal, 2, '.', '') . " status PENDING",
             'order', $orderId, $reference_number, 'PENDING');
 

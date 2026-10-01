@@ -9,6 +9,7 @@
  * Usage:
  *   require_once __DIR__ . '/../rate_limit.php';
  *   hof_rate_limit('order_placement', 10, 60); // 10 req per 60s
+ *   hof_rate_limit('customer_login', 10, 300, true, $phone); // per-key
  *   // If exceeded, automatically sends 429 JSON and exits.
  *
  * ============================================================
@@ -16,7 +17,7 @@
 
 if (!function_exists('hof_rate_limit')) {
     /**
-     * Check and enforce a per-IP rate limit.
+     * Check and enforce a per-IP (and optionally per-key) rate limit.
      *
      * @param string $action  A unique name for the action being limited
      *                        (e.g. 'place_order', 'occupy_table', 'cancel_order')
@@ -24,10 +25,16 @@ if (!function_exists('hof_rate_limit')) {
      * @param int    $window  Time window in seconds (default: 60)
      * @param bool   $enforce When true, sends 429 and exits on violation.
      *                        When false, only returns the result (for logging).
+     * @param string $key     Optional per-key discriminator (e.g. phone number).
+     *                        When provided the limiter keys on "$ip|$key" so a
+     *                        shared IP cannot brute-force different accounts and
+     *                        a shared account cannot be hit from many IPs.
+     *                        Backwards compatible — call sites that omit it are
+     *                        unchanged (pure per-IP behaviour).
      *
      * @return array ['allowed' => bool, 'remaining' => int, 'reset_after' => int]
      */
-    function hof_rate_limit($action, $max = 30, $window = 60, $enforce = true)
+    function hof_rate_limit($action, $max = 30, $window = 60, $enforce = true, $key = '')
     {
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
         
@@ -39,8 +46,19 @@ if (!function_exists('hof_rate_limit')) {
         if (!is_dir($dir)) {
             @mkdir($dir, 0777, true);
         }
-        
-        $file  = $dir . '/' . $action . '_' . hash('sha256', $ip) . '.json';
+
+        // Per-key variant: hash "$ip|$key" instead of "$ip" alone.
+        // The key is normalized + bounded so a huge/garbage value cannot
+        // poison the filesystem namespace.
+        $bucketKey = $ip;
+        if ($key !== '') {
+            $key = preg_replace('/[^a-zA-Z0-9+@._-]/', '', substr((string)$key, 0, 64));
+            if ($key !== '') {
+                $bucketKey .= '|' . $key;
+            }
+        }
+
+        $file  = $dir . '/' . $action . '_' . hash('sha256', $bucketKey) . '.json';
         $now   = time();
         
         $stamps = [];
