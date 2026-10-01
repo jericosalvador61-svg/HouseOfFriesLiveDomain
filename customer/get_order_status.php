@@ -55,7 +55,7 @@ try {
 
     echo json_encode([
         'status' => $result['status'] ?? 'PENDING',
-        'paid' => (($result['payment_status'] ?? '') === 'COMPLETED' || ($result['payment_intent_status'] ?? '') === 'COMPLETED'),
+        'paid' => (($result['payment_status'] ?? '') === 'COMPLETED'),
         'ordered_at' => $result['ordered_at'] ?? null,
         'updated_epoch' => $result['updated_epoch'] ? (int)$result['updated_epoch'] : null,
         'prep_remaining' => $prepRemaining,
