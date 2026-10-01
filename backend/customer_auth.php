@@ -196,18 +196,32 @@ if (!function_exists('require_customer')) {
             }
         }
         if ($pdoLocal) {
-            $cid = (int)$payload['customer_id'];
-            $stmt = $pdoLocal->prepare('SELECT is_active FROM customers WHERE customer_id = ? LIMIT 1');
-            $stmt->execute([$cid]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$row || (int)$row['is_active'] !== 1) {
+            try {
+                $cid = (int)$payload['customer_id'];
+                $stmt = $pdoLocal->prepare('SELECT is_active FROM customers WHERE customer_id = ? LIMIT 1');
+                $stmt->execute([$cid]);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$row || (int)$row['is_active'] !== 1) {
+                    if ($echo) {
+                        http_response_code(401);
+                        header('Content-Type: application/json');
+                        echo json_encode([
+                            'success' => false,
+                            'message' => 'This account has been deactivated. Please ask restaurant staff to reactivate it.',
+                            'code'    => 'CUSTOMER_INACTIVE',
+                        ]);
+                    }
+                    exit;
+                }
+            } catch (Throwable $e) {
+                error_log('require_customer is_active check failed: ' . $e->getMessage());
                 if ($echo) {
-                    http_response_code(401);
+                    http_response_code(500);
                     header('Content-Type: application/json');
                     echo json_encode([
                         'success' => false,
-                        'message' => 'This account has been deactivated. Please ask restaurant staff to reactivate it.',
-                        'code'    => 'CUSTOMER_INACTIVE',
+                        'message' => 'Session verification failed. Please try again.',
+                        'code'    => 'CUSTOMER_CHECK_ERROR',
                     ]);
                 }
                 exit;

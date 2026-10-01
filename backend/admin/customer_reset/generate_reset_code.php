@@ -61,7 +61,7 @@ try {
 
     $storeDir = sys_get_temp_dir() . '/hof_customer_resets';
     if (!is_dir($storeDir)) {
-        @mkdir($storeDir, 0777, true);
+        @mkdir($storeDir, 0700, true);
     }
     $storeFile = $storeDir . '/' . hash('sha256', $phone) . '.json';
     @file_put_contents($storeFile, json_encode([
@@ -69,10 +69,11 @@ try {
         'phone'      => $phone,
         'expires_at' => time() + (15 * 60),
     ]), LOCK_EX);
+    @chmod($storeFile, 0600);
 
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'CUSTOMER_RESET_CODE',
-        "Generated customer reset code for {$customer['name']} ({$phone}): {$code}",
+        "Generated customer reset code for {$customer['name']} ({$phone})",
         'customer', (int)$customer['customer_id'], $phone, 'PENDING');
 
     echo json_encode([

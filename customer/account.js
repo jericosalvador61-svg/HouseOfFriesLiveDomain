@@ -52,8 +52,20 @@
         localStorage.setItem(TOKEN_KEY, token);
         if (name) localStorage.setItem(TOKEN_KEY + '_name', name);
         if (phone !== undefined && phone !== null) localStorage.setItem(TOKEN_KEY + '_phone', phone);
-        // Cookie mirror (path=/, SameSite=Strict) for backend cookie readers.
-        document.cookie = TOKEN_KEY + '=' + encodeURIComponent(token) + '; path=/; SameSite=Strict';
+        // Cookie mirror (path=/, SameSite=Strict, 24h) for backend cookie readers.
+        // Max-Age keeps the cookie alive across browser restarts so a logged-in
+        // customer's next order still links via customer_account_id (AC10b).
+        var secure = (location.protocol === 'https:') ? '; Secure' : '';
+        document.cookie = TOKEN_KEY + '=' + encodeURIComponent(token) + '; path=/; Max-Age=86400; SameSite=Strict' + secure;
+    }
+
+    // Re-mirror the localStorage token into the cookie on page load (covers a
+    // browser restart where the session cookie was dropped but the token lives on).
+    function syncCookie() {
+        var t = readToken();
+        if (t && document.cookie.indexOf(TOKEN_KEY + '=') === -1) {
+            writeToken(t, getName(), getPhone());
+        }
     }
 
     function clearToken() {
@@ -309,5 +321,8 @@
         openAuthModal: openAuthModal
     };
 
-    document.addEventListener('DOMContentLoaded', renderChip);
+    document.addEventListener('DOMContentLoaded', function () {
+        syncCookie();
+        renderChip();
+    });
 })();

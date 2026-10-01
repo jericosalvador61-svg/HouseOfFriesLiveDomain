@@ -125,7 +125,11 @@
                     var paidBadge = o.paid ? '<span style="background:#34C759;color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px;">Paid</span>' : '<span style="background:#FFB800;color:#1e1e1e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px;">Unpaid</span>';
 
                     var actions = '<button class="btn-track" onclick="window.location.href=\'orderTracker.html?order_id=' + o.order_id + '\'"><i class="fa-solid fa-location-dot"></i> Track</button>';
-                    if (isEditable(o.status, o.paid)) {
+                    // Edit/Pay need the order in THIS device's registry (they act
+                    // on HOFDevice). Server-only orders (placed on another device)
+                    // get Track + Order Again only.
+                    var inDevice = window.HOFDevice && HOFDevice.orders().some(function (x) { return String(x.order_id) === String(o.order_id); });
+                    if (isEditable(o.status, o.paid) && inDevice) {
                         actions += '<button class="btn-edit" onclick="window.editFromMyOrders(' + o.order_id + ')"><i class="fa-solid fa-pen"></i> Edit</button>';
                         actions += '<button class="btn-again" onclick="window.resumeGcashPayment(' + o.order_id + ',\'' + escapeHtml(o.ref || o.order_id) + '\')" style="background:#0056E3;color:white;"><i class="fa-solid fa-qrcode"></i> Pay</button>';
                     } else if (!hasPendingUnpaid) {
