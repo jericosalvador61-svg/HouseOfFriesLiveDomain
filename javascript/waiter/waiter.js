@@ -361,6 +361,62 @@ async function loadAllTables(status = 'all') {
     } catch (e) { console.error('Failed to load tables:', e); }
 }
 
+// REQ-052 B2-7: server-side search + status + pagination state + helpers.
+// Filter buttons still call filterTables() (client hide/show) but the toolbar
+// wiring below sends page/search/status to get_tables.php. Returned shape
+// (id/table_id/table_number/table_type/status/updated_at) is preserved.
+let tablesState = { page: 1, limit: 9, search: '', status: 'all' };
+let tablesSearchTimer = null;
+
+/** Render prev/next + page buttons under the grid (REQ-052 B2-7). */
+function renderTablePagination(pagination) {
+    let nav = document.getElementById('tablePagination');
+    if (!nav) {
+        nav = document.createElement('nav');
+        nav.id = 'tablePagination';
+        nav.style.cssText = 'display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:16px;';
+        const grid = document.getElementById('tablesGrid');
+        if (grid && grid.parentElement) grid.parentElement.appendChild(nav);
+    }
+    if (!pagination) { nav.innerHTML = ''; return; }
+    const { page, total_pages } = pagination;
+    if (total_pages <= 1) { nav.innerHTML = ''; return; }
+    let html = '';
+    if (page > 1) html += `<button class="btn-hof btn-sm" data-page="${page - 1}">&larr; Prev</button>`;
+    for (let p = 1; p <= total_pages; p++) {
+        const active = p === page ? ' primary' : '';
+        html += `<button class="btn-hof btn-sm${active}" data-page="${p}">${p}</button>`;
+    }
+    if (page < total_pages) html += `<button class="btn-hof btn-sm" data-page="${page + 1}">Next &rarr;</button>`;
+    nav.innerHTML = html;
+    nav.querySelectorAll('button[data-page]').forEach(btn => {
+        btn.addEventListener('click', () => loadAllTables(tablesState.status, parseInt(btn.getAttribute('data-page'), 10) || 1));
+    });
+}
+
+/** Wire the topbar search box (debounced) + status select (REQ-052 B2-7). */
+function setupTableToolbar() {
+    const searchInput = document.getElementById('searchTableInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            clearTimeout(tablesSearchTimer);
+            tablesSearchTimer = setTimeout(() => {
+                tablesState.search = searchInput.value.trim();
+                tablesState.page = 1;
+                loadAllTables();
+            }, 350);
+        });
+    }
+    const statusSelect = document.getElementById('filterStatus');
+    if (statusSelect) {
+        statusSelect.addEventListener('change', function () {
+            tablesState.status = statusSelect.value || 'all';
+            tablesState.page = 1;
+            loadAllTables();
+        });
+    }
+}
+
 // â”€â”€ Show QR Code Modal â”€â”€
 function showQRCode(tableId, tableNumber) {
     // Build the customer URL from the current origin so it works on both the
@@ -785,6 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('tablesGrid')) {
         loadAllTables();
         setupTableFilters();
+        setupTableToolbar();
     }
     loadNotificationBadge();
 
