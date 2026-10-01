@@ -48,8 +48,6 @@ if (!preg_match('/^09\d{9}$/', $phone)) {
 // Second gate: per-phone throttle BEFORE credential check.
 hof_rate_limit('customer_login', 10, 300, true, $phone);
 
-$genericMessage = 'Invalid phone number or password.';
-
 // ── File-based consecutive-failure counter (no DB columns — schema locked).
 // After LOCKOUT_MAX consecutive failed logins for a phone, the account is
 // locked via is_active=0. Staff reactivate it (manage_customers toggle) or a

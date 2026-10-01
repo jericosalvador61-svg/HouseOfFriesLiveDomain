@@ -22,9 +22,12 @@
 
     function escapeHtml(text) {
         if (text === null || text === undefined) return '';
-        var d = document.createElement('div');
-        d.textContent = String(text);
-        return d.innerHTML;
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     // Pick the app root so /backend/... and customer/*.php resolve correctly

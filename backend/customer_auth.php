@@ -17,8 +17,17 @@ require_once __DIR__ . '/secret.php';
 // CUSTOMER_JWT_SECRET must exist even on environments whose gitignored
 // secret.php predates REQ-052 (fresh clone / InfinityFree deploy). The
 // customer token is NEVER signed with the staff JWT_SECRET.
+// DEPLOY NOTE: on the live server, define CUSTOMER_JWT_SECRET in
+// backend/secret.php (or env CUSTOMER_JWT_SECRET) with a RANDOM value —
+// the fallback below is a repo-visible dev value and must never sign
+// production tokens.
 if (!defined('CUSTOMER_JWT_SECRET')) {
-    define('CUSTOMER_JWT_SECRET', getenv('CUSTOMER_JWT_SECRET') ?: 'HOF_CUSTOMER_JWT_SECRET__CHANGE_ME__77f7f7f7f7f7f7f7f7f7');
+    $hofCustomerSecret = getenv('CUSTOMER_JWT_SECRET');
+    if ($hofCustomerSecret === false || $hofCustomerSecret === '') {
+        error_log('[HOF] WARNING: CUSTOMER_JWT_SECRET not set — using dev fallback. Set it in backend/secret.php on production.');
+        $hofCustomerSecret = 'HOF_CUSTOMER_JWT_SECRET__CHANGE_ME__77f7f7f7f7f7f7f7f7f7';
+    }
+    define('CUSTOMER_JWT_SECRET', $hofCustomerSecret);
 }
 
 if (!function_exists('hof_generate_jwt')) {
@@ -172,6 +181,39 @@ if (!function_exists('require_customer')) {
             }
             exit;
         }
+
+        // Deactivated/locked customers lose access immediately (not just at
+        // the next login): a fresh DB read keeps the 24h token revocable.
+        static $pdoLocal = null;
+        if ($pdoLocal === null) {
+            $pdoLocal = $GLOBALS['pdo'] ?? null;
+            if (!$pdoLocal && class_exists('PDO')) {
+                // db.php normally defines $pdo globally; fall back to a lookup
+                // via the same require used by every endpoint.
+                foreach ($GLOBALS as $k => $v) {
+                    if ($v instanceof PDO) { $pdoLocal = $v; break; }
+                }
+            }
+        }
+        if ($pdoLocal) {
+            $cid = (int)$payload['customer_id'];
+            $stmt = $pdoLocal->prepare('SELECT is_active FROM customers WHERE customer_id = ? LIMIT 1');
+            $stmt->execute([$cid]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row || (int)$row['is_active'] !== 1) {
+                if ($echo) {
+                    http_response_code(401);
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'This account has been deactivated. Please ask restaurant staff to reactivate it.',
+                        'code'    => 'CUSTOMER_INACTIVE',
+                    ]);
+                }
+                exit;
+            }
+        }
+
         return $payload;
     }
 }

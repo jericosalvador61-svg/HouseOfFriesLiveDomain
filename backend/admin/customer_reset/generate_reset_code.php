@@ -33,6 +33,13 @@ if (strlen($normalized) === 12 && substr($normalized, 0, 2) === '63') {
 }
 $phone = (strlen($normalized) === 11) ? $normalized : $phone;
 
+// Enforce PH mobile format (mirror register/login/reset).
+if (!preg_match('/^09\d{9}$/', $phone)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Please enter a valid Philippine mobile number (e.g. 09171234567).']);
+    exit;
+}
+
 try {
     $chk = $pdo->prepare('SELECT customer_id, phone_number, name FROM customers WHERE phone_number = ? LIMIT 1');
     $chk->execute([$phone]);

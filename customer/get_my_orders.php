@@ -7,10 +7,17 @@
  *
  * Returns orders where:
  *   - orders.customer_account_id = <cid>   (NEW orders linked at placement), OR
- *   - phone-merged historical guest orders that are PAID/COMPLETED:
+ *   - BEST-EFFORT phone-merged historical guest orders that are PAID/COMPLETED:
  *     orders.customer_name = <token phone> AND customer_account_id IS NULL
- *     AND status IN ('COMPLETED','SERVED') / payment_status='COMPLETED'.
- *     (Read-time merge only — NO schema change, NO writes.)
+ *     AND payment_status='COMPLETED'.
+ *     LIMITATION (documented; Jerico disposition recorded in vault REQ-052):
+ *     orders.customer_name is a free-text NAME (place_order.php:228 fed by
+ *     cart.js localStorage.customerName / customer.js name prompt), never a
+ *     phone. So this merge only matches the rare guest who typed their own
+ *     phone into the name field; AC10b's "OLD orders" view is effectively
+ *     new-orders-only. A true phone key needs a new orders column (schema
+ *     LOCKED — out of scope). Read-time merge only — NO schema change, NO writes.
+ *     Guest-injected names are harmless: rows are token-scoped and deduped.
  *
  * A guest can never request another customer's orders: no customer_id/phone
  * is accepted from the client.
