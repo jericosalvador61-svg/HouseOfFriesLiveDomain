@@ -297,6 +297,7 @@ function loadOrders() {
     if (document.getElementById('activeOrdersList')) loadActiveOrders();
     if (document.getElementById('recentTables')) loadRecentTables();
     if (document.getElementById('tablesGrid')) loadAllTables();
+    if (document.getElementById('needsAssistBanner')) loadNeedsAssistBanner();
 }
 
 // â”€â”€ Load All Tables (Tables page) â”€â”€
