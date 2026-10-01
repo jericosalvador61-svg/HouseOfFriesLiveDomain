@@ -62,7 +62,10 @@
             '.hof-choice-popup-opt input{margin:3px 0 0;}',
             '.hof-choice-popup-opt span{font-size:14px;}',
             '.hof-choice-popup-addon{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid #e5e5e5;border-radius:10px;margin-bottom:8px;}',
-            '.hof-choice-popup-addon-info{font-size:14px;}',
+            '.hof-choice-popup-addon-info{display:flex;align-items:center;gap:8px;font-size:14px;}',
+            '.hof-choice-popup-check{width:20px;height:20px;border:2px solid #ccc;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s ease,border-color .15s ease;color:#fff;font-size:12px;line-height:1;}',
+            '.hof-choice-popup-check.checked{background:#28a745;border-color:#28a745;}',
+            '.hof-choice-popup-check.checked::after{content:\'✓\';}',
             '.hof-choice-popup-addon-price{font-size:12px;color:#6c757d;margin-left:6px;}',
             '.hof-choice-popup-stepper{display:inline-flex;align-items:center;gap:10px;}',
             '.hof-choice-popup-stepper button{width:30px;height:30px;border-radius:8px;border:1px solid #d0d0d0;background:#fff;font-size:16px;font-weight:700;line-height:1;cursor:pointer;color:#212529;}',
@@ -155,7 +158,7 @@
             html += '<h3 class="hof-choice-popup-section-label">Add-ons</h3>';
             addons.forEach(function (addon) {
                 html += '<div class="hof-choice-popup-addon" data-addon-id="' + escapeHtml(addon.menu_addon_id) + '">';
-                html += '<div class="hof-choice-popup-addon-info">' + escapeHtml(addon.addon_name);
+                html += '<div class="hof-choice-popup-addon-info"><span class="hof-choice-popup-check" aria-hidden="true"></span>' + escapeHtml(addon.addon_name);
                 html += '<span class="hof-choice-popup-addon-price">' + formatPeso(toNumber(addon.price, 0)) + ' each</span>';
                 html += '</div>';
                 html += '<span class="hof-choice-popup-stepper">';
@@ -228,6 +231,8 @@
             var id = row.getAttribute('data-addon-id');
             var qty = Math.max(0, Math.floor(initialAddons[id] || 0));
             row.querySelector('.hof-choice-popup-count').textContent = String(qty);
+            var check = row.querySelector('.hof-choice-popup-check');
+            if (check) check.classList.toggle('checked', qty > 0);
         });
 
         // Pre-fill instructions. Popup-produced REQ-040 lines keep free text in
@@ -391,6 +396,8 @@
         var qty = parseInt(countEl.textContent, 10) || 0;
         qty = Math.max(0, qty + delta);
         countEl.textContent = String(qty);
+        var check = row.querySelector('.hof-choice-popup-check');
+        if (check) check.classList.toggle('checked', qty > 0);
         updateSubtotal();
     }
 

@@ -1,3 +1,8 @@
+const APP_ROOT = (() => {
+    const m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/admin|\/cashier|\/inventoryStaff|\/kitchenStaff|\/waiter|\/supervisor)(?:\/|$)/i);
+    return m && m[1] ? m[1] : '';
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
     renderReceipt();
 
@@ -173,11 +178,11 @@ function renderReceipt() {
 
         let grandTotal = 0;
         Object.values(grouped).forEach(item => {
-            const itemTotal = item.quantity * parseFloat(item.price);
+            const itemTotal = (parseFloat(item.price) || 0) * item.quantity;
             grandTotal += itemTotal;
         });
 
-        totalAmount.textContent = `₱ ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        totalAmount.textContent = `₱ ${isFinite(grandTotal) ? grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '0.00'}`;
     }
     renderLocalTotal();
 
@@ -188,7 +193,7 @@ function renderReceipt() {
         (async () => {
             try {
                 const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
-                const itemsUrl = '/backend/payments/get-payment-link.php';
+                const itemsUrl = `${APP_ROOT}/backend/payments/get-payment-link.php`;
                 const linkResp = await fetch(itemsUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -204,9 +209,9 @@ function renderReceipt() {
 
                 let serverTotal = 0;
                 itemsData.items.forEach(function (it) {
-                    serverTotal += parseFloat(it.price) * parseInt(it.quantity, 10);
+                    serverTotal += (parseFloat(it.price) || 0) * (parseInt(it.quantity, 10) || 0);
                 });
-                totalAmount.textContent = `₱ ${serverTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                totalAmount.textContent = `₱ ${isFinite(serverTotal) ? serverTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '0.00'}`;
             } catch (e) {
                 // Keep the local estimate — the server re-prices at submit anyway.
             }
@@ -226,7 +231,7 @@ window.payWithGCashQR = function() {
 
     const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
 
-    fetch('/backend/payments/get-payment-link.php', {
+    fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: parseInt(orderId), ref: refNumber, purpose: 'pay', device_id: deviceId })
@@ -275,7 +280,7 @@ window.editOrder = function () {
         // REQ-050 C1: obtain the signed edit link (bound to this device) so the
         // update_existing_order.php ownership gate can be satisfied.
         const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
-        fetch('/backend/payments/get-payment-link.php', {
+        fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order_id: parseInt(lastOrderID), ref: String(lastRefNumber), purpose: 'edit', device_id: deviceId })

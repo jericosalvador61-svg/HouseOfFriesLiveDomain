@@ -160,7 +160,6 @@ function loadAllData() {
     loadChartData();
     loadTopSelling();
     loadHourlyDistribution();
-    loadReportData();
 }
 
 function applyFilters() {
@@ -292,6 +291,7 @@ function loadStats() {
             document.getElementById('totalRevenue').textContent = '₱0.00';
             document.getElementById('totalOrders').textContent = '0';
             document.getElementById('avgOrderValue').textContent = '₱0.00';
+            document.getElementById('totalDiscount').textContent = '₱0.00';
             document.getElementById('bestSeller').textContent = '—';
             document.getElementById('bestSellerRevenue').textContent = 'No data';
         });
@@ -602,13 +602,6 @@ function renderHourlyChart(hourlyData) {
             }
         }
     });
-}
-
-// ==========================================
-// LOAD REPORT DATA (for export)
-// ==========================================
-function loadReportData() {
-    // Hidden table placeholder
 }
 
 // ==========================================
