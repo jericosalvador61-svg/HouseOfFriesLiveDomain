@@ -344,3 +344,22 @@ document.getElementById('imageUpload').addEventListener('change', function(e) {
 // --- 6. Initialize ---
 fetchCategories();
 fetchMenus();
+
+// --- 7. Realtime Menu Availability (mirrors customer/cart.js:389-413) ---
+function bindMenuAvailability() {
+    if (typeof Pusher === 'undefined') return;
+    const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+    const menuChannel = pusher.subscribe('hof-menu');
+    menuChannel.bind('menu-availability-changed', function (data) {
+        let payload = typeof data === 'string' ? JSON.parse(data) : data;
+        if (typeof payload.data === 'string') payload = JSON.parse(payload.data);
+        if (!payload.menu_item_id || !payload.status) return;
+
+        const item = menus.find(m => String(m.menu_item_id) === String(payload.menu_item_id));
+        if (!item) return;
+
+        item.status = payload.status;
+        renderMenus(menus);
+    });
+}
+bindMenuAvailability();

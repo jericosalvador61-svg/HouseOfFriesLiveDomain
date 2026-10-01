@@ -38,7 +38,7 @@
                                         <a class="nav-link" href="new_order.html">
                                             <i class="bi bi-plus-circle"></i> <span>New Order</span>
                                         </a>
-                                        <a class="nav-link" href="order_history.html">
+                                        <a class="nav-link" href="orders.html">
                                             <i class="bi bi-clock-history"></i> <span>Order History</span>
                                         </a>
                                     </nav>
@@ -94,13 +94,75 @@
                     </div>
                 </div>
 
-                <!-- Orders List -->
-                <div id="ordersList">
-                    <div class="loading-spinner">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2">Loading orders...</p>
+                <!-- Needs Assist banner (fed by get_orders_today.php unclaimed_orders) -->
+                <div id="needsAssistBanner"></div>
+
+                <!-- Filters -->
+                <div class="card-hof">
+                    <div class="flex-between" style="margin-bottom:8px;">
+                        <div>
+                            <h2 class="section-title">Filters</h2>
+                            <p class="section-sub">Search and filter orders from today.</p>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Search</label>
+                            <input type="text" class="form-control" id="searchInput" placeholder="Reference # or customer...">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Status</label>
+                            <select class="form-select" id="statusFilter">
+                                <option value="all">All</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="IN-PROGRESS">Preparing</option>
+                                <option value="COOKING">Cooking</option>
+                                <option value="COMPLETED">Ready to Deliver</option>
+                                <option value="SERVED">Served</option>
+                                <option value="CANCELLED">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Ownership</label>
+                            <select class="form-select" id="ownershipFilter">
+                                <option value="mine">Mine</option>
+                                <option value="all">All Staff</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn-hof primary w-100" onclick="applyFilters()">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Orders Table -->
+                <div class="card-hof" style="margin-top:18px;">
+                    <div style="overflow-x: auto;">
+                        <table class="hof-table">
+                            <thead>
+                                <tr>
+                                    <th>Order Ref</th>
+                                    <th>Type</th>
+                                    <th>Table</th>
+                                    <th>Total</th>
+                                    <th>Ordered At</th>
+                                    <th>Completed At</th>
+                                    <th>Staff</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderHistoryTableBody">
+                                <tr><td colspan="8" style="text-align:center;color:var(--hof-muted);padding:20px;">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <nav id="orderHistoryPagination" style="margin-top:16px;"></nav>
+                </div>
+
+                <!-- Original card-based orders list is now replaced by the unified table -->
+                <div id="ordersList" style="display:none;"></div>
             </div>
         </div>
     </div>
@@ -132,6 +194,7 @@
     <script src="../../javascript/logout.js" defer></script>
     <script src="../../javascript/navbar-unified.js" defer></script>
     <script src="../../javascript/waiter/waiter.js" defer></script>
+    <script src="../../javascript/waiter/orderHistory.js" defer></script>
     <script src="https://js.pusher.com/8.0.1/pusher.min.js"></script>
 </body>
 </html>

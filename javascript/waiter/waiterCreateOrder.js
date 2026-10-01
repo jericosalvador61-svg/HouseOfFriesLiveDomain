@@ -202,26 +202,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Config signature so two lines of the SAME base item with different flavors /
+    // add-ons stay separate lines (mirrors customer/cart.js lineSignature).
+    function lineSignature(line) {
+        const choices = (line.choices || []).map(c => String(c)).slice().sort();
+        const addons = (line.addons || []).slice().sort((a, b) => String(a.menu_addon_id).localeCompare(String(b.menu_addon_id)))
+            .map(a => a.menu_addon_id + 'x' + (parseInt(a.quantity, 10) || 1));
+        return line.menu_item_id + '|' + choices.join(',') + '|' + addons.join(',');
+    }
+
+    // Attach/refresh line_key on a line so summary rows can target one config.
+    function withLineKey(line) {
+        const clone = Object.assign({}, line);
+        clone.line_key = lineSignature(clone);
+        return clone;
+    }
+
     // Add a configured line to the cart. Lines with the same item AND the same
     // configuration (choices / add-ons / instructions) are merged by quantity.
     function addConfiguredLine(line, name, id) {
-        const safeLine = {
+        const safeLine = withLineKey({
             id: id !== undefined ? id : line.menu_item_id,
+            menu_item_id: Number(line.menu_item_id) || (id !== undefined ? Number(id) : Number(line.menu_item_id)),
             name: name,
             price: Number(line.price) || 0,
             quantity: Number(line.quantity) || 1,
             special_instructions: line.special_instructions || '',
             composed_instructions: line.composed_instructions || '',
             choices: Array.isArray(line.choices) ? line.choices : [],
-            addons: Array.isArray(line.addons) ? line.addons : []
-        };
-
-        const existingItem = cart.find(item => {
-            if (String(item.id) !== String(safeLine.id)) return false;
-            if ((item.special_instructions || '') !== safeLine.special_instructions) return false;
-            if (JSON.stringify(item.choices || []) !== JSON.stringify(safeLine.choices)) return false;
-            return JSON.stringify(item.addons || []) === JSON.stringify(safeLine.addons);
+            addons: Array.isArray(line.addons) ? line.addons : [],
+            configured: false,
+            order_item_id: 0
         });
+
+        const existingItem = cart.find(item =>
+            String(item.line_key) === safeLine.line_key
+        );
 
         if (existingItem) {
             existingItem.quantity += safeLine.quantity;
@@ -322,29 +338,170 @@ document.addEventListener('DOMContentLoaded', () => {
         const cartItemsList = document.getElementById('modalCartItemsList');
         cartItemsList.innerHTML = '';
 
-        let grandTotal = 0;
-        cart.forEach(item => {
-            const subtotal = Number(item.price) * Number(item.quantity);
-            grandTotal += subtotal;
+        renderSummaryRows(cartItemsList);
 
-            cartItemsList.innerHTML += `
-                <tr>
-                    <td class="ps-3 fw-semibold text-dark">
-                        ${esc(item.name)}
-                        ${((item.composed_instructions || item.special_instructions) || '') ? `<div class="small text-muted fw-normal">${esc(item.composed_instructions || item.special_instructions)}</div>` : ''}
-                    </td>
-                    <td class="text-center text-muted">&#8369;${Number(item.price).toFixed(2)}</td>
-                    <td class="text-center">${Number(item.quantity)}</td>
-                    <td class="text-end pe-3 fw-bold text-dark">&#8369;${Number(subtotal).toFixed(2)}</td>
-                </tr>
-            `;
-        });
-
-        document.getElementById('modalGrandTotal').textContent = `₱${Number(grandTotal).toFixed(2)}`;
+        document.getElementById('modalGrandTotal').textContent = `₱${Number(grandTotal()).toFixed(2)}`;
 
         // Open Modal
         orderSummaryModal.show();
     });
+
+    // Grand total helper shared by the initial render and every in-summary edit.
+    function grandTotal() {
+        return cart.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+    }
+
+    // Render each cart line as a summary row with qty steppers, remove, and edit
+    // buttons (mirrors customer/cart.js changeQty/removeItem/editCartLine).
+    function renderSummaryRows(cartItemsList) {
+        cartItemsList.innerHTML = '';
+
+        cart.forEach((rawItem, index) => {
+            const item = withLineKey(rawItem);
+            // Keep the stored line's line_key in sync so edits below always
+            // find the same configuration.
+            cart[index] = item;
+            const subtotal = Number(item.price) * Number(item.quantity);
+            const lineKey = item.line_key;
+
+            const row = document.createElement('tr');
+            row.dataset.lineKey = lineKey;
+
+            row.innerHTML = `
+                <td class="ps-3 fw-semibold text-dark">
+                    ${esc(item.name)}
+                    ${((item.composed_instructions || item.special_instructions) || '') ? `<div class="small text-muted fw-normal">${esc(item.composed_instructions || item.special_instructions)}</div>` : ''}
+                </td>
+                <td class="text-center text-muted">&#8369;${Number(item.price).toFixed(2)}</td>
+                <td class="text-center">
+                    <div class="d-inline-flex align-items-center gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill summary-qty-btn" data-action="minus" data-line-key="${esc(lineKey)}" title="Decrease quantity"><i class="bi bi-dash"></i></button>
+                        <span class="fw-bold mx-1">${Number(item.quantity)}</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill summary-qty-btn" data-action="plus" data-line-key="${esc(lineKey)}" title="Increase quantity"><i class="bi bi-plus"></i></button>
+                    </div>
+                </td>
+                <td class="text-end pe-3 fw-bold text-dark">&#8369;${Number(subtotal).toFixed(2)}</td>
+                <td class="text-center">
+                    <div class="d-inline-flex gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill summary-edit-btn" data-line-key="${esc(lineKey)}" title="Edit item"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill summary-remove-btn" data-line-key="${esc(lineKey)}" title="Remove item"><i class="bi bi-trash"></i></button>
+                    </div>
+                </td>
+            `;
+
+            cartItemsList.appendChild(row);
+        });
+    }
+
+    // Delegate in-summary row actions (qty +/-/remove/edit) once.
+    document.getElementById('modalCartItemsList').addEventListener('click', (e) => {
+        const qtyBtn = e.target.closest('.summary-qty-btn');
+        const editBtn = e.target.closest('.summary-edit-btn');
+        const removeBtn = e.target.closest('.summary-remove-btn');
+        if (!qtyBtn && !editBtn && !removeBtn) return;
+
+        const lineKey = (qtyBtn || editBtn || removeBtn).dataset.lineKey;
+
+        if (qtyBtn) {
+            changeSummaryQty(lineKey, qtyBtn.dataset.action === 'plus' ? 1 : -1);
+        } else if (removeBtn) {
+            removeSummaryLine(lineKey);
+        } else if (editBtn) {
+            editSummaryLine(lineKey);
+        }
+    });
+
+    // Increase/decrease a line's quantity; dropping below 1 removes the line
+    // (mirrors customer/cart.js changeQty).
+    function changeSummaryQty(lineKey, delta) {
+        const index = cart.findIndex(item => withLineKey(item).line_key === lineKey);
+        if (index === -1) return;
+
+        const qty = Number(cart[index].quantity) || 1;
+        if (delta === 1) {
+            cart[index].quantity = qty + 1;
+        } else if (qty > 1) {
+            cart[index].quantity = qty - 1;
+        } else {
+            cart.splice(index, 1);
+        }
+        updateCartUI();
+        refreshSummary();
+    }
+
+    function removeSummaryLine(lineKey) {
+        const index = cart.findIndex(item => withLineKey(item).line_key === lineKey);
+        if (index === -1) return;
+        cart.splice(index, 1);
+        updateCartUI();
+        refreshSummary();
+    }
+
+    // Reopen the choice popup for one line, pre-filled with its current
+    // configuration. On confirm the line is replaced in place (preserving the
+    // other lines) — mirrors customer/cart.js editCartLine.
+    async function editSummaryLine(lineKey) {
+        const index = cart.findIndex(item => withLineKey(item).line_key === lineKey);
+        if (index === -1) return;
+
+        const initial = cart[index];
+        const menuItemId = initial.menu_item_id || initial.id;
+
+        let item = null;
+        try {
+            const response = await apiFetch('get_menu_items.php');
+            const result = await response.json();
+            if (result.success && result.menu) {
+                item = result.menu.find(m => String(m.id) === String(menuItemId)) || null;
+            }
+        } catch (error) {
+            console.error('Error fetching menu for edit:', error);
+        }
+
+        if (!item) {
+            Swal.fire('Item Unavailable', 'This item is no longer on the menu. Remove it from the cart.', 'warning');
+            return;
+        }
+
+        window.HOFChoicePopup.open({
+            item: {
+                menu_item_id: item.id,
+                item_name: item.name,
+                description: item.description,
+                price: item.price,
+                choices: item.choices || [],
+                addons: item.addons || []
+            },
+            initial: initial,
+            onConfirm: (line) => {
+                const replacement = withLineKey({
+                    id: initial.id,
+                    menu_item_id: Number(line.menu_item_id) || Number(initial.menu_item_id) || Number(initial.id),
+                    name: initial.name,
+                    price: Number(line.price) || Number(initial.price),
+                    quantity: Number(line.quantity) || Number(initial.quantity),
+                    special_instructions: line.special_instructions || '',
+                    composed_instructions: line.composed_instructions || '',
+                    choices: Array.isArray(line.choices) ? line.choices : [],
+                    addons: Array.isArray(line.addons) ? line.addons : [],
+                    configured: !!initial.configured,
+                    order_item_id: initial.order_item_id || 0
+                });
+                const idx = cart.findIndex(i => withLineKey(i).line_key === lineKey);
+                if (idx !== -1) cart.splice(idx, 1, replacement);
+                updateCartUI();
+                refreshSummary();
+            }
+        });
+    }
+
+    // Re-render the summary rows and grand total while the modal is open.
+    function refreshSummary() {
+        const cartItemsList = document.getElementById('modalCartItemsList');
+        if (!cartItemsList) return;
+        renderSummaryRows(cartItemsList);
+        document.getElementById('modalGrandTotal').textContent = `₱${Number(grandTotal()).toFixed(2)}`;
+    }
 
     // 5. Confirm & Submit Order via Modal
     confirmSubmitOrderBtn.addEventListener('click', () => {

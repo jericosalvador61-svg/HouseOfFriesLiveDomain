@@ -65,6 +65,7 @@
                     <a class="nav-link" href="admin_dashboard.html"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
                     <a class="nav-link" href="QR_Tables.html"><i class="bi bi-qr-code-scan"></i><span>QR Tables</span></a>
                     <a class="nav-link" href="manage_menu.html"><i class="bi bi-egg-fried"></i><span>Menu Items</span></a>
+                    <a class="nav-link" href="manage_choices.html"><i class="bi bi-ui-checks-grid"></i><span>Choices & Add-ons</span></a>
                     <a class="nav-link" href="manage_inventory.html"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
                     <a class="nav-link" href="purchasePlan.html"><i class="bi bi-card-checklist"></i><span>Purchase Plans</span></a>
                 </nav>
@@ -137,10 +138,14 @@
                             <label class="form-label small fw-bold">Status</label>
                             <select id="statusFilter" class="form-select"><option value="">All</option></select>
                         </div>
-                        <div class="col-md-1 d-grid">
-                            <button type="submit" class="btn btn-warning"><i class="bi bi-funnel"></i></button>
-                        </div>
-                        <div class="col-md-12 d-flex gap-2">
+                        <div class="col-md-12 d-flex gap-2 align-items-center">
+                            <label class="form-label small fw-bold text-muted mb-0 me-1">Show</label>
+                            <select id="pageSize" class="form-select form-select-sm w-auto">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                            </select>
                             <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
                             <button type="button" id="exportBtn" class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i>Export CSV</button>
                             <button type="button" id="printBtn" class="btn btn-outline-primary btn-sm"><i class="bi bi-printer me-1"></i>Print / PDF</button>
@@ -159,6 +164,8 @@
                                     <th>Category</th>
                                     <th>Action</th>
                                     <th>Reference</th>
+                                    <th>Before</th>
+                                    <th>After</th>
                                     <th>Description</th>
                                     <th>Actor</th>
                                     <th>Role</th>
@@ -166,7 +173,7 @@
                                 </tr>
                             </thead>
                             <tbody id="activityTableBody">
-                                <tr><td colspan="8" class="text-center py-5 text-muted"><i class="bi bi-hourglass-split fs-1"></i><p class="mt-2 mb-0">Loading activity…</p></td></tr>
+                                <tr><td colspan="10" class="text-center py-5 text-muted"><i class="bi bi-hourglass-split fs-1"></i><p class="mt-2 mb-0">Loading activity…</p></td></tr>
                             </tbody>
                         </table>
                     </div>
