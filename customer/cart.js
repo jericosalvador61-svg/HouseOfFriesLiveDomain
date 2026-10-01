@@ -1,3 +1,9 @@
+const APP_ROOT = (() => {
+    try {
+        const m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/admin|\/cashier|\/inventoryStaff|\/kitchenStaff|\/waiter|\/supervisor)(?:\/|$)/i);
+        return (m && m[1]) ? m[1].replace(/\/$/, '') : '';
+    } catch (_) { return ''; }
+})();
 // 1. Selectors
 const cartItemsList = document.getElementById('cartItemsList');
 const cartViewTotalCount = document.getElementById('cartViewTotalCount');
@@ -341,7 +347,7 @@ async function rebuildCartFromOrder(orderId) {
   if (editRef) {
     try {
       const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
-      const resp = await fetch('/backend/payments/get-payment-link.php', {
+      const resp = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: orderId, ref: editRef, purpose: 'items', device_id: deviceId })
@@ -565,7 +571,7 @@ function setupCartNavigation() {
                         if (selectedPayment === 'GCASH') {
                             try {
                                 const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
-                                const linkResp = await fetch('/backend/payments/get-payment-link.php', {
+                                const linkResp = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ order_id: editOrderId, ref: editRefNumber, purpose: 'pay', device_id: deviceId })
@@ -740,7 +746,7 @@ function setupCartNavigation() {
                           const rebuiltTotal = await rebuildCartFromOrder(result.order_id);
                           Swal.fire({ icon: 'info', title: 'Continuing Order', text: result.message, confirmButtonColor: '#FFB800' });
                           const devIdDup = (window.HOFDevice ? HOFDevice.id() : '');
-                          const linkRespDup = await fetch('/backend/payments/get-payment-link.php', {
+                          const linkRespDup = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ order_id: result.order_id, ref: result.reference_number, purpose: 'pay', device_id: devIdDup })
@@ -773,7 +779,7 @@ function setupCartNavigation() {
                         }
                         try {
                             const devIdNew = (window.HOFDevice ? HOFDevice.id() : '');
-                            const linkRespNew = await fetch('/backend/payments/get-payment-link.php', {
+                            const linkRespNew = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ order_id: result.order_id, ref: result.reference_number, purpose: 'pay', device_id: devIdNew })

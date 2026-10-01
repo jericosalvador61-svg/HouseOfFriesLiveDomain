@@ -1,3 +1,9 @@
+const APP_ROOT = (() => {
+    try {
+        const m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/admin|\/cashier|\/inventoryStaff|\/kitchenStaff|\/waiter|\/supervisor)(?:\/|$)/i);
+        return (m && m[1]) ? m[1].replace(/\/$/, '') : '';
+    } catch (_) { return ''; }
+})();
 document.addEventListener('DOMContentLoaded', () => {
     loadPaymentPage();
 });
@@ -84,7 +90,7 @@ async function resumePayment() {
 
     try {
         const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
-        const response = await fetch('/backend/payments/create-qrph-payment.php', {
+        const response = await fetch(`${APP_ROOT}/backend/payments/create-qrph-payment.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -122,7 +128,7 @@ async function createGCashPayment() {
 
     try {
         const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
-        const response = await fetch('/backend/payments/create-qrph-payment.php', {
+        const response = await fetch(`${APP_ROOT}/backend/payments/create-qrph-payment.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -178,7 +184,7 @@ function handlePaymentResponse(data) {
 async function obtainCheckSigThenPoll() {
     try {
         const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
-        const resp = await fetch('/backend/payments/get-payment-link.php', {
+        const resp = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order_id: orderId, ref: refNumber, purpose: 'check', device_id: deviceId })

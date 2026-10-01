@@ -1,4 +1,11 @@
 (function () {
+const APP_ROOT = (() => {
+    try {
+        const m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/admin|\/cashier|\/inventoryStaff|\/kitchenStaff|\/waiter|\/supervisor)(?:\/|$)/i);
+        return (m && m[1]) ? m[1].replace(/\/$/, '') : '';
+    } catch (_) { return ''; }
+})();
+
   let pollInterval = null;
 
   // REQ-052 B3: shared escape helper for every dynamic value rendered into HTML.
@@ -144,7 +151,7 @@
     const deviceId = window.HOFDevice ? HOFDevice.id() : '';
     // REQ-050 C1: obtain BOTH the items sig (to load the cart) and the edit
     // sig (required later by update_existing_order.php ownership gate).
-    fetch('/backend/payments/get-payment-link.php', {
+    fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ order_id: orderId, ref: order.ref, purpose: 'items', device_id: deviceId })
@@ -163,7 +170,7 @@
           localStorage.setItem('editOrderId', orderId);
           localStorage.setItem('editRefNumber', order.ref);
           // Fetch the edit sig so the subsequent update passes the gate.
-          return fetch('/backend/payments/get-payment-link.php', {
+          return fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order_id: orderId, ref: order.ref, purpose: 'edit', device_id: deviceId })

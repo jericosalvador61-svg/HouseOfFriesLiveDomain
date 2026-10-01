@@ -1,3 +1,9 @@
+const APP_ROOT = (() => {
+    try {
+        const m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/admin|\/cashier|\/inventoryStaff|\/kitchenStaff|\/waiter|\/supervisor)(?:\/|$)/i);
+        return (m && m[1]) ? m[1].replace(/\/$/, '') : '';
+    } catch (_) { return ''; }
+})();
 const audioNotification = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 let hasPlayedReadySound = false;
 let trackedOrders = [];
@@ -634,7 +640,7 @@ window.resumeGcashPayment = async function (orderId) {
         if (order && order.ref) ref = order.ref;
     }
     try {
-        const resp = await fetch('/backend/payments/get-payment-link.php', {
+        const resp = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'pay' })
@@ -656,7 +662,7 @@ async function obtainTrackSig(orderId) {
         const order = HOFDevice.orders().find(o => o.order_id == orderId);
         if (order && order.ref) ref = order.ref;
     }
-    const resp = await fetch('/backend/payments/get-payment-link.php', {
+    const resp = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'track', device_id: (window.HOFDevice ? HOFDevice.id() : '') })
@@ -674,7 +680,7 @@ async function obtainItemsSig(orderId) {
         const order = HOFDevice.orders().find(o => o.order_id == orderId);
         if (order && order.ref) ref = order.ref;
     }
-    const resp = await fetch('/backend/payments/get-payment-link.php', {
+    const resp = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'items', device_id: (window.HOFDevice ? HOFDevice.id() : '') })
@@ -692,7 +698,7 @@ async function obtainCancelSig(orderId) {
         const order = HOFDevice.orders().find(o => o.order_id == orderId);
         if (order && order.ref) ref = order.ref;
     }
-    const resp = await fetch('/backend/payments/get-payment-link.php', {
+    const resp = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'cancel' })
@@ -709,7 +715,7 @@ async function obtainReceiptSig(orderId) {
     }
     try {
         const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
-        const resp = await fetch('/backend/payments/get-payment-link.php', {
+        const resp = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'receipt', device_id: deviceId })
