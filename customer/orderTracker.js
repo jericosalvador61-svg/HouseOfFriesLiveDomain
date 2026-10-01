@@ -235,11 +235,13 @@ async function fetchAndRenderOrder(orderId) {
         let itemsData = null;
         let prepMinutes = 0;
         let prep = null;
+        let paid = false;
 
         if (statusResp.ok) {
             const data = await statusResp.json();
             status = data && data.status ? data.status : 'PENDING';
             if (data) {
+                paid = !!data.paid;
                 prep = {
                     remaining: data.prep_remaining,
                     total: data.prep_estimate_total,
@@ -262,27 +264,35 @@ async function fetchAndRenderOrder(orderId) {
             }
         }
 
-        renderOrderCard(orderId, status, itemsData, prepMinutes, prep);
+        renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid);
     } catch (error) {
         console.error("Error fetching order", orderId, error);
         renderOrderCard(orderId, 'PENDING', null, 0);
     }
 }
 
-function renderOrderCard(orderId, status, itemsData, prepMinutes, prep) {
+function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
     const container = document.getElementById('orderCardsContainer');
     if (!container) return;
 
     // Get order from device registry
     let ref = orderId;
     let tableLabel = '';
-    let paid = false;
+    // paid comes from the server payload (B1-1). Fall back to the local
+    // device registry only if the server didn't tell us.
+    let paidLocal = false;
+    if (paid === undefined) {
+        if (window.HOFDevice) {
+            const order = HOFDevice.orders().find(o => o.order_id == orderId);
+            if (order) paidLocal = order.paid;
+        }
+        paid = paidLocal;
+    }
     if (window.HOFDevice) {
         const order = HOFDevice.orders().find(o => o.order_id == orderId);
         if (order) {
             ref = order.ref || orderId;
             tableLabel = order.table_number ? 'Table ' + order.table_number : 'Takeout';
-            paid = order.paid;
         }
     }
 
@@ -523,7 +533,12 @@ function updateTrackerUI(orderId, status, paid) {
         if (headline) headline.textContent = 'Order Pending';
         if (message) message.textContent = paid ? 'Payment received! Waiting for kitchen to start.' : 'Your order has been logged! Please head to the counter cashier to settle your payment so processing can begin.';
         resetSteps();
-        if (stepPending) { stepPending.className = 'step-row active'; iconPending.className = 'fa-solid fa-circle-dot'; }
+        if (paid) {
+            if (stepPending) { stepPending.className = 'step-row completed'; iconPending.className = 'fa-solid fa-circle-check'; }
+            if (stepPreparing) { stepPreparing.className = 'step-row active'; iconPreparing.className = 'fa-solid fa-fire-burner'; }
+        } else {
+            if (stepPending) { stepPending.className = 'step-row active'; iconPending.className = 'fa-solid fa-circle-dot'; }
+        }
         if (!paid) {
                 actionsHtml = '<button class="btn-action-large btn-action-yellow" onclick="resumeGcashPayment(' + orderId + ')"><i class="fa-solid fa-qrcode"></i> Pay with GCash</button>';
         } else {
