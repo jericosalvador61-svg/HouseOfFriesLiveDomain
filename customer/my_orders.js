@@ -1,6 +1,14 @@
 (function () {
   let pollInterval = null;
 
+  // REQ-052 B3: shared escape helper for every dynamic value rendered into HTML.
+  function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    var d = document.createElement('div');
+    d.textContent = String(text);
+    return d.innerHTML;
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     updateBadge();
     const btn = document.getElementById('myOrdersBtn');
@@ -52,17 +60,21 @@
       const statusColor = statusChipColor(o.status);
       const paidLabel = o.paid ? '<span class="badge bg-success ms-1">Paid</span>' : '<span class="badge bg-warning text-dark ms-1">Unpaid</span>';
       const isEditable = o.status === 'PENDING' && !o.paid;
+      const refSafe = escapeHtml(o.ref || o.order_id);
+      const statusSafe = escapeHtml(o.status);
+      const tableSafe = escapeHtml(o.table_number);
+      const createdSafe = escapeHtml(o.created_at ? new Date(o.created_at).toLocaleString() : '');
       html += `<div style="padding:12px;border-bottom:1px solid #eee;display:flex;flex-direction:column;gap:6px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <strong>#${o.ref || o.order_id}</strong>
-          <span><span class="badge" style="background:${statusColor};">${o.status}</span>${paidLabel}</span>
+          <strong>#${refSafe}</strong>
+          <span><span class="badge" style="background:${statusColor};">${statusSafe}</span>${paidLabel}</span>
         </div>
         <div style="font-size:12px;color:#666;">
-          ${o.table_number ? 'Table ' + o.table_number : 'Takeout'} · ${new Date(o.created_at).toLocaleString()}
+          ${tableSafe ? 'Table ' + tableSafe : 'Takeout'} · ${createdSafe}
         </div>
         <div style="display:flex;gap:8px;margin-top:4px;">
-          <button class="btn btn-sm btn-outline-primary" onclick="window.location.href='orderTracker.html?order_id=${o.order_id}'" style="flex:1;font-size:12px;">Track</button>
-          ${isEditable ? `<button class="btn btn-sm btn-outline-warning" onclick="window.editFromMyOrders(${o.order_id})" style="flex:1;font-size:12px;">Edit</button>` : ''}
+          <button class="btn btn-sm btn-outline-primary" onclick="window.location.href='orderTracker.html?order_id=${escapeHtml(o.order_id)}'" style="flex:1;font-size:12px;">Track</button>
+          ${isEditable ? `<button class="btn btn-sm btn-outline-warning" onclick="window.editFromMyOrders(${escapeHtml(o.order_id)})" style="flex:1;font-size:12px;">Edit</button>` : ''}
           ${o.paid || o.status !== 'PENDING' ? `<button class="btn btn-sm btn-outline-success" onclick="window.orderAgainFromMyOrders()" style="flex:1;font-size:12px;">Order Again</button>` : ''}
         </div>
       </div>`;

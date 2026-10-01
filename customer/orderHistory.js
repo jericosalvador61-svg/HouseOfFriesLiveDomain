@@ -6,6 +6,10 @@
         updateBadges();
         loadHistory();
         initPusher();
+        // REQ-052 B3: refresh the right order source when the account state
+        // changes in the shared auth modal (chip).
+        window.HOFCustomerOnLogin = function () { loadHistory(); };
+        window.HOFCustomerOnLogout = function () { loadHistory(); };
         document.getElementById('cartTrigger')?.addEventListener('click', () => {
             const cart = JSON.parse(localStorage.getItem('cart') || '[]');
             if (cart.length > 0) { window.location.href = 'cart.html'; }
@@ -30,10 +34,52 @@
     }
 
     window.loadHistory = function () {
-        var orders = window.HOFDevice ? HOFDevice.orders() : [];
-        renderFilters();
-        renderOrders(orders);
+        if (window.HOFCustomer && window.HOFCustomer.isLoggedIn()) {
+            renderFilters();
+            loadServerOrders();
+        } else {
+            var orders = window.HOFDevice ? HOFDevice.orders() : [];
+            renderFilters();
+            renderOrders(orders);
+        }
     };
+
+    // REQ-052 B3: logged-in customers fetch their server-side order history
+    // (get_my_orders.php — scoped by the validated token only). On failure we
+    // fall back to the device registry so the page never bricks.
+    function loadServerOrders() {
+        var container = document.getElementById('ordersContainer');
+        if (container) {
+            container.innerHTML = '<div class="empty-state" style="padding:40px;"><p>Loading your orders…</p></div>';
+        }
+
+        var fetchOpts = {
+            headers: { 'Authorization': 'Bearer ' + (window.HOFCustomer.getToken() || '') }
+        };
+        fetch('get_my_orders.php', fetchOpts)
+            .then(function (r) {
+                if (r.status === 401) throw { status: 401 };
+                return r.json();
+            })
+            .then(function (data) {
+                if (data && data.success) {
+                    renderOrders(data.orders || []);
+                } else {
+                    throw new Error((data && data.message) || 'Could not load orders');
+                }
+            })
+            .catch(function (err) {
+                // 401 → token stale/expired; silently drop back to device flow.
+                if (err && err.status === 401 && window.HOFCustomer) {
+                    window.HOFCustomer.clear();
+                    window.HOFCustomer.renderChip();
+                }
+                // Server unavailable → fall back to device registry (guest view)
+                // so the page never bricks; logged-in server history is best-effort.
+                var orders = window.HOFDevice ? HOFDevice.orders() : [];
+                renderOrders(orders);
+            });
+    }
 
     function renderFilters() {
         var row = document.getElementById('filterRow');
@@ -81,7 +127,11 @@
                     var paidBadge = o.paid ? '<span style="background:#34C759;color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px;">Paid</span>' : '<span style="background:#FFB800;color:#1e1e1e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px;">Unpaid</span>';
 
                     var actions = '<button class="btn-track" onclick="window.location.href=\'orderTracker.html?order_id=' + o.order_id + '\'"><i class="fa-solid fa-location-dot"></i> Track</button>';
-                    if (isEditable(o.status, o.paid)) {
+                    // Edit/Pay need the order in THIS device's registry (they act
+                    // on HOFDevice). Server-only orders (placed on another device)
+                    // get Track + Order Again only.
+                    var inDevice = window.HOFDevice && HOFDevice.orders().some(function (x) { return String(x.order_id) === String(o.order_id); });
+                    if (isEditable(o.status, o.paid) && inDevice) {
                         actions += '<button class="btn-edit" onclick="window.editFromMyOrders(' + o.order_id + ')"><i class="fa-solid fa-pen"></i> Edit</button>';
                         actions += '<button class="btn-again" onclick="window.resumeGcashPayment(' + o.order_id + ',\'' + escapeHtml(o.ref || o.order_id) + '\')" style="background:#0056E3;color:white;"><i class="fa-solid fa-qrcode"></i> Pay</button>';
                     } else if (!hasPendingUnpaid) {
@@ -89,7 +139,7 @@
                     }
 
                     var tableLabel = o.table_number ? 'Table ' + o.table_number : 'Takeout';
-                    var dateStr = o.created_at ? new Date(o.created_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : '';
+                    var dateStr = (o.created_at || o.ordered_at) ? new Date(o.created_at || o.ordered_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : '';
 
                     html += '<div class="order-card" data-order-id="' + o.order_id + '">'
                         + '<div class="order-header">'
@@ -135,7 +185,10 @@
 
     // Polling fallback: every 15s update statuses from server.
     // get_order_status.php accepts unsigned requests for read-only status.
+    // (Logged-in customers use get_my_orders.php instead; the device poll is
+    //  only meaningful for the guest/device path.)
     let historyPollInterval = setInterval(function () {
+        if (window.HOFCustomer && window.HOFCustomer.isLoggedIn()) return;
         const orders = window.HOFDevice ? HOFDevice.orders() : [];
         if (orders.length === 0) return;
         orders.forEach(function (o) {
