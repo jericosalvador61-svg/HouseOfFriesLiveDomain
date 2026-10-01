@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS menu_item_addons (
 CREATE TABLE IF NOT EXISTS discount_types (
   discount_type_id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(50) NOT NULL,
+  UNIQUE KEY uq_discount_types_name (name),
   percent DECIMAL(5,2) NOT NULL DEFAULT 0.00,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
