@@ -36,12 +36,7 @@ $normalized = preg_replace('/[^0-9]/', '', $phone);
 if (strlen($normalized) === 12 && substr($normalized, 0, 2) === '63') {
     $normalized = '0' . substr($normalized, 2);
 }
-if (!preg_match('/^(09\d{9}|\+639\d{9})$/', $phone) && strlen($normalized) !== 11) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Please enter a valid Philippine mobile number (e.g. 09171234567).']);
-    exit;
-}
-if (strlen($normalized) !== 11) {
+if (!preg_match('/^09\d{9}$/', $normalized)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Please enter a valid Philippine mobile number (e.g. 09171234567).']);
     exit;

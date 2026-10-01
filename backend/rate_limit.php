@@ -27,8 +27,9 @@ if (!function_exists('hof_rate_limit')) {
      *                        When false, only returns the result (for logging).
      * @param string $key     Optional per-key discriminator (e.g. phone number).
      *                        When provided the limiter keys on "$ip|$key" so a
-     *                        shared IP cannot brute-force different accounts and
-     *                        a shared account cannot be hit from many IPs.
+     *                        shared IP cannot brute-force different accounts.
+     *                        (A shared account reached from many IPs is bounded
+     *                        by the endpoint's own per-phone counter/lockout.)
      *                        Backwards compatible — call sites that omit it are
      *                        unchanged (pure per-IP behaviour).
      *

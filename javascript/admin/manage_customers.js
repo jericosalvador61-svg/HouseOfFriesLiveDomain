@@ -177,9 +177,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             Swal.fire({
                 title: 'Reset Code',
-                html: 'Give this code to the customer. It expires in <b>15 minutes</b> and can be used once.<br><br>' +
+                html: (data.code
+                    ? 'Give this code to the customer. It expires in <b>15 minutes</b> and can be used once.<br><br>' +
                       '<div style="font-family:monospace;font-size:1.8rem;font-weight:800;letter-spacing:6px;background:#FFF9E6;border:2px dashed #ffc107;border-radius:12px;padding:10px 16px;color:#331A11;">' + escapeHtml(data.code) + '</div>' +
-                      '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="navigator.clipboard.writeText(' + JSON.stringify(data.code) + ')">Copy Code</button>',
+                      '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="navigator.clipboard.writeText(' + JSON.stringify(String(data.code)) + ')">Copy Code</button>'
+                    : (data.message || 'No reset code was generated.')) +
+                    (data.code ? '' : '<div style="font-size:12px;color:#666;margin-top:8px;">' + escapeHtml(data.message || '') + '</div>'),
                 confirmButtonColor: '#ffc107',
                 confirmButtonText: 'Done'
             });

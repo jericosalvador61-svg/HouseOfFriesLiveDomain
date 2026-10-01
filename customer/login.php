@@ -36,6 +36,13 @@ if (strlen($normalized) === 12 && substr($normalized, 0, 2) === '63') {
 }
 $phone = (strlen($normalized) === 11) ? $normalized : $phone;
 
+// Enforce PH mobile format on login too (mirror register) so non-09
+// 11-digit strings can never be probed/looked up.
+if (!preg_match('/^09\d{9}$/', $phone)) {
+    echo json_encode(['success' => false, 'message' => $genericMessage]);
+    exit;
+}
+
 // Second gate: per-phone throttle BEFORE credential check.
 hof_rate_limit('customer_login', 10, 300, true, $phone);
 

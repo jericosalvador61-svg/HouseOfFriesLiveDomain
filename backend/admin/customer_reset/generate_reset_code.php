@@ -44,6 +44,7 @@ try {
         echo json_encode([
             'success' => true,
             'message' => 'If that phone number is registered, a reset code has been generated (valid 15 min).',
+            'code'    => null,
             'expires_in' => 900,
         ]);
         exit;

@@ -14,6 +14,13 @@
 
 require_once __DIR__ . '/secret.php';
 
+// CUSTOMER_JWT_SECRET must exist even on environments whose gitignored
+// secret.php predates REQ-052 (fresh clone / InfinityFree deploy). The
+// customer token is NEVER signed with the staff JWT_SECRET.
+if (!defined('CUSTOMER_JWT_SECRET')) {
+    define('CUSTOMER_JWT_SECRET', getenv('CUSTOMER_JWT_SECRET') ?: 'HOF_CUSTOMER_JWT_SECRET__CHANGE_ME__77f7f7f7f7f7f7f7f7f7');
+}
+
 if (!function_exists('hof_generate_jwt')) {
     /**
      * Minimal base64url HS256 JWT builder (mirrors backend/login.php).
