@@ -208,9 +208,11 @@ function setupOrderHistoryEvents() {
 
 /** Thin "Needs Assist" banner fed by get_orders_today.php unclaimed_orders.
  *  Reuses window.claimOrder (waiter.js) for the Assist action. */
+let needsAssistInFlight = false;
 async function loadNeedsAssistBanner() {
     const banner = document.getElementById('needsAssistBanner');
-    if (!banner) return;
+    if (!banner || needsAssistInFlight) return;
+    needsAssistInFlight = true;
     try {
         const token = localStorage.getItem('hof_token') || '';
         const res = await fetch(ORDER_TODAY_API + '?scope=mine', {
@@ -224,6 +226,7 @@ async function loadNeedsAssistBanner() {
         const unclaimed = data.unclaimed_orders || [];
         if (unclaimed.length === 0) {
             banner.innerHTML = '';
+            needsAssistInFlight = false;
             return;
         }
 
@@ -253,9 +256,11 @@ async function loadNeedsAssistBanner() {
                     `).join('')}
                 </div>
             </div>`;
+        needsAssistInFlight = false;
     } catch (e) {
         console.error('Failed to load Needs Assist banner:', e);
         banner.innerHTML = '';
+        needsAssistInFlight = false;
     }
 }
 
