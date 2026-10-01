@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
         status: '',
         user_search: ''
     };
+    let pageSize = 50;
     let actionTypes = [];
     let roles = [];
     let modules = [];
@@ -37,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const paginationInfo = document.getElementById('paginationInfo');
     const totalRecords = document.getElementById('totalRecords');
     const loadingOverlay = document.getElementById('loadingOverlay');
+    const pageSizeSelect = document.getElementById('pageSize');
 
     // Initialize date defaults
     const today = new Date();
@@ -144,8 +146,39 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Style the before→after arrow in descriptions (optional, cheap)
-    function renderDescription(description) {
-        const safe = escapeHtml(description || '-');
+    // REQ-052 B2-4: splitDescription splits the structured log description.
+    // Format authored by log_activity_helper.php:
+    //   "base description | before → after"
+    // It first splits on ' | ', then splits the before→after part on ' → '
+    // (or the ASCII ' -> '). Missing pieces render as '-'.
+    // Returns { description, before, after }.
+    function splitDescription(description) {
+        const raw = String(description || '');
+        if (!raw) return { description: '-', before: '-', after: '-' };
+
+        const parts = raw.split(' | ');
+        let base = parts.length >= 2 ? parts[0].trim() : '';
+        const change = parts.length >= 2 ? parts.slice(1).join(' | ').trim() : raw.trim();
+
+        let before = '-';
+        let after = '-';
+        const arrowIdx = change.search(/ → | -> /);
+        if (arrowIdx !== -1) {
+            const sep = change[arrowIdx] === '→' ? ' → ' : ' -> ';
+            before = change.slice(0, arrowIdx).trim() || '-';
+            after = change.slice(arrowIdx + sep.length).trim() || '-';
+        } else if (change) {
+            // No change separator: treat the whole thing as the description.
+            base = change;
+            return { description: change, before: '-', after: '-' };
+        }
+
+        return { description: base || '-', before, after };
+    }
+
+    // Render a description fragment with the diff arrow styling.
+    function renderDescriptionFragment(text) {
+        const safe = escapeHtml(text || '-');
         return safe.replace(/ → /g, ' <span class="diff-arrow">→</span> ');
     }
 
@@ -156,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const params = new URLSearchParams({
             page: page,
-            limit: 50,
+            limit: pageSize,
             date_from: currentFilters.date_from,
             date_to: currentFilters.date_to,
             action_type: currentFilters.action_type,
@@ -230,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!activities || activities.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center py-5 text-muted">
+                    <td colspan="10" class="text-center py-5 text-muted">
                         <i class="bi bi-journal-x fs-1"></i>
                         <p class="mt-2 mb-0">No activity logs found for the selected filters</p>
                     </td>
@@ -246,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const category = activity.action_category || '-';
             const status = activity.status || null;
             const action = activity.action_type || '-';
-            const desc = activity.description || '-';
+            const parts = splitDescription(activity.description);
             
             return `
             <tr>
@@ -254,7 +287,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td>${getCategoryBadge(category)}</td>
                 <td class="text-nowrap"><small>${escapeHtml(action)}</small></td>
                 <td class="text-nowrap"><code class="small">${escapeHtml(refNum)}</code></td>
-                <td><small>${renderDescription(desc)}</small></td>
+                <td><small>${renderDescriptionFragment(parts.before)}</small></td>
+                <td><small>${renderDescriptionFragment(parts.after)}</small></td>
+                <td><small>${renderDescriptionFragment(parts.description)}</small></td>
                 <td class="text-nowrap"><small>${escapeHtml(actor)}</small></td>
                 <td class="text-nowrap"><small class="text-muted">${escapeHtml(role)}</small></td>
                 <td>${getStatusBadge(status)}</td>
@@ -265,8 +300,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update pagination
     function updatePagination(paginationData) {
         const { page, total_pages, total } = paginationData;
-        const start = (page - 1) * 50 + 1;
-        const end = Math.min(page * 50, total);
+        const start = (page - 1) * pageSize + 1;
+        const end = Math.min(page * pageSize, total);
         
         paginationInfo.textContent = `Showing ${start}–${end} of ${total} records`;
 
@@ -334,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function showError(message) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center py-5 text-danger">
+                <td colspan="10" class="text-center py-5 text-danger">
                     <i class="bi bi-exclamation-triangle fs-1"></i>
                     <p class="mt-2 mb-0">${message}</p>
                 </td>
@@ -417,8 +452,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Event Listeners
+    // REQ-052 B2-4: filters apply automatically — change listeners on the
+    // selects + dates, and a debounced input on the search box. The old funnel
+    // submit button was removed from the markup; this handler just guards
+    // against a stray Enter key submitting the form.
     filterForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        applyFilters();
+    });
+
+    // Read the current controls into currentFilters and reload from page 1.
+    function applyFilters() {
         currentFilters = {
             date_from: dateFrom.value,
             date_to: dateTo.value,
@@ -429,7 +473,30 @@ document.addEventListener('DOMContentLoaded', function() {
             user_search: userSearch.value.trim()
         };
         loadActivityLogs(1);
+    }
+
+    // Change listeners: every select + date range reloads immediately.
+    [moduleFilterSelect, actionTypeSelect, roleFilterSelect, statusFilterSelect, dateFrom, dateTo].forEach(el => {
+        if (el) el.addEventListener('change', applyFilters);
     });
+
+    // Debounced live search (~350ms).
+    let searchTimer;
+    if (userSearch) {
+        userSearch.addEventListener('input', function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(applyFilters, 350);
+        });
+    }
+
+    // Page size: reload from page 1 using the new limit.
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener('change', function() {
+            pageSize = parseInt(pageSizeSelect.value, 10) || 50;
+            currentPage = 1;
+            loadActivityLogs(1);
+        });
+    }
 
     resetFiltersBtn.addEventListener('click', function() {
         dateFrom.value = firstDayOfMonth.toISOString().split('T')[0];
