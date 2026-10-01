@@ -358,6 +358,7 @@ function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
                 <div class="order-id-badge" id="trackRefNum-${orderId}">Order ID: #${ref}</div>
                 ${tableLabel ? '<div class="text-muted small mb-2">' + tableLabel + '</div>' : ''}
                 ${status === 'PENDING' && !paid ? '<div class="countdown-bar" id="countdown-' + orderId + '"><span class="countdown-label">Auto-cancels in:</span> <span class="countdown-timer" id="timer-' + orderId + '">15:00</span></div>' : ''}
+                ${status === 'PENDING' && paid ? '<div class="countdown-bar" style="background:rgba(40,167,69,0.12);border-color:#28a745;color:#28a745;" id="countdown-' + orderId + '"><span class="countdown-label">Payment received</span> — order queued for kitchen</div>' : ''}
                 <div class="status-visual status-pending" id="statusVisualRing-${orderId}">
                     <i class="fa-solid fa-hourglass-half" id="statusMainIcon-${orderId}"></i>
                 </div>
