@@ -301,14 +301,30 @@ function loadOrders() {
 }
 
 // â”€â”€ Load All Tables (Tables page) â”€â”€
-async function loadAllTables(status = 'all') {
+async function loadAllTables(status = tablesState.status, page = tablesState.page) {
+    tablesState.status = status || 'all';
+    tablesState.page = page || 1;
     try {
-        const res = await hofFetch(`get_tables.php?table_type=DINE_IN&status=${encodeURIComponent(status)}`);
+        const params = new URLSearchParams({
+            table_type: 'DINE_IN',
+            status: tablesState.status,
+            search: tablesState.search,
+            page: String(tablesState.page),
+            limit: String(tablesState.limit)
+        });
+        const res = await hofFetch(`get_tables.php?${params}`);
         const data = await res.json();
         if (!data.success) return;
 
-        // Keep the stat tiles in sync with whatever the grid is showing.
-        if (status === 'all') updateTableStats(data.tables || []);
+        // Server-side stats (all matching rows, not just this page).
+        if (data.stats) {
+            const totalEl = document.getElementById('statTotal');
+            const availableEl = document.getElementById('statAvailable');
+            const occupiedEl = document.getElementById('statOccupied');
+            if (totalEl) totalEl.textContent = data.stats.total;
+            if (availableEl) availableEl.textContent = data.stats.available;
+            if (occupiedEl) occupiedEl.textContent = data.stats.occupied;
+        }
 
         const container = document.getElementById('tablesGrid');
         if (!container) return;
