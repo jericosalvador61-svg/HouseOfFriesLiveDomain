@@ -479,18 +479,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Event Listeners
+    // REQ-052 B2-4: filters apply automatically — change listeners on the
+    // selects + dates, and a debounced input on the search box. The funnel
+    // submit button was removed from the markup; this handler just guards
+    // against a stray Enter key submitting the form. The 31-day supervisor
+    // window check lives in applyFilters() so EVERY reload path is guarded.
     filterForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        applyFilters();
+    });
+
+    // Read the current controls into currentFilters (guarded by the
+    // supervisor 31-day window) and reload from page 1.
+    function applyFilters() {
         if (!isWithinWindow(dateFrom.value, dateTo.value)) {
-            currentFilters = {
-                date_from: dateFrom.value,
-                date_to: dateTo.value,
-                action_type: actionTypeSelect.value,
-                role: roleFilterSelect.value,
-                module: moduleFilterSelect.value,
-                status: statusFilterSelect.value,
-                user_search: userSearch.value.trim()
-            };
             Swal.fire({ icon: 'error', title: 'Invalid Date Range', text: 'Supervisor access is limited to the last 31 days.' });
             return;
         }
@@ -504,7 +506,31 @@ document.addEventListener('DOMContentLoaded', function() {
             user_search: userSearch.value.trim()
         };
         loadActivityLogs(1);
+    }
+
+    // Change listeners: every select + date range reloads immediately.
+    [moduleFilterSelect, actionTypeSelect, roleFilterSelect, statusFilterSelect, dateFrom, dateTo].forEach(el => {
+        if (el) el.addEventListener('change', applyFilters);
     });
+
+    // Debounced live search (~350ms).
+    let searchTimer;
+    if (userSearch) {
+        userSearch.addEventListener('input', function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(applyFilters, 350);
+        });
+    }
+
+    // Page size: reload from page 1 using the new limit.
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener('change', function() {
+            pageSize = parseInt(pageSizeSelect.value, 10) || 50;
+            currentPage = 1;
+            loadActivityLogs(1);
+        });
+    }
+
 
     resetFiltersBtn.addEventListener('click', function() {
         dateFrom.value = firstDayOfMonth.toISOString().split('T')[0];
