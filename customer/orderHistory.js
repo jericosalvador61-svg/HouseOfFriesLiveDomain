@@ -74,6 +74,8 @@
                     window.HOFCustomer.clear();
                     window.HOFCustomer.renderChip();
                 }
+                // Server unavailable → fall back to device registry (guest view)
+                // so the page never bricks; logged-in server history is best-effort.
                 var orders = window.HOFDevice ? HOFDevice.orders() : [];
                 renderOrders(orders);
             });

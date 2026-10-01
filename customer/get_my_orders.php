@@ -6,18 +6,14 @@
  * Identity comes ONLY from the validated customer token (never query params).
  *
  * Returns orders where:
- *   - orders.customer_account_id = <cid>   (NEW orders linked at placement), OR
- *   - BEST-EFFORT phone-merged historical guest orders that are PAID/COMPLETED:
- *     orders.customer_name = <token phone> AND customer_account_id IS NULL
- *     AND payment_status='COMPLETED'.
- *     LIMITATION (documented; Jerico disposition recorded in vault REQ-052):
- *     orders.customer_name is a free-text NAME (place_order.php:228 fed by
- *     cart.js localStorage.customerName / customer.js name prompt), never a
- *     phone. So this merge only matches the rare guest who typed their own
- *     phone into the name field; AC10b's "OLD orders" view is effectively
- *     new-orders-only. A true phone key needs a new orders column (schema
- *     LOCKED — out of scope). Read-time merge only — NO schema change, NO writes.
- *     Guest-injected names are harmless: rows are token-scoped and deduped.
+ *   - orders.customer_account_id = <cid>   (orders linked to the account).
+ *   - GUESTS: nothing (no merge). Per Jerico (2026-10-01): guest/device
+ *     orders VANISH from My Orders when a guest later registers/logs in —
+ *     the customer's tracked history starts at login; old guest orders are
+ *     intentionally NOT merged/displayed. The device registry (device.js)
+ *     still shows them for guests before login; once logged in, only
+ *     server-side linked orders appear.
+ *   Read-only, token-scoped, NO schema change, NO writes.
  *
  * A guest can never request another customer's orders: no customer_id/phone
  * is accepted from the client.
@@ -28,7 +24,6 @@ require_once __DIR__ . '/../backend/customer_auth.php';
 
 $auth = require_customer();
 $customerId = (int)$auth['customer_id'];
-$phone = (string)($auth['phone_number'] ?? '');
 
 try {
     // 1) Orders explicitly linked to this customer account.
@@ -54,43 +49,16 @@ try {
         $linked = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // 2) Historical guest orders merged by phone (PAID/COMPLETED only).
-    $merged = [];
-    if ($phone !== '') {
-        $stmt = $pdo->prepare(
-            "SELECT
-                o.order_id,
-                o.reference_number,
-                o.order_type,
-                o.status,
-                o.total_amount,
-                o.ordered_at,
-                o.payment_status,
-                o.customer_name,
-                rt.table_number
-            FROM orders o
-            LEFT JOIN restaurant_table rt ON o.table_id = rt.table_id
-            WHERE o.customer_account_id IS NULL
-              AND REPLACE(IFNULL(o.customer_name, ''), ' ', '') = REPLACE(:phone, ' ', '')
-              AND o.payment_status = 'COMPLETED'
-            ORDER BY o.ordered_at DESC"
-        );
-        $stmt->execute([':phone' => $phone]);
-        $merged = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+    // 2) NO guest-order merge. Per Jerico (2026-10-01): once a guest
+    //    registers/logs in, old device/guest orders are intentionally NOT
+    //    shown — tracked history starts at login (customer_account_id only).
 
-    // Union: linked first (newest authoritative), then backfilled phone-merged
-    // rows that aren't already present (dedupe by order_id).
+    // Union: linked orders only (no guest merge — see comment above).
     $ordersById = [];
     foreach ($linked as $o) {
         $ordersById[(int)$o['order_id']] = $o;
     }
-    foreach ($merged as $o) {
-        $id = (int)$o['order_id'];
-        if (!isset($ordersById[$id])) {
-            $ordersById[$id] = $o;
-        }
-    }
+    unset($o);
 
     $orders = array_values($ordersById);
     usort($orders, function ($a, $b) {
