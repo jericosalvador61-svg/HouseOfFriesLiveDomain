@@ -9,19 +9,9 @@
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
-$host = 'sql201.infinityfree.com';
-$db   = 'if0_42560270_house_of_fries_db';
-$user = 'if0_42560270';
-$pass = 'houseoffries';
+require_once __DIR__ . '/db.php';
 
 try {
-    $pdo = new PDO(
-        "mysql:host=$host;dbname=$db;charset=utf8mb4",
-        $user,
-        $pass,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
-    );
-
     $row = $pdo->query(
         "SELECT branch_name, latitude, longitude, radius_meters, geofence_enabled
          FROM branch_settings
