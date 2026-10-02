@@ -695,6 +695,7 @@ function counters(){
       fetch(appRoot() + '/backend/get_location_public.php').then(function(r){return r.json();}).then(function(data){
         if(data.success && data.settings){
           var lat2 = parseFloat(data.settings.latitude), lng2 = parseFloat(data.settings.longitude);
+          if (!isFinite(lat2) || !isFinite(lng2)) { return; }
           var pos2 = { lat: lat2, lng: lng2 };
           if (pos2.lat !== marker.getPosition().lat() || pos2.lng !== marker.getPosition().lng()) {
             map.setCenter(pos2);
@@ -707,6 +708,7 @@ function counters(){
     
     fetchLocation();
     setInterval(fetchLocation, 60000);
+    window.initLandingMap = initLandingMap;
   }
 
   // Wait for Google Maps to load, then init
