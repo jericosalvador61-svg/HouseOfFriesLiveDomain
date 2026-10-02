@@ -29,6 +29,13 @@ const GlobalRequestLoader = {
         /check_payment_status\.php/i    // payment polling loop
     ],
 
+    _appRoot() {
+        try {
+            const m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/admin|\/cashier|\/inventoryStaff|\/kitchenStaff|\/waiter|\/supervisor)(?:\/|$)/i);
+            return (m && m[1]) ? m[1].replace(/\/$/, '') : '';
+        } catch (_) { return ''; }
+    },
+
     init() {
         if (window.__hofFetchPatched) return;
         this.injectUI();
@@ -41,12 +48,7 @@ const GlobalRequestLoader = {
         // instead of http://localhost/<app>/backend/... . Rewriting here
         // fixes ALL such calls in ONE place, no per-file edits needed.
         // InfinityFree serves from domain root, so APP_ROOT="" there.
-        const APP_ROOT = (() => {
-            try {
-                const m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/admin|\/cashier|\/inventoryStaff|\/kitchenStaff|\/waiter|\/supervisor)(?:\/|$)/i);
-                return (m && m[1]) ? m[1].replace(/\/$/, '') : '';
-            } catch (_) { return ''; }
-        })();
+        const APP_ROOT = this._appRoot();
 
         window.fetch = function (input, init = {}) {
             let url = '';
@@ -125,6 +127,41 @@ const GlobalRequestLoader = {
             #hof-global-pill .spinner-border {
                 width: 14px; height: 14px; border-width: 2px; color: #ffc107;
             }
+            #hof-logo-overlay {
+                position: fixed; inset: 0; z-index: 20001;
+                display: flex; align-items: center; justify-content: center;
+                background: rgba(60,10,15,.45);
+                backdrop-filter: blur(6px);
+                -webkit-backdrop-filter: blur(6px);
+                pointer-events: none;
+                opacity: 0; visibility: hidden;
+                transition: opacity .2s ease, visibility .2s ease;
+            }
+            #hof-logo-overlay.active {
+                opacity: 1; visibility: visible;
+            }
+            #hof-logo-overlay .hof-logo-ring {
+                position: absolute; width: 84px; height: 84px;
+                border-radius: 50%;
+                border: 4px solid rgba(255,193,7,.35);
+                border-top-color: #ffc107;
+                animation: hof-spin 1s linear infinite;
+            }
+            #hof-logo-overlay .hof-logo-img {
+                position: relative; width: 64px; height: 64px;
+                object-fit: contain; border-radius: 50%;
+            }
+            #hof-logo-overlay .hof-logo-fallback {
+                position: relative; display: none;
+                width: 64px; height: 64px; border-radius: 50%;
+                background: #1a1512; color: #ffc107;
+                font: 800 28px/1 'Segoe UI', sans-serif;
+                align-items: center; justify-content: center;
+            }
+            @keyframes hof-spin {
+                from { transform: rotate(0deg); }
+                to   { transform: rotate(360deg); }
+            }
         `;
         document.head.appendChild(style);
 
@@ -138,6 +175,16 @@ const GlobalRequestLoader = {
             '<span class="spinner-border" role="status" aria-hidden="true"></span>' +
             '<span id="hof-global-pill-text">Processing…</span>';
         document.body.appendChild(pill);
+
+        // REQ-054 B3-E: full-screen logo overlay with a circulating ring.
+        // Hidden by default; shown/hidden in step with the top bar + pill.
+        const overlay = document.createElement('div');
+        overlay.id = 'hof-logo-overlay';
+        overlay.innerHTML =
+            '<div class="hof-logo-ring"></div>' +
+            `<img class="hof-logo-img" src="${this._appRoot()}/images/Logo.png" alt="" onerror="this.style.display='none';var f=this.parentElement.querySelector('.hof-logo-fallback');if(f)f.style.display='flex';">` +
+            '<div class="hof-logo-fallback">HF</div>';
+        document.body.appendChild(overlay);
     },
 
     label(method) {
@@ -155,12 +202,14 @@ const GlobalRequestLoader = {
         clearTimeout(this._hideTimer);
         const bar = document.getElementById('hof-global-bar');
         const pill = document.getElementById('hof-global-pill');
+        const overlay = document.getElementById('hof-logo-overlay');
         if (pill) {
             const txt = document.getElementById('hof-global-pill-text');
             if (txt) txt.textContent = this.label(method);
         }
         if (bar) bar.classList.add('active');
         if (pill) pill.classList.add('active');
+        if (overlay) overlay.classList.add('active');
     },
 
     end() {
@@ -169,8 +218,10 @@ const GlobalRequestLoader = {
         this._hideTimer = setTimeout(() => {
             const bar = document.getElementById('hof-global-bar');
             const pill = document.getElementById('hof-global-pill');
+            const overlay = document.getElementById('hof-logo-overlay');
             if (bar) bar.classList.remove('active');
             if (pill) pill.classList.remove('active');
+            if (overlay) overlay.classList.remove('active');
         }, 250);
     }
 };

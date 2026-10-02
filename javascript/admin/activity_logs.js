@@ -4,6 +4,15 @@
  * Works with the activity_logs table (single source of truth — REQ-050)
  */
 document.addEventListener('DOMContentLoaded', function() {
+    // REQ-054 B3-B: detect the app root so /backend/ API calls work on
+    // subfolder installs (localhost) and from the domain root (InfinityFree).
+    const APP_ROOT = (() => {
+        try {
+            const m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/admin|\/cashier|\/inventoryStaff|\/kitchenStaff|\/waiter|\/supervisor)(?:\/|$)/i);
+            return (m && m[1]) ? m[1].replace(/\/$/, '') : '';
+        } catch (_) { return ''; }
+    })();
+
     // State
     let currentPage = 1;
     let currentFilters = {
@@ -200,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         try {
-            const response = await fetch(`/backend/admin/activity_logs.php?${params}`, {
+            const response = await fetch(`${APP_ROOT}/backend/admin/activity_logs.php?${params}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('hof_token') || ''}`
                 }
@@ -209,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
 
             if (data.success) {
-                renderTable(data.data);
+                renderTable(data.data, data.pagination && data.pagination.total === 0 ? (data.message || '') : '');
                 updatePagination(data.pagination);
                 totalRecords.textContent = `${data.pagination.total} records`;
                 
@@ -259,13 +268,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Render table rows — EVERY interpolated field goes through escapeHtml (REQ-050 XSS fix)
-    function renderTable(activities) {
+    function renderTable(activities, emptyMessage) {
         if (!activities || activities.length === 0) {
+            const msg = (emptyMessage && emptyMessage.trim())
+                ? emptyMessage
+                : 'No activity logs found for the selected filters';
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="10" class="text-center py-5 text-muted">
                         <i class="bi bi-journal-x fs-1"></i>
-                        <p class="mt-2 mb-0">No activity logs found for the selected filters</p>
+                        <p class="mt-2 mb-0">${escapeHtml(msg)}</p>
                     </td>
                 </tr>
             `;
@@ -391,7 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
             user_search: currentFilters.user_search
         });
 
-        fetch(`/backend/admin/activity_logs.php?${params}`, {
+        fetch(`${APP_ROOT}/backend/admin/activity_logs.php?${params}`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('hof_token') || ''}`
             }

@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const API = {
         list: "../../backend/admin/customer_manage/list_customers.php",
+        create: "../../backend/admin/customer_manage/create_customer.php",
         toggle: "../../backend/admin/customer_manage/toggle_customer.php",
         reset: "../../backend/admin/customer_reset/generate_reset_code.php"
     };
@@ -42,6 +43,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const paginationInfo = document.getElementById("paginationInfo");
     const prevPage = document.getElementById("prevPage");
     const nextPage = document.getElementById("nextPage");
+
+    const btnAddCustomer = document.getElementById("btnAddCustomer");
+    const addCustomerForm = document.getElementById("addCustomerForm");
+    const customerName = document.getElementById("customerName");
+    const customerPhone = document.getElementById("customerPhone");
+    const addCustomerModalEl = document.getElementById("addCustomerModal");
+    let addCustomerModal = null;
+    if (addCustomerModalEl) addCustomerModal = new bootstrap.Modal(addCustomerModalEl);
 
     async function fetchCustomers() {
         if (!tableBody) return;
@@ -217,6 +226,60 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             Swal.fire('Error', 'Something went wrong.', 'error');
         }
+    }
+
+    async function createCustomer(name, phone) {
+        const btn = document.getElementById("btnSaveCustomer");
+        const originalHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving...';
+        }
+        try {
+            const res = await authFetch(API.create, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, phone_number: phone })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                Swal.fire('Error', data.message || 'Could not create the customer.', 'error');
+                return false;
+            }
+            if (addCustomerModal) addCustomerModal.hide();
+            if (addCustomerForm) addCustomerForm.reset();
+            fetchCustomers();
+            Swal.fire('Success', data.message || 'Customer created.', 'success');
+            return true;
+        } catch (err) {
+            console.error("Failed to create customer:", err);
+            Swal.fire('Error', 'Something went wrong.', 'error');
+            return false;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+    }
+
+    if (btnAddCustomer && addCustomerModal) {
+        btnAddCustomer.addEventListener("click", () => {
+            if (addCustomerForm) addCustomerForm.reset();
+            addCustomerModal.show();
+        });
+    }
+    if (addCustomerForm) {
+        addCustomerForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = customerName ? customerName.value.trim() : '';
+            const phone = customerPhone ? customerPhone.value.trim() : '';
+            if (!name || !phone) {
+                Swal.fire('Error', 'Name and phone number are required.', 'error');
+                return;
+            }
+            await createCustomer(name, phone);
+        });
     }
 
     // Event delegation
