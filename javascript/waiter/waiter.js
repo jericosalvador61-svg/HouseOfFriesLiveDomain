@@ -331,6 +331,7 @@ async function loadAllTables(status = tablesState.status, page = tablesState.pag
 
         if (!data.tables || data.tables.length === 0) {
             container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><i class="bi bi-inbox"></i><p>No tables found</p></div>';
+            renderTablePagination(data.pagination);
             return;
         }
 
@@ -364,6 +365,8 @@ async function loadAllTables(status = tablesState.status, page = tablesState.pag
                         </div>
                     `;
         }).join('');
+
+        renderTablePagination(data.pagination);
 
         // Re-apply the active filter after every re-render.
         const activeFilter = document.querySelector('.filter-btn.active');
