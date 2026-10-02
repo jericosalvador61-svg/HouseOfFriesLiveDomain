@@ -216,6 +216,19 @@ try {
         ]);
 
     } elseif (in_array($intentStatus, ['failed', 'cancelled', 'canceled'], true)) {
+        // REQ-054 B4-A: the GCash session is dead. Clear the stale intent so
+        // the customer can cleanly pay cash at the counter (process_payment
+        // overwrites anyway) OR retry GCash — a stuck 'awaiting_*' status
+        // would otherwise block create-qrph-payment's in-progress guard.
+        $clearStmt = $pdo->prepare("
+            UPDATE orders
+            SET payment_intent_id = NULL,
+                payment_intent_status = NULL,
+                payment_status = 'PENDING'
+            WHERE order_id = ? AND payment_status <> 'COMPLETED'
+        ");
+        $clearStmt->execute([$order_id]);
+
         echo json_encode([
             'success' => false,
             'paid' => false,

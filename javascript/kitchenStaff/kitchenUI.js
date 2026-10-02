@@ -618,7 +618,29 @@ class KitchenUI {
         } finally {
             checkbox.disabled = false;
             this.refreshLockState(orderId);
+            // REQ-054 B4-D: after ANY item toggle (including un-checking one
+            // item), recompute the "Check All" button state so it becomes
+            // selectable again once not every item is ticked.
+            this.refreshCheckAllButton(orderId);
         }
+    }
+
+    /**
+     * REQ-054 B4-D: recompute the Check All button's enabled state from the
+     * actual checkbox state on the card. After "check all" then un-checking a
+     * single item, the button must be selectable again.
+     */
+    refreshCheckAllButton(orderId) {
+        const card = document.querySelector('.order-card[data-order-id="' + orderId + '"]');
+        if (!card) return;
+        const boxes = card.querySelectorAll('.item-checkbox');
+        if (boxes.length === 0) return;
+        const allChecked = Array.prototype.every.call(boxes, cb => cb.checked);
+        card.querySelectorAll('.btn-check-all').forEach(btn => {
+            btn.disabled = allChecked;
+            btn.style.opacity = allChecked ? '0.5' : '';
+            btn.style.cursor = allChecked ? 'default' : 'pointer';
+        });
     }
 
     /**
@@ -680,9 +702,9 @@ class KitchenUI {
                     }
                 });
             }
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-            btn.style.cursor = 'default';
+            // REQ-054 B4-D: now that every box is checked, disable the button
+            // (it becomes re-selectable as soon as any item is un-checked).
+            this.refreshCheckAllButton(orderId);
         } catch (err) {
             Swal.close();
             Swal.fire({ icon: 'error', title: 'Error', text: err.message, confirmButtonColor: '#dc3545' });

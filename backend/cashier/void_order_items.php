@@ -18,6 +18,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth_middleware.php';
 require_once __DIR__ . '/../log_activity_helper.php';
+require_once __DIR__ . '/../pusher_helper.php'; // REQ-054 B4-C
 
 // Authenticate the cashier making the request
 $auth = authenticate(['Cashier', 'Admin', 'Supervisor']);
@@ -141,6 +142,11 @@ $itemCount = count($orderItemsToVoid);
     logActivity($pdo, $cashierId, $auth['username'], $auth['role'],
         'VOID_ORDER', "Voided {$itemCount} item(s) from order #{$orderId}",
         'order', $orderId);
+
+    // REQ-054 B4-C: tell the customer tracker the order changed so it re-fetches.
+    if (function_exists('broadcastOrderUpdate')) {
+        broadcastOrderUpdate($orderId, "Items voided from order", null);
+    }
 
     echo json_encode([
         'success' => true,

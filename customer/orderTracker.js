@@ -289,6 +289,49 @@ async function fetchAndRenderOrder(orderId) {
     }
 }
 
+function buildItemsHtml(itemsData) {
+    if (!itemsData || !itemsData.items || itemsData.items.length === 0) return { html: '', total: 0 };
+    const grouped = {};
+    itemsData.items.forEach(item => {
+        const key = item.menu_item_id;
+        if (!grouped[key]) {
+            grouped[key] = { ...item, qty: 1 };
+        } else {
+            grouped[key].qty += 1;
+        }
+    });
+    let totalAmount = 0;
+    const html = Object.values(grouped).map(item => {
+        const name = escapeHtml(item.item_name);
+        const instructions = escapeHtml(item.special_instructions);
+        const lineTotal = (parseFloat(item.price) * item.qty).toFixed(2);
+        totalAmount += parseFloat(lineTotal);
+        // Kitchen has already ticked this dish off.
+        const done = !!item.is_prepared;
+        return `<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:13px;${done ? 'opacity:.55;' : ''}">
+          <div style="flex:1;">${done ? '<i class="fa-solid fa-circle-check" style="color:#28a745;margin-right:6px;"></i>' : ''}<strong style="${done ? 'text-decoration:line-through;' : ''}">${name} <span style="color:var(--text-muted);">× ${item.qty}</span></strong>
+          ${instructions ? `<br><span style="font-size:11px;color:var(--text-muted);font-style:italic;">"${instructions}"</span>` : ''}
+          </div>
+          <span style="font-weight:600;white-space:nowrap;margin-left:12px;">₱${lineTotal}</span>
+        </div>`;
+    }).join('');
+    return { html: html, total: totalAmount.toFixed(2) };
+}
+
+// REQ-054 B4-C: on a live update (cashier adds/removes/voids an item) the
+// existing card's "View My Order" list must be re-rendered — it is NOT rebuilt
+// on later polls (the card is only created once).
+function refreshItemsBlock(orderId, itemsData) {
+    const body = document.getElementById('viewOrderBody-' + orderId);
+    if (!body || !itemsData || !itemsData.items) return;
+    const { html, total } = buildItemsHtml(itemsData);
+    body.innerHTML = html +
+        `<div class="view-order-total">
+          <span>Total</span>
+          <span>₱${total}</span>
+        </div>`;
+}
+
 function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
     const container = document.getElementById('orderCardsContainer');
     if (!container) return;
@@ -322,30 +365,9 @@ function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
         let itemsCollapsed = true;
         let totalAmount = 0;
         if (itemsData && itemsData.items && itemsData.items.length > 0) {
-            const grouped = {};
-            itemsData.items.forEach(item => {
-                const key = item.menu_item_id;
-                if (!grouped[key]) {
-                    grouped[key] = { ...item, qty: 1 };
-                } else {
-                    grouped[key].qty += 1;
-                }
-            });
-            itemsHtml = Object.values(grouped).map(item => {
-                const name = escapeHtml(item.item_name);
-                const instructions = escapeHtml(item.special_instructions);
-                const lineTotal = (parseFloat(item.price) * item.qty).toFixed(2);
-                totalAmount += parseFloat(lineTotal);
-                // Kitchen has already ticked this dish off.
-                const done = !!item.is_prepared;
-                return `<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:13px;${done ? 'opacity:.55;' : ''}">
-                  <div style="flex:1;">${done ? '<i class="fa-solid fa-circle-check" style="color:#28a745;margin-right:6px;"></i>' : ''}<strong style="${done ? 'text-decoration:line-through;' : ''}">${name} <span style="color:var(--text-muted);">× ${item.qty}</span></strong>
-                  ${instructions ? `<br><span style="font-size:11px;color:var(--text-muted);font-style:italic;">"${instructions}"</span>` : ''}
-                  </div>
-                  <span style="font-weight:600;white-space:nowrap;margin-left:12px;">₱${lineTotal}</span>
-                </div>`;
-            }).join('');
-            totalAmount = totalAmount.toFixed(2);
+            const built = buildItemsHtml(itemsData);
+            itemsHtml = built.html;
+            totalAmount = built.total;
         }
 
         // (the prep block below replaces the old static "prepLine" text)
@@ -463,6 +485,10 @@ function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
         cardEl._prepMinutes = prepMinutes;
     }
 
+    // REQ-054 B4-C: live re-fetch (cashier add/remove/void) → refresh the
+    // "View My Order" list so added/removed/voided items appear immediately.
+    refreshItemsBlock(orderId, itemsData);
+
     // The card is only built once, so on later polls we must refresh the
     // running countdown in place: the anchor never moves, but the kitchen may
     // have ticked dishes off and shortened the remaining budget.
@@ -488,9 +514,15 @@ function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
 
 function updateSingleCard(orderId, status) {
     let paid = false;
+    // REQ-054 B4-A/C: IN-PROGRESS/COOKING from a live broadcast means the
+    // order was paid — trust that over a possibly-stale device registry.
+    const s = String(status || '').toUpperCase();
+    if (s === 'IN-PROGRESS' || s === 'PREPARING' || s === 'COOKING' || s === 'COMPLETED' || s === 'READY' || s === 'SERVED') {
+        paid = true;
+    }
     if (window.HOFDevice) {
         const order = HOFDevice.orders().find(o => o.order_id == orderId);
-        paid = order ? order.paid : false;
+        paid = paid || (order ? order.paid : false);
     }
     updateTrackerUI(orderId, status, paid);
 }

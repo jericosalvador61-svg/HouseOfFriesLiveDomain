@@ -5,6 +5,8 @@ const APP_ROOT = (() => {
 
 document.addEventListener('DOMContentLoaded', () => {
     renderReceipt();
+    initCheckoutPaymentSection();
+    initPusher();
 
     const urlParams = new URLSearchParams(window.location.search);
     const orderId = urlParams.get('order_id');
@@ -25,6 +27,29 @@ function clearCartAndBadge() {
     if (badge) badge.textContent = '0';
 }
 window.clearCartAndBadge = clearCartAndBadge;
+
+// REQ-054 B4-B: the payment method is chosen on the CART page, not here.
+// Read the persisted selection and render the correct single CTA.
+function initCheckoutPaymentSection() {
+    const method = (localStorage.getItem('payment_method') || '').toUpperCase();
+    const banner = document.getElementById('methodBanner');
+    const bannerText = document.getElementById('methodBannerText');
+    const cashCard = document.getElementById('cashInstructionCard');
+    const gcashSection = document.getElementById('gcashSection');
+
+    if (method === 'GCASH') {
+        if (banner) banner.style.display = 'flex';
+        if (bannerText) bannerText.textContent = 'Paying with GCash';
+        if (cashCard) cashCard.style.display = 'none';
+        if (gcashSection) gcashSection.style.display = 'flex';
+    } else {
+        // Cash is the default when nothing (or an unknown value) was persisted.
+        if (banner) banner.style.display = 'flex';
+        if (bannerText) bannerText.textContent = 'Pay at Counter';
+        if (cashCard) cashCard.style.display = 'flex';
+        if (gcashSection) gcashSection.style.display = 'none';
+    }
+}
 
 async function verifyGcashPayment(orderId, returnSig) {
     let attempt = 0;
@@ -90,10 +115,18 @@ function markPaymentConfirmed(data) {
     const payBtn = document.getElementById('payGcashBtn');
     const orderAgainBtn = document.getElementById('orderAgainBtn');
     const goTrackBtn = document.getElementById('goTrackBtn');
+    const printReceiptBtn = document.getElementById('printReceiptBtn');
     if (editBtn) editBtn.style.display = 'none';
     if (payBtn) payBtn.style.display = 'none';
     if (orderAgainBtn) orderAgainBtn.style.display = 'flex';
     if (goTrackBtn) goTrackBtn.style.display = 'flex';
+    // REQ-054 B4-E: show the Print Receipt button once payment is confirmed.
+    if (printReceiptBtn) printReceiptBtn.style.display = 'flex';
+
+    // REQ-054 B4-A: clear the stale cart so the badge never shows a paid order
+    // as still pending (item #14).
+    localStorage.removeItem('cart');
+    if (window.updateBadge) window.updateBadge();
 
     // Update device registry
     const orderId = localStorage.getItem('lastOrderID');
@@ -109,10 +142,23 @@ function markPaymentConfirmed(data) {
         icon: 'success',
         title: 'Payment Successful!',
         text: 'Your GCash payment was received. Your order is now being prepared in the kitchen.',
-        confirmButtonColor: '#FFB800'
+        confirmButtonColor: '#FFB800',
+        timer: 2500,
+        timerProgressBar: true,
+        showConfirmButton: false
+    }).then(() => {
+        // REQ-054 B4-A (#12): GCash success auto-redirects to the order tracker.
+        if (orderId) {
+            window.location.href = 'orderTracker.html?order_id=' + orderId;
+        } else {
+            window.location.href = 'orderTracker.html';
+        }
     });
 }
 
+// REQ-054 B4-A (#13): GCash cancel → customer returns to checkout and can
+// cleanly switch to the cash path (the stale intent was cleared server-side
+// by check-payment-status.php).
 function markPaymentFailed() {
     const title = document.getElementById('paymentInstructionTitle');
     const desc = document.getElementById('paymentInstructionDesc');
@@ -124,6 +170,17 @@ function markPaymentFailed() {
         title: 'Payment Failed',
         text: 'Your GCash payment was not completed. Please try again or pay at the counter.',
         confirmButtonColor: '#dc3545'
+    }).then(() => {
+        // Drop the intent marker so a fresh GCash attempt or the cash path
+        // is not blocked by a stale "processing" guard.
+        localStorage.removeItem('hof_gcash_created');
+        // Show the cash option so the customer can pay at the counter instead.
+        const bannerText = document.getElementById('methodBannerText');
+        if (bannerText) bannerText.textContent = 'Pay at Counter';
+        const cashCard = document.getElementById('cashInstructionCard');
+        const gcashSection = document.getElementById('gcashSection');
+        if (cashCard) cashCard.style.display = 'flex';
+        if (gcashSection) gcashSection.style.display = 'none';
     });
 }
 
@@ -267,14 +324,110 @@ window.payWithGCashQR = function() {
 
 window.downloadReceipt = function () {
     const receipt = document.querySelector('.status-container');
+    if (!receipt || typeof html2canvas === 'undefined') {
+        window.print();
+        return;
+    }
 
-    html2canvas(receipt, { scale: 2 }).then(canvas => {
+    // REQ-054 B4-E: downloadable image/PDF reusing the html2canvas pattern.
+    html2canvas(receipt, { scale: 2, backgroundColor: '#FFFFFF' }).then(canvas => {
         const link = document.createElement('a');
         link.download = `HOF-Token-${localStorage.getItem('lastRefNumber') || 'Order'}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
     });
 };
+
+// REQ-054 B4-E: match the cashier receipt UI — a print window (80mm thermal).
+window.printReceipt = function () {
+    const receipt = document.querySelector('.status-container');
+    if (!receipt) return;
+    const win = window.open('', '_blank', 'width=400,height=600');
+    if (!win) { Swal.fire('Print Error', 'Please allow pop-ups to print the receipt.', 'warning'); return; }
+    win.document.write(`
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Receipt</title>
+<style>
+  @page { margin: 0; size: 80mm auto; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; color: #000; width: 80mm; padding: 10px; }
+  .center { text-align: center; }
+  .line { border-top: 1px dashed #000; margin: 6px 0; }
+  .row { display: flex; justify-content: space-between; margin: 3px 0; }
+</style></head><body>
+<div class="center"><strong>HOUSE OF FRIES</strong><br><small>Tagoloan Branch</small></div>
+<div class="line"></div>
+`);
+    win.document.write(receipt.innerHTML);
+    win.document.write(`
+<div class="line"></div>
+<div class="center">Thank you for dining with us!</div>
+<script>window.onload = function () { window.print(); }<` + `/script>
+</body></html>`);
+    win.document.close();
+};
+
+// REQ-054 B4-B: cash path CTA — confirms and sends the customer to the tracker.
+window.confirmPayAtCounter = function () {
+    const refNumber = localStorage.getItem('lastRefNumber');
+    Swal.fire({
+        icon: 'info',
+        title: 'Proceed to the Cashier',
+        text: 'Present Order #' + (refNumber || '') + ' at the counter to complete your payment.',
+        confirmButtonText: 'Track My Order',
+        confirmButtonColor: '#FFB800'
+    }).then(() => {
+        goToTracker();
+    });
+};
+
+// REQ-054 B4-B (#23): "Open GCash" — redirects to the GCash app via the
+// PayMongo hosted checkout URL (sandbox fallback to the payment page).
+window.openGcashApp = function () {
+    const orderId = localStorage.getItem('lastOrderID');
+    const refNumber = localStorage.getItem('lastRefNumber');
+    if (!orderId || !refNumber) {
+        Swal.fire({ title: 'No Order', text: 'Please place an order first.', icon: 'warning', confirmButtonColor: '#FFB800' });
+        return;
+    }
+    payWithGCashQR();
+};
+
+// REQ-054 B4-G: Pusher + 30s polling on checkout so a paid/updated order is
+// reflected live (e.g. the cashier marking it paid while the customer watches).
+function initPusher() {
+    if (typeof Pusher === 'undefined') { setTimeout(initPusher, 500); return; }
+    try {
+        const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+        const channel = pusher.subscribe('hof-orders');
+        const lastOrderId = localStorage.getItem('lastOrderID');
+        channel.bind('order-status-changed', function (data) {
+            let payload = typeof data === 'string' ? JSON.parse(data) : data;
+            if (typeof payload.data === 'string') payload = JSON.parse(payload.data);
+            if (!lastOrderId || String(payload.order_id) !== String(lastOrderId)) return;
+            if (payload.status === 'IN-PROGRESS') {
+                markPaymentConfirmed({ pusher: true });
+            }
+        });
+    } catch (e) { console.warn('Pusher init error:', e); }
+}
+
+// 30s polling fallback — belt-and-suspenders for dropped sockets.
+setInterval(function () {
+    const orderId = localStorage.getItem('lastOrderID');
+    if (!orderId) return;
+    fetch('../backend/payments/check-payment-status.php?order_id=' + encodeURIComponent(orderId))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success && data.paid) {
+                const title = document.getElementById('paymentInstructionTitle');
+                if (title && title.textContent !== 'Payment Confirmed ✓') {
+                    markPaymentConfirmed(data);
+                }
+            }
+        })
+        .catch(function () {});
+}, 30000);
 
 // NEW: Single point of redirection into the live tracking portal
 window.goToTracker = function () {
@@ -326,21 +479,16 @@ window.orderAgain = function () {
 };
 
 // NEW: Explicit payment choice
-window.choosePayment = function(method) {
-    document.getElementById('paymentChoiceSection').style.display = 'none';
+// REQ-054 B4-B: the method is now chosen on the cart page, so these helpers
+// are removed. Kept as a no-op alias in case any stale inline handler fires.
+window.choosePayment = function (method) {
+    const cashCard = document.getElementById('cashInstructionCard');
+    const gcashSection = document.getElementById('gcashSection');
     if (method === 'cash') {
-        document.getElementById('cashInstructionCard').style.display = 'flex';
+        if (cashCard) cashCard.style.display = 'flex';
+        if (gcashSection) gcashSection.style.display = 'none';
     } else {
-        document.getElementById('gcashSection').style.display = 'flex';
+        if (cashCard) cashCard.style.display = 'none';
+        if (gcashSection) gcashSection.style.display = 'flex';
     }
-};
-
-window.switchToGCash = function() {
-    document.getElementById('cashInstructionCard').style.display = 'none';
-    document.getElementById('gcashSection').style.display = 'flex';
-};
-
-window.switchToCash = function() {
-    document.getElementById('gcashSection').style.display = 'none';
-    document.getElementById('cashInstructionCard').style.display = 'flex';
 };

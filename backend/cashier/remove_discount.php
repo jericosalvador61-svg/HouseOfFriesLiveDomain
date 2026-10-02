@@ -17,6 +17,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth_middleware.php';
 require_once __DIR__ . '/../log_activity_helper.php';
+require_once __DIR__ . '/../pusher_helper.php'; // REQ-054 B4-C
 
 // Authenticate the cashier making the request
 $auth = authenticate(['Cashier', 'Admin']);
@@ -113,6 +114,11 @@ try {
         'DISCOUNT_REMOVED',
         "Removed discount from order #{$orderId}, approved by {$authorizerUsername}",
         'order', $orderId);
+
+    // REQ-054 B4-C: the total changed — nudge the customer tracker.
+    if (function_exists('broadcastOrderUpdate')) {
+        broadcastOrderUpdate($orderId, "Discount removed from order", null);
+    }
 
     echo json_encode([
         'success' => true,

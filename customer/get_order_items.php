@@ -21,7 +21,7 @@ if ($sig && $ref) {
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT reference_number, ordered_at FROM orders WHERE order_id = ?");
+    $stmt = $pdo->prepare("SELECT reference_number, ordered_at, status, cooking_started_at FROM orders WHERE order_id = ?");
     $stmt->execute([$order_id]);
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -53,6 +53,12 @@ try {
     // How many minutes the kitchen has already ticked off. This walks the
     // SAME ledger the kitchen uses (orders.total_estimated_prep_time) to work
     // out which dishes are done, so the customer sees real progress.
+    //
+    // REQ-054 B4-C (#25): the ledger is only meaningful once the kitchen has
+    // actually STARTED cooking. Before that, total_estimated_prep_time is
+    // still 0/NULL, which would make `total - remaining = total` and every
+    // item green-checked prematurely. So we only derive tick marks after
+    // cooking_started_at is set (i.e. the kitchen pressed Start Cooking).
     $ledger = $pdo->prepare("
         SELECT COALESCE(total_estimated_prep_time, 0) AS remaining,
                (SELECT COALESCE(SUM(mi2.estimated_prep_time_minutes * oi2.quantity), 0)
@@ -63,7 +69,11 @@ try {
     ");
     $ledger->execute([$order_id]);
     $ledgerRow = $ledger->fetch(PDO::FETCH_ASSOC) ?: [];
-    $minutesDone = max(0, (int)($ledgerRow['total'] ?? 0) - (int)($ledgerRow['remaining'] ?? 0));
+    $cookingStarted = !empty($order['cooking_started_at']);
+    $orderTotal = (int)($ledgerRow['total'] ?? 0);
+    $orderRemaining = (int)($ledgerRow['remaining'] ?? 0);
+    // Pre-cooking orders have a NULL/0 ledger — do NOT treat that as "all done".
+    $minutesDone = $cookingStarted ? max(0, $orderTotal - $orderRemaining) : 0;
 
     $totalPrepMinutes = 0;
     $budget = $minutesDone;

@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCartNavigation();
     setupSwipeGestures(); // Initialize gesture listener bindings
     bindMenuAvailability(); // REQ-050 L6: live menu availability on cart page
+    bindOrderLiveUpdates(); // REQ-054 B4-G: Pusher + polling on the cart page
 });
 
 // --- 1. DYNAMIC HEADER LOGIC ---
@@ -465,8 +466,64 @@ function bindMenuAvailability() {
     });
 }
 
+// ── REQ-054 B4-G: Pusher + 30s polling on the cart page ──
+// The cart is read-only for an active order, but live updates keep the badge
+// and "unpaid order" resume flow in sync with the cashier's actions.
+function bindOrderLiveUpdates() {
+    const lastOrderId = localStorage.getItem('lastOrderID');
+
+    if (typeof Pusher !== 'undefined') {
+        try {
+            const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+            const orderChannel = pusher.subscribe('hof-orders');
+            orderChannel.bind('order-status-changed', function (data) {
+                let payload = typeof data === 'string' ? JSON.parse(data) : data;
+                if (typeof payload.data === 'string') payload = JSON.parse(payload.data);
+                if (!lastOrderId || String(payload.order_id) !== String(lastOrderId)) return;
+                // When the order becomes paid, clear the stale cart badge.
+                if (payload.status === 'IN-PROGRESS' || payload.status === 'COOKING') {
+                    localStorage.removeItem('cart');
+                    renderCart();
+                }
+            });
+        } catch (e) { console.warn('Pusher init error:', e); }
+    }
+
+    setInterval(function () {
+        const oid = localStorage.getItem('lastOrderID');
+        if (!oid) return;
+        fetch('get_order_status.php?order_id=' + encodeURIComponent(oid))
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.paid) {
+                    localStorage.removeItem('cart');
+                    renderCart();
+                }
+            })
+            .catch(() => {});
+    }, 30000);
+}
+
 function setupCartNavigation() {
     const placeOrderBtn = document.getElementById('placeOrderBtn');
+
+    // REQ-054 B4-B: the button label follows the chosen method — the choice
+    // is made HERE on the cart page and carried into checkout.
+    function updateButtonLabel() {
+        const selected = document.querySelector('input[name="payment_method"]:checked');
+        if (!placeOrderBtn) return;
+        if (selected && selected.value === 'GCASH') {
+            placeOrderBtn.textContent = 'Pay with GCash';
+        } else if (selected && selected.value === 'CASH') {
+            placeOrderBtn.textContent = 'Proceed to Cashier / Pay at Counter';
+        } else {
+            placeOrderBtn.textContent = 'Proceed to Payment';
+        }
+    }
+    document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
+        radio.addEventListener('change', updateButtonLabel);
+    });
+    updateButtonLabel();
 
     if (placeOrderBtn) {
         placeOrderBtn.addEventListener('click', async () => {
@@ -638,6 +695,8 @@ function setupCartNavigation() {
                             return;
                         }
                         const selectedPayment = editPaymentInput.value;
+                        // REQ-054 B4-B: carry the cart's payment choice to checkout.
+                        localStorage.setItem('payment_method', selectedPayment);
                         if (selectedPayment === 'GCASH') {
                             try {
                                 const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
@@ -656,6 +715,7 @@ function setupCartNavigation() {
                                 alert('Failed to create payment link: ' + e.message);
                             }
                         } else {
+                            localStorage.setItem('payment_method', 'CASH');
                             window.location.href = 'checkout.html';
                         }
                         return;
@@ -803,6 +863,7 @@ function setupCartNavigation() {
                     if (result.duplicate) {
                         localStorage.setItem('lastOrderID', result.order_id);
                         localStorage.setItem('lastRefNumber', result.reference_number);
+                        localStorage.setItem('payment_method', 'GCASH');
                         if (result.created_epoch) localStorage.setItem('lastOrderEpoch', result.created_epoch);
                         if (window.HOFDevice) {
                             HOFDevice.addOrder({
@@ -838,6 +899,7 @@ function setupCartNavigation() {
                     if (result.success) {
                         localStorage.setItem('lastOrderID', result.order_id);
                         localStorage.setItem('lastRefNumber', result.reference_number);
+                        localStorage.setItem('payment_method', 'GCASH');
                         if (result.created_epoch) localStorage.setItem('lastOrderEpoch', result.created_epoch);
                         if (window.HOFDevice) {
                             HOFDevice.addOrder({
@@ -923,6 +985,7 @@ function setupCartNavigation() {
                 if (result.duplicate) {
                     localStorage.setItem('lastOrderID', result.order_id);
                     localStorage.setItem('lastRefNumber', result.reference_number);
+                    localStorage.setItem('payment_method', selectedPayment);
                     if (result.created_epoch) localStorage.setItem('lastOrderEpoch', result.created_epoch);
                     if (window.HOFDevice) {
                         HOFDevice.addOrder({
@@ -947,6 +1010,7 @@ function setupCartNavigation() {
                 if (result.success) {
                     localStorage.setItem('lastOrderID', result.order_id);
                     localStorage.setItem('lastRefNumber', result.reference_number);
+                    localStorage.setItem('payment_method', selectedPayment);
                     if (result.created_epoch) localStorage.setItem('lastOrderEpoch', result.created_epoch);
                     if (window.HOFDevice) {
                         HOFDevice.addOrder({
