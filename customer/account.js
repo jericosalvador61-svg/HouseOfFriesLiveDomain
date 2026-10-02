@@ -123,6 +123,12 @@
             authFetch('logout.php', { method: 'POST' }).catch(function () {});
         } catch (e) { /* ignore */ }
         clearToken();
+        // REQ-054 B1: wipe the pre-login device order history on logout so a
+        // different person using this device doesn't inherit the last
+        // customer's orders. Server-side history reloads when logged in again.
+        try {
+            localStorage.removeItem('hof_orders');
+        } catch (e) { /* ignore */ }
         if (typeof window.HOFCustomerOnLogout === 'function') {
             try { window.HOFCustomerOnLogout(); } catch (e) {}
         }

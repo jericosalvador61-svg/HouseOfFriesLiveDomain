@@ -38,11 +38,13 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: nowrap;
             z-index: 1050;
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
         }
         header h1 { color: var(--primary-yellow); font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
         header p { color: rgba(255,255,255,0.6); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-top: 1px; }
+        .brand-logo { height: 40px; width: auto; object-fit: contain; display: block; flex-shrink: 0; }
         .back-nav-trigger {
             background: rgba(255,255,255,0.1); border: 2px solid transparent;
             width: 48px; height: 48px; border-radius: 14px;
@@ -71,6 +73,7 @@
             font-weight: 700; color: white; background: var(--text-main);
             font-size: 13px; padding: 6px 18px; border-radius: 50px;
             box-shadow: 0 4px 10px rgba(51,26,17,0.1);
+            max-width: calc(100% - 40px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         select, input {
             -webkit-appearance: none; appearance: none; outline: none;
@@ -153,6 +156,8 @@
             body { padding-top: 80px; padding-bottom: 110px; }
             header { padding: 12px 16px; }
             header h1 { font-size: 18px; }
+            .brand-logo { height: 34px; }
+            .cart-nav-trigger, .back-nav-trigger { width: 42px; height: 42px; }
             .menu-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 0 12px 12px; }
             .checkout-bar { left: 12px; right: 12px; bottom: 16px; padding: 12px 18px; }
         }
@@ -160,11 +165,8 @@
 </head>
 <body>
     <header>
-        <div class="brand-container">
-            <h1>House of Fries</h1>
-            <p>Order Menu</p>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <img src="../images/Logo.png" alt="House of Fries" class="brand-logo">
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <div id="hofCustomerAccountChip"></div>
             <button class="cart-nav-trigger" id="cartTrigger" aria-label="View Shopping Cart"><i class="fa-solid fa-cart-shopping"></i><div class="nav-badge" id="cartBadgeCount">0</div></button>
             <button class="cart-nav-trigger" id="myOrdersBtn" aria-label="My Orders" onclick="window.location.href='orderHistory.html'"><i class="fa-solid fa-receipt"></i><div class="nav-badge" id="myOrdersBadge" style="display:none;">0</div></button>

@@ -12,6 +12,18 @@ let pollingFallbackInterval = null;
 const trackSigs = {};
 const itemsSigs = {};
 
+// REQ-054 B1: clear the cart + cart badge once the order is complete. Keeps
+// lastOrderID / lastRefNumber intact — the tracker still needs them.
+function clearCartAndBadge() {
+    localStorage.removeItem('cart');
+    if (typeof window.updateBadge === 'function') {
+        try { window.updateBadge(); } catch (e) {}
+    }
+    const badge = document.getElementById('cartBadgeCount');
+    if (badge) badge.textContent = '0';
+}
+window.clearCartAndBadge = clearCartAndBadge;
+
 function escapeHtml(text) {
   if (!text) return '';
   const d = document.createElement('div');
@@ -570,6 +582,11 @@ function updateTrackerUI(orderId, status, paid) {
         actionsHtml = '<div style="display:flex;flex-direction:column;gap:8px;"><button class="btn-action-large btn-action-outline" disabled style="opacity:0.6;"><i class="fa-solid fa-lock"></i> Locked — cannot edit</button><button class="btn-action-large btn-action-yellow" onclick="localStorage.removeItem(\'cart\');localStorage.removeItem(\'lastOrderID\');localStorage.removeItem(\'lastRefNumber\');location.href=\'customer.html\';"><i class="fa-solid fa-plus"></i> Order Again</button><button class="btn-action-large btn-action-outline" onclick="window.viewReceipt(' + orderId + ')"><i class="fa-solid fa-receipt"></i> View Receipt</button></div>';
     } else if (currentStatus === 'READY' || currentStatus === 'COMPLETED' || currentStatus === 'SERVED') {
         window.clearMyTable();
+        // REQ-054 B1: the order is complete — clear the cart + badge now.
+        // The inline Order Again button already clears it; this makes the
+        // badge clean as soon as the tracker shows complete. Keep
+        // lastOrderID/lastRefNumber — the receipt/tracker still need them.
+        clearCartAndBadge();
         if (visualRing) { visualRing.className = 'status-visual status-ready'; if (mainIcon) mainIcon.className = 'fa-solid fa-circle-check'; }
         if (headline) { headline.textContent = currentStatus === 'SERVED' ? 'Served! 🎉' : 'Order Complete! 🎉'; headline.style.color = '#008444'; }
         if (message) message.innerHTML = '<strong>Your food is ready!</strong> Please proceed to the pickup counter.';

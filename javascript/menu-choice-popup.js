@@ -58,9 +58,10 @@
             '.hof-choice-popup-close:hover{color:#212529;}',
             '.hof-choice-popup-section{margin-top:18px;}',
             '.hof-choice-popup-section-label{font-size:14px;font-weight:700;margin:0 0 10px;}',
-            '.hof-choice-popup-opt{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;border:1px solid #e5e5e5;border-radius:10px;margin-bottom:8px;cursor:pointer;}',
+            '.hof-choice-popup-opt{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;border:1px solid #e5e5e5;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:background .15s ease,border-color .15s ease;}',
             '.hof-choice-popup-opt input{margin:3px 0 0;}',
             '.hof-choice-popup-opt span{font-size:14px;}',
+            '.hof-choice-popup-opt.selected{border-color:#28a745;background:rgba(40,167,69,0.06);}',
             '.hof-choice-popup-addon{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid #e5e5e5;border-radius:10px;margin-bottom:8px;}',
             '.hof-choice-popup-addon-info{display:flex;align-items:center;gap:8px;font-size:14px;}',
             '.hof-choice-popup-check{width:20px;height:20px;border:2px solid #ccc;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s ease,border-color .15s ease;color:#fff;font-size:12px;line-height:1;}',
@@ -144,6 +145,7 @@
             html += '<h3 class="hof-choice-popup-section-label">' + escapeHtml(group.group_name) + '</h3>';
             (group.options || []).forEach(function (opt) {
                 html += '<label class="hof-choice-popup-opt">';
+                html += '<span class="hof-choice-popup-check" aria-hidden="true"></span>';
                 html += '<input type="radio" name="hof-choice-group-' + groupIndex + '" value="' + escapeHtml(opt.menu_choice_id) + '">';
                 html += '<span>' + escapeHtml(opt.choice_name) + '</span>';
                 html += '</label>';
@@ -219,6 +221,7 @@
         root.querySelectorAll('input[type="radio"]').forEach(function (input) {
             if (initialChoices[input.value]) input.checked = true;
         });
+        syncChoiceVisuals();
 
         // Pre-fill add-on quantities.
         var initialAddons = {};
@@ -267,6 +270,19 @@
 
     function groupSections() {
         return Array.prototype.slice.call(root.querySelectorAll('[data-choice-group]'));
+    }
+
+    // REQ-054 B1: mirror the add-on circle pattern on radio rows. Each
+    // `.hof-choice-popup-opt` label carries a `.hof-choice-popup-check` circle
+    // plus a `.selected` highlight; the checked radio drives both.
+    function syncChoiceVisuals() {
+        root.querySelectorAll('.hof-choice-popup-opt').forEach(function (row) {
+            var input = row.querySelector('input[type="radio"]');
+            var check = row.querySelector('.hof-choice-popup-check');
+            var isChecked = !!(input && input.checked);
+            if (check) check.classList.toggle('checked', isChecked);
+            row.classList.toggle('selected', isChecked);
+        });
     }
 
     function allGroupsSelected() {
@@ -412,7 +428,7 @@
 
     function bindEvents(cfg) {
         root.addEventListener('input', function () { updateSubtotal(); });
-        root.addEventListener('change', function () { updateOK(); updateSubtotal(); });
+        root.addEventListener('change', function () { syncChoiceVisuals(); updateOK(); updateSubtotal(); });
 
         root.addEventListener('click', function (e) {
             var btn = e.target.closest('button');

@@ -20,6 +20,18 @@ const EXPIRY_SECONDS = 15 * 60;
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 100;
 
+// REQ-054 B1: clear the cart + cart badge once payment succeeds. Keeps
+// lastOrderID / lastRefNumber intact — the tracker still needs them.
+function clearCartAndBadge() {
+    localStorage.removeItem('cart');
+    if (typeof window.updateBadge === 'function') {
+        try { window.updateBadge(); } catch (e) {}
+    }
+    const badge = document.getElementById('cartBadgeCount');
+    if (badge) badge.textContent = '0';
+}
+window.clearCartAndBadge = clearCartAndBadge;
+
 async function loadPaymentPage() {
     const params = new URLSearchParams(window.location.search);
     orderId = params.get('order_id');
@@ -356,6 +368,10 @@ function showSuccess() {
     if (window.HOFDevice) {
         HOFDevice.updateStatus(orderId, 'IN-PROGRESS', true);
     }
+
+    // REQ-054 B1: payment confirmed — the cart is spent, clear it + badge.
+    // Keep lastOrderID/lastRefNumber for the tracker.
+    clearCartAndBadge();
 
     Swal.fire({
         icon: 'success',

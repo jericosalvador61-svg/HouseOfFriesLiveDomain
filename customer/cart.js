@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { /* corrupted session — render from what we have */ }
     displayCurrentTable();
     renderCart();
+    ensureMenuStatusCache().then(() => renderCart()); // REQ-054 B1: re-paint red once statuses arrive
     setupCartNavigation();
     setupSwipeGestures(); // Initialize gesture listener bindings
     bindMenuAvailability(); // REQ-050 L6: live menu availability on cart page
@@ -102,6 +103,35 @@ function withLineKey(line) {
     return clone;
 }
 
+// ── REQ-054 B1: live menu availability for carted lines ──
+// Map of menu_item_id -> status ('Available' | 'Unavailable'), loaded once
+// from get_menu.php so cart lines that reference an unavailable item render
+// red immediately. Falls back to any previously cached menu data; never
+// blocks rendering.
+let menuStatusCache = null; // menu_item_id (string) -> status string
+
+async function ensureMenuStatusCache() {
+    if (menuStatusCache) return;
+    function buildMap(menu) {
+        const map = {};
+        (menu || []).forEach(p => { map[String(p.menu_item_id)] = p.status || 'Available'; });
+        return map;
+    }
+    try {
+        const res = await fetch('get_menu.php');
+        const data = await res.json();
+        if (!Array.isArray(data)) throw new Error('bad payload');
+        cartMenuCache = data;
+        menuStatusCache = buildMap(data);
+    } catch (e) {
+        if (Array.isArray(cartMenuCache)) {
+            menuStatusCache = buildMap(cartMenuCache);
+        } else {
+            menuStatusCache = {};
+        }
+    }
+}
+
 function renderCart() {
     const rawCart = JSON.parse(localStorage.getItem('cart')) || [];
 
@@ -149,6 +179,17 @@ function renderCart() {
             ? `<div class="instr-wrap"><div class="instr-saved">${escapeHtmlAttr(displayInstr)}</div></div>`
             : '';
 
+        // REQ-054 B1: mark lines whose menu item is now Unavailable in red
+        // (tag + border), using the cached menu status when available.
+        const isUnavailable = menuStatusCache
+            && String(menuStatusCache[String(item.menu_item_id)] || '') === 'Unavailable';
+        const unavailableTag = isUnavailable
+            ? '<div class="unavailable-tag">Unavailable</div>'
+            : '';
+        const itemCardStyle = isUnavailable
+            ? 'style="border:2px solid #dc3545;background:#fff5f5;"'
+            : '';
+
         // Double-nested DOM layout architecture matching touch swiping expectations.
         // The item-details area is tappable to reopen the choice/add-on popup
         // (REQ-040); the swipe-delete + quantity steppers keep working as before.
@@ -157,15 +198,16 @@ function renderCart() {
                 <div class="swipe-delete-action" onclick="removeItem('${item.line_key}', event)">
                     <i class="fa-solid fa-trash-can"></i>
                 </div>
-                <div class="cart-item-content">
+                <div class="cart-item-content" ${itemCardStyle}>
                 <img src="${imageSrc}" alt="${escapeHtmlAttr(item.item_name)}" onerror="this.style.display='none';">
                     <div class="item-details" onclick="editCartLine('${item.line_key}')">
                         <div>
                             <h3>${escapeHtmlAttr(item.item_name)}</h3>
                             <p>${escapeHtmlAttr(item.description || 'Delicious side or entry option.')}</p>
                         </div>
+                        ${unavailableTag}
                         ${instrHtml}
-                        <div class="item-price-tag">₱ ${(parseFloat(item.price)).toFixed(2)}</div>
+                        <div class="item-price-tag" ${isUnavailable ? 'style="color:#dc3545;"' : ''}>₱ ${(parseFloat(item.price)).toFixed(2)}</div>
                     </div>
                     <div class="cart-controls">
                         <button class="btn-ctrl minus" ${minusStyle} onclick="changeQty('${item.line_key}', -1, event)">-</button>
@@ -405,6 +447,10 @@ function bindMenuAvailability() {
         const hit = cart.some(line => String(line.menu_item_id) === String(payload.menu_item_id));
         if (!hit) return;
 
+        // REQ-054 B1: reflect the new status in the cache so the line turns red live.
+        if (!menuStatusCache) menuStatusCache = {};
+        menuStatusCache[String(payload.menu_item_id)] = payload.status;
+
         const name = payload.item_name || ('Item #' + payload.menu_item_id);
         if (payload.status === 'Unavailable') {
             Swal.fire({
@@ -415,6 +461,7 @@ function bindMenuAvailability() {
                 confirmButtonColor: '#FFB800'
             });
         }
+        renderCart();
     });
 }
 
@@ -427,6 +474,29 @@ function setupCartNavigation() {
 
             if (rawCart.length === 0) {
                 alert("Your cart is empty!");
+                return;
+            }
+
+            // ── REQ-054 B1: block unavailable items BEFORE geofence/edit ──
+            // Check every carted line against the current menu status (cached
+            // from get_menu.php; falls back to cached menu if fetch failed).
+            if (!menuStatusCache) await ensureMenuStatusCache();
+            const unavailableNames = [];
+            const seenUnavailable = {};
+            rawCart.forEach(line => {
+                const key = String(line.menu_item_id);
+                if (String(menuStatusCache[key] || '') === 'Unavailable' && !seenUnavailable[key]) {
+                    seenUnavailable[key] = true;
+                    unavailableNames.push('• ' + (line.item_name || ('Item #' + key)));
+                }
+            });
+            if (unavailableNames.length > 0) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Some items are unavailable',
+                    html: unavailableNames.join('<br>') + '<br><br>Please remove or replace them.',
+                    confirmButtonColor: '#FFB800'
+                });
                 return;
             }
 

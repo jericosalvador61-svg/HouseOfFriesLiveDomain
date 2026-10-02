@@ -45,6 +45,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: nowrap;
             z-index: 1050;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
         }
@@ -52,6 +53,14 @@
         .brand-container {
             display: flex;
             flex-direction: column;
+        }
+
+        .brand-logo {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+            display: block;
+            flex-shrink: 0;
         }
 
         header h1 {
@@ -152,6 +161,11 @@
             padding: 6px 18px;
             border-radius: 50px;
             box-shadow: 0 4px 10px rgba(51, 26, 17, 0.1);
+            /* REQ-054 B1: prevent overflow with long takeout customer names */
+            max-width: calc(100% - 40px);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .view-title {
@@ -301,6 +315,20 @@
                     color: #333;
                     line-height: 1.4;
                     overflow-wrap: anywhere;
+                }
+
+                /* REQ-054 B1: red tag for carted lines whose menu item is unavailable */
+                .unavailable-tag {
+                    display: inline-block;
+                    margin-top: 6px;
+                    padding: 3px 10px;
+                    background: #dc3545;
+                    color: #fff;
+                    font-size: 11px;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    border-radius: 8px;
                 }
 
                 .instr-actions {
@@ -526,6 +554,10 @@
                 font-size: 18px;
             }
 
+            .brand-logo { height: 34px; }
+            .back-nav-trigger { width: 42px; height: 42px; }
+            .cart-nav-trigger { width: 42px; height: 42px; }
+
             .view-title {
                 margin: 15px 0 10px 0;
                 padding: 0 20px;
@@ -568,16 +600,13 @@
 
     <!-- STICKY TOP NAVIGATION BAR -->
     <header>
-        <div class="brand-container">
-            <h1>House of Fries</h1>
-            <p>Order Menu</p>
-        </div>
+        <img src="../images/Logo.png" alt="House of Fries" class="brand-logo">
 
         <!-- UPPER RIGHT BACK BUTTON -->
         <a class="back-nav-trigger" href="customer.html" aria-label="Back to Menu">
             <i class="fa-solid fa-arrow-left"></i>
         </a>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <div id="hofCustomerAccountChip"></div>
             <button class="cart-nav-trigger" id="cartTrigger" aria-label="View Shopping Cart" onclick="window.location.href='cart.html'">
                 <i class="fa-solid fa-cart-shopping"></i>
