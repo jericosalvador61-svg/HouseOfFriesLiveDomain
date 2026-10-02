@@ -331,6 +331,7 @@ footer ul a:hover{color:var(--gold)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script src="https://unpkg.com/lenis@1.1.14/dist/lenis.min.js"></script>
+<!-- REQ-054 B2: Google Maps key verified full on disk (tool display redacts it as 'AIzaSy...QQug'). If Google restricts it, replace with a fresh key. -->
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCykyO_JQi_NR0LiGZDudlBkdIk7ZYQQug&region=PH&language=en&callback=initLandingMap" async defer></script>
 <script>
 (function(){
@@ -654,10 +655,14 @@ function counters(){
     var map = new google.maps.Map(box, {
       center: pos,
       zoom: 16,
-      restriction: {
-        latLngBounds: { north: 21.5, south: 4.5, west: 116.5, east: 127.0 },
-        strictBounds: true
-      },
+      styles: [
+        { featureType: "landscape", stylers: [{ color: "#f0e6d2" }] },
+        { featureType: "water", stylers: [{ color: "#a08c6b" }] },
+        { featureType: "road", stylers: [{ color: "#6b4f2e" }] },
+        { featureType: "poi", stylers: [{ color: "#8B5A2B" }] },
+        { elementType: "labels.text.fill", stylers: [{ color: "#4a2f16" }] },
+        { elementType: "labels.text.stroke", stylers: [{ color: "#f0e6d2" }] }
+      ],
       mapTypeId: google.maps.MapTypeId.ROADMAP,
       zoomControl: false,
       mapTypeControl: false,
@@ -667,23 +672,43 @@ function counters(){
     var marker = new google.maps.Marker({
       position: pos,
       map: map,
-      title: 'House of Fries'
+      title: 'House of Fries',
+      icon: {
+        url: 'data:image/svg+xml;utf8,' + encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#8B5A2B">' +
+          '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>' +
+          '</svg>'
+        )
+      }
     });
     var info = new google.maps.InfoWindow({
       content: '<strong>House of Fries</strong><br>Villegas St, Poblacion, Tagoloan'
     });
     marker.addListener('click', function(){ info.open(map, marker); });
     
-    // Try to load dynamic location from public endpoint
-    fetch('../backend/get_location_public.php').then(function(r){return r.json();}).then(function(data){
-      if(data.success && data.settings){
-        var lat2 = parseFloat(data.settings.latitude), lng2 = parseFloat(data.settings.longitude);
-        var pos2 = { lat: lat2, lng: lng2 };
-        map.setCenter(pos2);
-        marker.setPosition(pos2);
-        info.setContent('<strong>House of Fries</strong><br>Tagoloan Branch');
-      }
-    }).catch(function(){});
+    function appRoot() {
+      var m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/landing)(?:\/|$)/i);
+      return (m && m[1]) ? m[1].replace(/\/$/,'') : '';
+    }
+    
+    function fetchLocation() {
+      fetch(appRoot() + '/backend/get_location_public.php').then(function(r){return r.json();}).then(function(data){
+        if(data.success && data.settings){
+          var lat2 = parseFloat(data.settings.latitude), lng2 = parseFloat(data.settings.longitude);
+          if (!isFinite(lat2) || !isFinite(lng2)) { return; }
+          var pos2 = { lat: lat2, lng: lng2 };
+          if (pos2.lat !== marker.getPosition().lat() || pos2.lng !== marker.getPosition().lng()) {
+            map.setCenter(pos2);
+            marker.setPosition(pos2);
+            info.setContent('<strong>House of Fries</strong><br>Tagoloan Branch');
+          }
+        }
+      }).catch(function(){});
+    }
+    
+    fetchLocation();
+    setInterval(fetchLocation, 60000);
+    window.initLandingMap = initLandingMap;
   }
 
   // Wait for Google Maps to load, then init

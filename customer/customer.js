@@ -1,4 +1,9 @@
 // 1. Global State - NOW LOADS FROM LOCAL STORAGE ON REFRESH
+const APP_ROOT = (() => {
+    const m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/admin|\/cashier|\/inventoryStaff|\/kitchenStaff|\/waiter|\/supervisor)(?:\/|$)/i);
+    return m && m[1] ? m[1] : '';
+})();
+
 function escapeHtml(text) {
   if (!text) return '';
   var d = document.createElement('div');
@@ -248,7 +253,7 @@ function showGeofenceBlocked(info) {
         confirmButtonText: 'Try Again',
         confirmButtonColor: '#FFB800',
         showDenyButton: true,
-        denyButtonText: 'Order at counter instead',
+        denyButtonText: 'Locate Restaurant & Directions',
         showCancelButton: true,
         cancelButtonText: 'Close',
         allowOutsideClick: false,
@@ -257,8 +262,32 @@ function showGeofenceBlocked(info) {
         if (result.isConfirmed) {
             requestLocationAndVerify();
         } else if (result.isDenied) {
-            window.close();
-            setTimeout(() => { window.location.href = 'about:blank'; }, 300);
+            // Open a placeholder window synchronously (inside the click gesture)
+            // so popup blockers don't kill it, then point it at Maps directions
+            // once we have the restaurant location.
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const fallback = { lat: 8.5372, lng: 124.8269 }; // Tagoloan default
+            const mapsUrl = (lat, lng) => isIOS
+                ? `https://maps.apple.com/?daddr=${lat},${lng}&saddr=Current+Location`
+                : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&dir_action=navigate`;
+            const w = window.open('about:blank', '_blank');
+            fetch(APP_ROOT + '/backend/get_location_public.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.settings) {
+                        const lat = parseFloat(data.settings.latitude);
+                        const lng = parseFloat(data.settings.longitude);
+                        if (isFinite(lat) && isFinite(lng)) {
+                            w.location.href = mapsUrl(lat, lng);
+                            return;
+                        }
+                    }
+                    w.location.href = mapsUrl(fallback.lat, fallback.lng);
+                })
+                .catch(() => {
+                    w.location.href = mapsUrl(fallback.lat, fallback.lng);
+                });
+            window.location.href = APP_ROOT + '/landing/';
         } else {
             window.close();
             setTimeout(() => { window.location.href = 'about:blank'; }, 300);
