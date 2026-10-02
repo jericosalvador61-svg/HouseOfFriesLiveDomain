@@ -60,14 +60,50 @@ body { font-family: 'Poppins', sans-serif; background-color: var(--hof-bg); colo
 .hof-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
 .btn-hof { border-radius: 10px; font-weight: 600; font-size: 0.85rem; padding: 8px 16px; border: none; cursor: pointer; transition: all 0.15s; }
 .btn-hof:hover { transform: translateY(-1px); }
+.btn-hof.primary { background: var(--hof-accent); color: #1a1512; }
+.btn-hof.primary:hover { background: #ffd24a; }
+.btn-hof.secondary { background: #fff; color: #1a1512; border: 1px solid #d7ccc3; }
+.btn-hof.secondary:hover { background: #f7f2ec; }
+.btn-hof.danger { background: var(--hof-danger); color: #fff; }
+.btn-hof.danger:hover { background: #e05a66; }
 .btn-icon { background: none; border: none; cursor: pointer; padding: 6px; color: #555; }
-.tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+
+/* ── Admin QR_Tables-style card grid (REQ-054 B3-A) ── */
+.tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.table-card {
+    background: #fff; border: 1px solid rgba(0,0,0,.06); border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 18px;
+    display: flex; flex-direction: column; gap: 14px;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+.table-card:hover { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(0,0,0,.1); }
+.table-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.table-card-head h3 { font-size: 1.05rem; font-weight: 700; margin: 0; color: #1a1512; }
+.status-pill {
+    display: inline-block; padding: 5px 12px; border-radius: 20px;
+    font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap;
+}
+.status-pill.available { background: #d4edda; color: #155724; }
+.status-pill.occupied { background: #f8d7da; color: #721c24; }
+.status-pill.maintenance { background: #fff3cd; color: #856404; }
+.table-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+.table-actions .btn-hof { flex: 1 1 auto; min-width: 108px; }
 .row-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #ddd; background: #fff; font-size: 0.8rem; cursor: pointer; font-weight: 600; transition: all 0.15s; }
 .filter-btn.active { background: var(--hof-accent); border-color: var(--hof-accent); color: #1a1512; }
 
 /* tables.css — page-specific overrides */
+
+/* ── Toolbar card (admin QR_Tables style) ── */
+.toolbar-card { padding: 16px; }
+.toolbar-card .toolbar-select { min-width: 130px; font-size: 0.85rem; }
+.toolbar-card .toolbar-search { font-size: 0.85rem; }
+
+/* ── Pagination under the table grid ── */
+.table-pagination { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+.table-pagination .btn-hof { border-radius: 8px; min-width: 38px; text-align: center; }
+.table-pagination .btn-hof.primary { background: var(--hof-accent); color: #1a1512; }
 
 /* ── Table wrapper for horizontal scroll on narrow screens ── */
 .table-responsive-wrapper {
@@ -85,7 +121,7 @@ body { font-family: 'Poppins', sans-serif; background-color: var(--hof-bg); colo
 @media (max-width: 480px) {
     .topbar { padding: 10px 12px; flex-wrap: wrap; }
     .stat-grid { grid-template-columns: 1fr; }
-    .tables-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+    .tables-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
     .row-2 { grid-template-columns: 1fr; }
     .page-header { flex-direction: column; align-items: flex-start; }
     .page-header h4 { font-size: 1.1rem; }
@@ -99,7 +135,7 @@ body { font-family: 'Poppins', sans-serif; background-color: var(--hof-bg); colo
 
 @media (min-width: 768px) and (max-width: 992px) {
     .stat-grid { grid-template-columns: repeat(2, 1fr); }
-    .tables-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .tables-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
     .topbar { padding: 12px 18px; }
 }
 
