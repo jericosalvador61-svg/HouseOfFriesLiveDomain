@@ -20,6 +20,18 @@ const EXPIRY_SECONDS = 15 * 60;
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 100;
 
+// REQ-054 B1: clear the cart + cart badge once payment succeeds. Keeps
+// lastOrderID / lastRefNumber intact — the tracker still needs them.
+function clearCartAndBadge() {
+    localStorage.removeItem('cart');
+    if (typeof window.updateBadge === 'function') {
+        try { window.updateBadge(); } catch (e) {}
+    }
+    const badge = document.getElementById('cartBadgeCount');
+    if (badge) badge.textContent = '0';
+}
+window.clearCartAndBadge = clearCartAndBadge;
+
 async function loadPaymentPage() {
     const params = new URLSearchParams(window.location.search);
     orderId = params.get('order_id');
@@ -285,7 +297,28 @@ function startPolling() {
             if (data.paid === false && data.status === 'FAILED') {
                 clearInterval(pollInterval);
                 setStatus('Payment Failed', 'failed');
-                showError('Payment was not completed. Please try again.');
+                // REQ-054 B4-A (#13): a cancelled/failed GCash session must NOT
+                // block the cash path. The server already cleared the stale
+                // intent; here we flip the stored method to cash and offer the
+                // customer a clean way to pay at the counter.
+                localStorage.setItem('payment_method', 'CASH');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'GCash Payment Not Completed',
+                    text: 'You can try GCash again or pay with cash at the counter.',
+                    confirmButtonText: 'Pay at Counter',
+                    confirmButtonColor: '#FFB800',
+                    showCancelButton: true,
+                    cancelButtonText: 'Try GCash Again',
+                    cancelButtonColor: '#0056E3',
+                    allowOutsideClick: false
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        window.location.href = 'checkout.html';
+                    } else {
+                        window.location.reload();
+                    }
+                });
                 return;
             }
 
@@ -357,6 +390,14 @@ function showSuccess() {
         HOFDevice.updateStatus(orderId, 'IN-PROGRESS', true);
     }
 
+    // REQ-054 B1: payment confirmed — the cart is spent, clear it + badge.
+    // Keep lastOrderID/lastRefNumber for the tracker.
+    clearCartAndBadge();
+    // REQ-054 B4-A (#14): a paid order must never leave a stale cart badge,
+    // and the successful payment path records the method for downstream pages.
+    localStorage.removeItem('cart');
+    localStorage.setItem('payment_method', 'GCASH');
+
     Swal.fire({
         icon: 'success',
         title: 'Payment Successful!',
@@ -366,10 +407,10 @@ function showSuccess() {
         timerProgressBar: true,
         showConfirmButton: false
     }).then(() => {
-        window.location.href = 'orderTracker.html';
+        window.location.href = 'orderTracker.html?order_id=' + orderId;
     });
 
     setTimeout(() => {
-        window.location.href = 'orderTracker.html';
+        window.location.href = 'orderTracker.html?order_id=' + orderId;
     }, 4000);
 }

@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth_middleware.php';
 require_once __DIR__ . '/../log_activity_helper.php';
+require_once __DIR__ . '/../pusher_helper.php'; // REQ-054 B4-C
 
 $auth = authenticate(['Cashier', 'Admin']);
 
@@ -38,6 +39,11 @@ try {
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'VOID_ITEM', "Voided item #{$orderItemId} from order",
         'order', $orderId);
+
+    // REQ-054 B4-C: tell the customer tracker the order changed so it re-fetches.
+    if (function_exists('broadcastOrderUpdate')) {
+        broadcastOrderUpdate($orderId, "Item voided from order", null);
+    }
 
     echo json_encode(['success' => true]);
 } catch (Exception $e) {

@@ -66,6 +66,18 @@
         if (t && document.cookie.indexOf(TOKEN_KEY + '=') === -1) {
             writeToken(t, getName(), getPhone());
         }
+        // REQ-054 B4-F: keep the ordering name in sync with the logged-in
+        // account so a takeout/dine-in order auto-fills the customer's full name.
+        syncCustomerName();
+    }
+
+    // REQ-054 B4-F: when a customer account is logged in, their full name
+    // auto-fills the order (customerName). Guest orders keep whatever name
+    // the customer typed.
+    function syncCustomerName() {
+        if (!isLoggedIn()) return;
+        var n = (getName() || '').trim();
+        if (n) localStorage.setItem('customerName', n);
     }
 
     function clearToken() {
@@ -123,6 +135,15 @@
             authFetch('logout.php', { method: 'POST' }).catch(function () {});
         } catch (e) { /* ignore */ }
         clearToken();
+        // REQ-054 B1: wipe the device order history on logout so a
+        // different person using this device doesn't inherit the last
+        // customer's orders. Server-side history reloads when logged in again.
+        try {
+            localStorage.removeItem('hof_orders');
+        } catch (e) { /* ignore */ }
+        // REQ-054 B4-F: a logged-out customer's ordering name resets to blank
+        // so the next order asks for a name again instead of reusing the account's.
+        localStorage.removeItem('customerName');
         if (typeof window.HOFCustomerOnLogout === 'function') {
             try { window.HOFCustomerOnLogout(); } catch (e) {}
         }
@@ -267,6 +288,7 @@
                 writeToken(data.token, data.name, data.phone);
                 Swal.close();
                 renderChip();
+                syncCustomerName(); // REQ-054 B4-F: auto-fill the order name
                 if (typeof window.HOFCustomerOnLogin === 'function') window.HOFCustomerOnLogin(data);
                 Swal.fire({ icon: 'success', title: 'Welcome back, ' + escapeHtml(data.name || '') + '!', text: 'You are now logged in.', timer: 1800, showConfirmButton: false });
             })
@@ -294,6 +316,7 @@
                 writeToken(data.token, data.name, data.phone);
                 Swal.close();
                 renderChip();
+                syncCustomerName(); // REQ-054 B4-F: auto-fill the order name
                 if (typeof window.HOFCustomerOnLogin === 'function') window.HOFCustomerOnLogin(data);
                 Swal.fire({ icon: 'success', title: 'Account Created!', text: 'You are now logged in.', timer: 1800, showConfirmButton: false });
             })

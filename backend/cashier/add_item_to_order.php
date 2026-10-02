@@ -4,6 +4,7 @@ require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth_middleware.php';
 require_once __DIR__ . '/../log_activity_helper.php';
 require_once __DIR__ . '/../choices_addons_helper.php'; // REQ-040
+require_once __DIR__ . '/../pusher_helper.php'; // REQ-054 B4-C
 
 $auth = authenticate(['Cashier', 'Admin']);
 
@@ -72,6 +73,11 @@ try {
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'ADD_ITEM_TO_ORDER', "Added {$itemName} x{$qty} to order",
         'order', $orderId);
+
+    // REQ-054 B4-C: tell the customer tracker the order changed so it re-fetches.
+    if (function_exists('broadcastOrderUpdate')) {
+        broadcastOrderUpdate($orderId, "Item added to order", null);
+    }
 
     echo json_encode(['success' => true]);
 } catch (Exception $e) {

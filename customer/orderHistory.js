@@ -176,14 +176,17 @@
             var payload = typeof data === 'string' ? JSON.parse(data) : data;
             if (typeof payload.data === 'string') payload = JSON.parse(payload.data);
             if (payload.order_id && window.HOFDevice) {
-                HOFDevice.updateStatus(payload.order_id, payload.status || payload.message, undefined);
+                // REQ-054 B4-A: IN-PROGRESS means the order was paid — mark it
+                // paid in the device registry so the badge shows "Paid".
+                var isPaid = payload.status === 'IN-PROGRESS' || payload.status === 'COOKING';
+                HOFDevice.updateStatus(payload.order_id, payload.status || payload.message, isPaid);
                 updateBadges();
                 loadHistory();
             }
         });
     }
 
-    // Polling fallback: every 15s update statuses from server.
+    // Polling fallback: every 30s update statuses from server.
     // get_order_status.php accepts unsigned requests for read-only status.
     // (Logged-in customers use get_my_orders.php instead; the device poll is
     //  only meaningful for the guest/device path.)
@@ -204,7 +207,7 @@
                 })
                 .catch(function () {});
         });
-    }, 15000);
+    }, 30000);
 
     window.addEventListener('beforeunload', () => clearInterval(historyPollInterval));
 
