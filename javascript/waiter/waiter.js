@@ -331,6 +331,7 @@ async function loadAllTables(status = tablesState.status, page = tablesState.pag
 
         if (!data.tables || data.tables.length === 0) {
             container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><i class="bi bi-inbox"></i><p>No tables found</p></div>';
+            renderTablePagination(data.pagination);
             return;
         }
 
@@ -339,28 +340,24 @@ async function loadAllTables(status = tablesState.status, page = tablesState.pag
                     const number = escapeHtml(t.table_number || '--');
                     const pillClass = getStatusPillClass(t.status);
                     const statusLabel = getStatusLabel(t.status);
-                    const updated = t.updated_at
-                        ? timeAgo(Math.floor(new Date(String(t.updated_at).replace(' ', 'T')).getTime() / 1000))
-                        : '';
 
                     return `
-                        <div class="table-card" data-status="${escapeHtml(t.status)}">
-                            <div class="flex-between">
+                        <div class="table-card ${pillClass}" data-status="${escapeHtml(t.status)}">
+                            <div class="table-card-head">
                                 <h3>Table ${number}</h3>
-                                <span class="pill ${pillClass}">${statusLabel}</span>
+                                <span class="status-pill ${pillClass}">${statusLabel}</span>
                             </div>
-                            <div class="meta">${updated ? 'Updated: ' + updated : ''}</div>
-                            <div class="table-actions" style="margin-top:12px;">
+                            <div class="table-actions">
                                 ${t.status === 'AVAILABLE' ? `
-                                <button class="btn-hof btn-sm primary" onclick="takeOrder(${id})">
+                                <button class="btn-hof primary btn-take" onclick="takeOrder(${id})">
                                     <i class="bi bi-cart-plus"></i> Take Order
                                 </button>
                                 ` : ''}
-                                <button class="btn-hof btn-sm qr-btn" onclick="showQRCode(${id}, '${number}')">
+                                <button class="btn-hof secondary btn-qr" onclick="showQRCode(${id}, '${number}')">
                                     <i class="bi bi-qr-code"></i> View QR
                                 </button>
                                 ${t.status !== 'AVAILABLE' ? `
-                                <button class="btn-hof btn-sm danger" onclick="clearTable(${id})">
+                                <button class="btn-hof danger btn-clear" onclick="clearTable(${id})">
                                     <i class="bi bi-trash"></i> Clear
                                 </button>
                                 ` : ''}
@@ -368,6 +365,8 @@ async function loadAllTables(status = tablesState.status, page = tablesState.pag
                         </div>
                     `;
         }).join('');
+
+        renderTablePagination(data.pagination);
 
         // Re-apply the active filter after every re-render.
         const activeFilter = document.querySelector('.filter-btn.active');
