@@ -25,6 +25,19 @@ if ($name === '' || $phone === '') {
     exit;
 }
 
+// Normalize + validate PH phone (mirror update_customer.php + register.php):
+// strip non-digits; 12-char '63' prefix → '0'+last10; require 09XXXXXXXXX.
+$digits = preg_replace('/[^0-9]/', '', $phone);
+if (strlen($digits) === 12 && substr($digits, 0, 2) === '63') {
+    $digits = '0' . substr($digits, -10);
+}
+if (!preg_match('/^09\d{9}$/', $digits)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Enter a valid PH phone number (09XXXXXXXXX).']);
+    exit;
+}
+$phone = $digits;
+
 try {
     $chk = $pdo->prepare('SELECT 1 FROM customers WHERE phone_number = ? LIMIT 1');
     $chk->execute([$phone]);

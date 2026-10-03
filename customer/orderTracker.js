@@ -120,7 +120,8 @@ async function handleOrderExpired(orderId) {
     window.clearMyTable();
     try {
         const sig = await obtainCancelSig(orderId);
-        const ref = (window.HOFDevice && HOFDevice.orders().find(o => o.order_id == orderId))?.ref || orderId;
+        const found = window.HOFDevice && HOFDevice.orders().find(o => String(o.order_id) === String(orderId));
+        const ref = (found && found.ref) || orderId;
         const resp = await fetch('cancel_order.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -792,11 +793,14 @@ function updateTrackerUI(orderId, status, paid) {
 // links the order to an existing account (never auto-creates one). Always
 // sets the session flag so it never re-prompts for the same order.
 async function obtainLinkSig(orderId) {
-    let ref = orderId;
+    let ref = null;
     if (window.HOFDevice) {
-        const order = HOFDevice.orders().find(o => o.order_id == orderId);
+        const order = HOFDevice.orders().find(o => String(o.order_id) === String(orderId));
         if (order && order.ref) ref = order.ref;
     }
+    // Without a real reference_number the signed link will 403 (Reference
+    // mismatch) — fail explicitly instead of sending a numeric order_id.
+    if (!ref) return null;
     const resp = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

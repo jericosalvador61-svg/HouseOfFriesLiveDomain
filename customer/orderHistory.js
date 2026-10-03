@@ -2,6 +2,16 @@
     let pusherChannel = null;
     let filter = sessionStorage.getItem('hof_history_filter') || 'active';
 
+    // APP_ROOT: resolve /backend/... against the app root so these calls work
+    // on localhost subfolder AND the live domain root (REQ-055/060/062 review).
+    const APP_ROOT = (() => {
+        try {
+            const m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/admin|\/cashier|\/inventoryStaff|\/kitchenStaff|\/waiter|\/supervisor)(?:\/|$)/i);
+            return (m && m[1]) ? m[1].replace(/\/$/, '') : '';
+        } catch (_) { return ''; }
+    })();
+    const PAY_LINK_API = APP_ROOT + '/backend/payments/get-payment-link.php';
+
     document.addEventListener('DOMContentLoaded', () => {
         updateBadges();
         loadHistory();
@@ -251,7 +261,7 @@
     window.resumeGcashPayment = async function (orderId, ref) {
         try {
             var deviceId = window.HOFDevice ? HOFDevice.id() : '';
-            var resp = await fetch('/backend/payments/get-payment-link.php', {
+            var resp = await fetch(PAY_LINK_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'pay', device_id: deviceId })
@@ -268,13 +278,14 @@
     };
 
     window.obtainCancelSig = async function (orderId) {
-        var ref = orderId;
+        let ref = null;
         if (window.HOFDevice) {
-            var order = HOFDevice.orders().find(function (o) { return o.order_id == orderId; });
+            const order = HOFDevice.orders().find(function (o) { return String(o.order_id) === String(orderId); });
             if (order && order.ref) ref = order.ref;
         }
+        if (!ref) return null;
         try {
-            var resp = await fetch('/backend/payments/get-payment-link.php', {
+            var resp = await fetch(PAY_LINK_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'cancel' })
@@ -287,13 +298,14 @@
     };
 
     window.obtainReceiptSig = async function (orderId) {
-        var ref = orderId;
+        let ref = null;
         if (window.HOFDevice) {
-            var order = HOFDevice.orders().find(function (o) { return o.order_id == orderId; });
+            const order = HOFDevice.orders().find(function (o) { return String(o.order_id) === String(orderId); });
             if (order && order.ref) ref = order.ref;
         }
+        if (!ref) return null;
         try {
-            var resp = await fetch('/backend/payments/get-payment-link.php', {
+            var resp = await fetch(PAY_LINK_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'receipt' })

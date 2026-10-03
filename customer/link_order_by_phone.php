@@ -12,7 +12,10 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../backend/db.php';
 require_once __DIR__ . '/../backend/url_signer.php';
+require_once __DIR__ . '/../backend/rate_limit.php';
 require_once __DIR__ . '/../backend/log_activity_helper.php';
+
+hof_rate_limit('link_order_by_phone', 10, 60);
 
 $input = json_decode(file_get_contents('php://input'), true);
 $order_id = isset($input['order_id']) ? (int)$input['order_id'] : 0;

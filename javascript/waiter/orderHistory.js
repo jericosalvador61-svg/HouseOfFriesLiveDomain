@@ -70,7 +70,7 @@ function renderOrderHistory(orders) {
             .map(i => `${Number(i.quantity)}x ${orderHistoryEscape(i.item_name)}`)
             .join(', ') || '-';
 
-        const notifyCell = notifyStatusEligible(o.status)
+        const notifyCell = (typeof notifyStatusEligible === 'function' && typeof renderNotifyCell === 'function' && notifyStatusEligible(o.status))
             ? `<span class="notify-host" id="notifyHost-${o.order_id}">${renderNotifyCell(o.order_id, o.reference_number || o.order_id)}</span>`
             : '';
 
