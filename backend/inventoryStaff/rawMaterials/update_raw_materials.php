@@ -68,7 +68,7 @@ try {
                 expiration_tracking = ?, 
                 is_perishable = ?, 
                 img_url = ?, 
-                image_blob = ?, 
+                image_blob = COALESCE(?, image_blob), 
                 updated_at = NOW() 
             WHERE raw_material_id = ?";
 
