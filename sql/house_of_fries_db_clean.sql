@@ -59,6 +59,7 @@ CREATE TABLE `menu_items` (
   `category_id` int(11) NOT NULL,
   `price` decimal(10,2) NOT NULL,
   `status` enum('Available','Unavailable') DEFAULT 'Available',
+  `image_blob` LONGBLOB NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `estimated_prep_time_minutes` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -73,6 +74,7 @@ CREATE TABLE IF NOT EXISTS menu_item_choices (
     menu_item_id   INT NOT NULL,
     group_name     VARCHAR(80) NOT NULL,
     choice_name    VARCHAR(80) NOT NULL,
+    image_blob     LONGBLOB NULL,
     sort_order     INT NOT NULL DEFAULT 0,
     status         ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
     created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -84,6 +86,7 @@ CREATE TABLE IF NOT EXISTS menu_item_addons (
     menu_addon_id INT AUTO_INCREMENT PRIMARY KEY,
     addon_name    VARCHAR(80) NOT NULL,
     price         DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    image_blob    LONGBLOB NULL,
     sort_order    INT NOT NULL DEFAULT 0,
     status        ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
     created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -229,6 +232,7 @@ CREATE TABLE `raw_materials` (
   `cost_per_unit` decimal(10,2) DEFAULT 0.00,
   `expiration_tracking` tinyint(1) DEFAULT 0,
   `is_perishable` tinyint(1) DEFAULT 0,
+  `image_blob` LONGBLOB NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -292,7 +296,7 @@ CREATE TABLE `spoilage` (
   `spoilage_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
   `raw_material_id` int(11) NOT NULL,
-  `spoilage_type` enum('SPOILAGE','WASTE') NOT NULL,
+  `spoilage_type` enum('SPOILAGE','WASTE','DAMAGE') NOT NULL,
   `quantity_lost` decimal(10,2) DEFAULT 0.00,
   `source` enum('KITCHEN','RAW') DEFAULT 'RAW',
   `estimated_loss_cost` decimal(12,2) DEFAULT 0.00,
@@ -353,6 +357,7 @@ CREATE TABLE `stock_out_items` (
   `stock_out_id` int(11) NOT NULL,
   `raw_material_id` int(11) NOT NULL,
   `quantity` decimal(10,2) DEFAULT 0.00,
+  `unit_cost` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Snapshot of raw_materials.cost_per_unit at stock-out time (gross-profit basis)',
   `is_deleted` tinyint(1) DEFAULT 0,
   `deleted_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
