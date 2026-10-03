@@ -72,7 +72,7 @@ try {
 
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'ADD_ITEM_TO_ORDER', "Added {$itemName} x{$qty} to order",
-        'order', $orderId);
+        'order', $orderId, (string)$orderId);
 
     // REQ-054 B4-C: tell the customer tracker the order changed so it re-fetches.
     if (function_exists('broadcastOrderUpdate')) {

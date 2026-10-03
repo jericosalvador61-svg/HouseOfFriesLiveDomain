@@ -84,6 +84,25 @@
                             placeholder="Search orders, inventory...">
                     </div>
                 </form>
+                <div class="ms-auto d-flex align-items-center">
+                    <div class="dropdown me-4">
+                        <a href="#" class="text-dark position-relative link-dark" id="notificationDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-bell fs-5"></i>
+                            <span id="notificationBadge"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                                style="font-size: 0.65rem;">
+                                0
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border mt-2"
+                            aria-labelledby="notificationDropdown" id="notificationMenu"
+                            style="width: 320px; max-height: 400px; overflow-y: auto;">
+                            <li class="dropdown-header border-bottom fw-bold text-dark">Notifications</li>
+                            <li id="emptyNotificationItem"><span class="dropdown-item text-muted text-center py-3">All clear!</span></li>
+                        </ul>
+                    </div>
+                </div>
             </nav>
 
             <div class="container-fluid pos-container p-0">

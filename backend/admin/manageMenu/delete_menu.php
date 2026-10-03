@@ -36,7 +36,7 @@ try {
 
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'MENU_DELETE', "Deleted {$itemName}",
-        'menu_item', $menu_item_id, null);
+        'menu_item', $menu_item_id, (string)$menu_item_id, 'Inactive');
 
     echo json_encode(["success" => true, "message" => "Menu item deleted successfully"]);
 } catch (PDOException $e) {

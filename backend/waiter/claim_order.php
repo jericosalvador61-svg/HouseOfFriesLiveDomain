@@ -30,7 +30,7 @@ try {
         $refStmt = $pdo->prepare("SELECT reference_number FROM orders WHERE order_id = ?");
         $refStmt->execute([$orderId]);
         $ref = $refStmt->fetchColumn();
-        logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'ORDER_CLAIM', "Waiter claimed order #{$ref}", 'order', $orderId, $ref);
+        logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'ORDER_CLAIM', "Waiter claimed order #{$ref}", 'order', $orderId, $ref, 'IN-PROGRESS');
         // Broadcast so other waiters' screens refresh immediately (they reload
         // orders on any Pusher message).
         broadcastOrderUpdate($orderId, "Order #{$ref} claimed");

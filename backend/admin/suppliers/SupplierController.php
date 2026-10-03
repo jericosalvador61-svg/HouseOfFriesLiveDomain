@@ -38,7 +38,7 @@ class SupplierController {
             $supplierId = $result['data']['supplier_id'] ?? 0;
             $name = $input['supplier_name'] ?? 'Unknown';
             global $auth, $pdo;
-            logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'SUPPLIER_ADD', "Added supplier {$name}", 'supplier', $supplierId);
+            logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'SUPPLIER_ADD', "Added supplier {$name}", 'supplier', $supplierId, (string)$name, 'Active');
             $this->respond(['status' => 'success', 'message' => $result['message'], 'data' => $result['data']], 201);
         } else {
             $this->respond(['status' => 'error', 'message' => $result['message'], 'errors' => $result['errors'] ?? null], 400);
@@ -85,7 +85,7 @@ class SupplierController {
         if ($result['success']) {
             $name = $input['supplier_name'] ?? 'Unknown';
             global $auth, $pdo;
-            logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'SUPPLIER_UPDATE', "Updated supplier {$name}", 'supplier', $id);
+            logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'SUPPLIER_UPDATE', "Updated supplier {$name}", 'supplier', $id, (string)$name, 'Active');
             $this->respond(['status' => 'success', 'message' => $result['message'], 'data' => $result['data']]);
         } else {
             $status = isset($result['errors']) ? 400 : 404;
@@ -107,7 +107,7 @@ class SupplierController {
         $result = $this->model->delete($id);
         if ($result['success']) {
             global $auth, $pdo;
-            logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'SUPPLIER_DELETE', "Deleted supplier {$supplierName}", 'supplier', $id);
+            logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'SUPPLIER_DELETE', "Deleted supplier {$supplierName}", 'supplier', $id, (string)$supplierName, 'Inactive');
             $this->respond(['status' => 'success', 'message' => $result['message']]);
         } else {
             $this->respond(['status' => 'error', 'message' => $result['message']], 400);
@@ -130,7 +130,7 @@ class SupplierController {
             $supplier = $this->model->get($id);
             $supplierName = $supplier['success'] ? ($supplier['data']['supplier_name'] ?? 'Unknown') : 'Unknown';
             global $auth, $pdo;
-            logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'SUPPLIER_STATUS', "Supplier {$supplierName} -> {$newStatus}", 'supplier', $id);
+            logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'SUPPLIER_STATUS', "Supplier {$supplierName} -> {$newStatus}", 'supplier', $id, (string)$supplierName, (string)$newStatus);
             $this->respond(['status' => 'success', 'message' => $result['message'], 'data' => $result['data']]);
         } else {
             $this->respond(['status' => 'error', 'message' => $result['message']], 400);

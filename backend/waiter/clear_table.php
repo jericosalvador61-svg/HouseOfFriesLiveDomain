@@ -51,7 +51,7 @@ try {
 
     $pdo->commit();
 
-    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_CLEAR', "Cleared Table #{$tableNumber}", 'restaurant_table', $tableId);
+    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_CLEAR', "Cleared Table #{$tableNumber}", 'restaurant_table', $tableId, (string)$tableNumber, 'Available');
 
     echo json_encode([
         'success' => true,

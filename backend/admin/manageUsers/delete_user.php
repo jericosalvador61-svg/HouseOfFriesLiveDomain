@@ -23,7 +23,7 @@ try {
 
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'USER_DELETE', "Deleted {$deleteUsername}",
-        'user', $user_id, null);
+        'user', $user_id, $deleteUsername, 'Inactive');
 
     echo json_encode(["success" => true]);
 } catch (PDOException $e) {

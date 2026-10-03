@@ -117,7 +117,7 @@ try {
 
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'USER_UPDATE', "Updated {$username}",
-        'user', $user_id, null);
+        'user', $user_id, $username, $status ?: 'Active');
 
     echo json_encode([
         "success" => true,

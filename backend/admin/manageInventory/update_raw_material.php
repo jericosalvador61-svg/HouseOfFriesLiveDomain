@@ -69,7 +69,7 @@ try {
 
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'MATERIAL_UPDATE',
         "Updated {$name}",
-        'raw_material', (int)$id);
+        'raw_material', (int)$id, (string)$id, 'Active');
 
     echo json_encode(['status' => 'success']);
 } catch (Exception $e) {

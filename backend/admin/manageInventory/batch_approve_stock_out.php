@@ -63,7 +63,7 @@ try {
 
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'STOCK_OUT_APPROVED', "Approved {$processedCount} stock-out record(s)",
-        'stock_out');
+        'stock_out', null, implode(',', $stock_out_ids), 'APPROVED');
 
     if (!empty($touchedMaterialIds)) {
         hof_check_low_stock($pdo, $touchedMaterialIds);

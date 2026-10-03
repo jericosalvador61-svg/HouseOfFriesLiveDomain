@@ -21,7 +21,7 @@
     <style>
         /* REQ-050: print-friendly CSS — hide chrome, full-width table, page-break rules */
         @media print {
-            .mobile-topbar, #sidebar, .sidebar-overlay, .topbar, .filter-card,
+            #sidebar, .sidebar-overlay, .topbar, .filter-card,
             .card.filters, #filterForm, .pagination, .no-print, #loadingOverlay, footer {
                 display: none !important;
             }
@@ -40,15 +40,6 @@
         .diff-arrow { color: #b8860b; font-weight: bold; }
     </style>
 </head><body>
-    <div class="mobile-topbar">
-        <div class="d-flex align-items-center">
-            <button id="mobileSidebarToggle" class="btn text-white fs-4 p-0 me-3 border-0"><i class="bi bi-list"></i></button>
-            <img src="../../images/Logo.png" alt="Logo" style="width:32px;height:32px;object-fit:contain;" class="me-2">
-            <h5 class="mb-0 fw-bold fs-6">House of Fries</h5>
-        </div>
-        <small class="text-warning" style="font-size:.75rem;">Tagoloan Branch</small>
-    </div>
-    
     <div class="app-shell">
         <!-- SIDEBAR -->
         <nav id="sidebar">
@@ -98,9 +89,28 @@
         <!-- MAIN CONTENT -->
         <div class="content-wrapper">
             <!-- TOPBAR -->
-            <div class="topbar">
+            <div class="topbar float-topbar">
                 <button type="button" id="sidebarCollapse" class="btn btn-light border"><i class="bi bi-list"></i></button>
                 <span class="fw-bold fs-5">Activity Logs</span>
+                <div class="ms-auto d-flex align-items-center">
+                    <div class="dropdown me-4">
+                        <a href="#" class="text-dark position-relative link-dark" id="notificationDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-bell fs-5"></i>
+                            <span id="notificationBadge"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                                style="font-size: 0.65rem;">
+                                0
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border mt-2"
+                            aria-labelledby="notificationDropdown" id="notificationMenu"
+                            style="width: 320px; max-height: 400px; overflow-y: auto;">
+                            <li class="dropdown-header border-bottom fw-bold text-dark">Notifications</li>
+                            <li id="emptyNotificationItem"><span class="dropdown-item text-muted text-center py-3">All clear!</span></li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <!-- PAGE CONTENT -->

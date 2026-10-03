@@ -70,7 +70,7 @@ try {
 
     logActivity($pdo, $userId, $username, $role, 'MATERIAL_UPDATE',
         "Updated raw material ID {$id}",
-        'raw_material', (int)$id, null, null);
+        'raw_material', (int)$id, (string)$id, 'Active');
 
     echo json_encode(['status' => 'success']);
 } catch (Exception $e) {

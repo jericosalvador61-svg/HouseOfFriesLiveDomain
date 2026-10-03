@@ -461,12 +461,6 @@
 
         if (!sidebar) return;
 
-        // Desktop only: restore the saved collapsed (mini icon rail) state.
-        // The overlay is MOBILE-ONLY — restoring a collapsed rail used to paint a
-        // full-screen dark layer that swallowed every click on the page.
-        if (!isMobileViewport() && localStorage.getItem('hof_sidebar_collapsed') === 'true') {
-            sidebar.classList.add('collapsed', 'active');
-        }
         if (overlay) overlay.classList.remove('open', 'active');
 
         // REQ-052 B2-1: hover-expand flyout for the COLLAPSED mini rail.

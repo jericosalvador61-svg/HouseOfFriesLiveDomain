@@ -69,7 +69,7 @@ try {
 
         logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
             'RETURN_APPROVED', "Approved {$processedCount} return(s)",
-            'return');
+            'return', null, implode(',', $return_ids), 'APPROVED');
 
         if (!empty($touchedMaterialIds)) {
             hof_check_low_stock($pdo, array_unique($touchedMaterialIds));

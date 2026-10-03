@@ -75,7 +75,7 @@ try {
     $roleName = $stmtRole->fetchColumn() ?: 'Unknown';
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'USER_ADD', "Created {$username} as {$roleName}",
-        'user', $userId, null);
+        'user', $userId, $username, 'Active');
 
     echo json_encode([
         "success"       => true,

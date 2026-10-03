@@ -88,7 +88,7 @@ try {
     ]);
     $new_id = (int)$pdo->lastInsertId();
 
-    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_ADD', "Added Table #{$table_number}", 'restaurant_table', $new_id);
+    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_ADD', "Added Table #{$table_number}", 'restaurant_table', $new_id, (string)$table_number, 'Active');
 
     http_response_code(201);
     echo json_encode(['success' => true, 'table_id' => $new_id]);

@@ -74,7 +74,7 @@ try {
 
             logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
                 'DISCOUNT_TYPE_CREATE', "Added discount type \"{$name}\" ({$percent}%)",
-                'discount_types', $newId);
+                'discount_types', $newId, (string)$newId, 'Active');
 
             echo json_encode(['success' => true, 'discount_type_id' => $newId]);
             exit;
@@ -121,7 +121,7 @@ try {
 
             logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
                 'DISCOUNT_TYPE_UPDATE', "Updated discount type #{$typeId} \"{$name}\" ({$percent}%) active=" . ($isActive ? '1' : '0'),
-                'discount_types', $typeId);
+                'discount_types', $typeId, (string)$typeId, $isActive ? 'Active' : 'Inactive');
 
             echo json_encode(['success' => true]);
             exit;
@@ -149,7 +149,7 @@ try {
 
             logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
                 'DISCOUNT_TYPE_UPDATE', "Deactivated discount type \"{$existing['name']}\"",
-                'discount_types', $typeId);
+                'discount_types', $typeId, (string)$typeId, 'Inactive');
 
             echo json_encode(['success' => true]);
             exit;
