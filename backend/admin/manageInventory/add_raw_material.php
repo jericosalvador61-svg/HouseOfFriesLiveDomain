@@ -11,7 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$auth = authenticate(['Admin']);
+// REQ-057 RBAC: Admin + Supervisor manage raw materials (staff read-only).
+$auth = authenticate(['Admin', 'Supervisor']);
 
 $names = $_POST['raw_material_name'] ?? [];
 $units = $_POST['unit'] ?? [];
@@ -29,9 +30,11 @@ $costs             = $_POST['cost_per_unit'] ?? [];
 $statuses          = $_POST['status'] ?? [];
 $exp_trackings     = $_POST['expiration_tracking'] ?? [];
 $is_perishables    = $_POST['is_perishable'] ?? [];
-$img_urls          = $_POST['img_url'] ?? [];
-$img_files         = $_FILES['img_file'] ?? null;
-
+$img_urls          = $_POST['img_url'] ?? [];
+
+$img_files         = $_FILES['img_file'] ?? null;
+
+$img_blobs         = $_POST['image_blob'] ?? []; // REQ-057: base64 data-URI upload
 $added = [];
 $skipped = [];
 
@@ -41,9 +44,9 @@ try {
     $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM raw_materials WHERE raw_material_name = :name");
     $stmtInsert = $pdo->prepare("
         INSERT INTO raw_materials 
-        (raw_material_name, description, unit, current_quantity, reorder_level, cost_per_unit, status, expiration_tracking, is_perishable, img_url)
+        (raw_material_name, description, unit, current_quantity, reorder_level, cost_per_unit, status, expiration_tracking, is_perishable, img_url, image_blob)
         VALUES
-        (:name, :description, :unit, :current_qty, :reorder_level, :cost_per_unit, :status, :expiration_tracking, :is_perishable, :img_url)
+        (:name, :description, :unit, :current_qty, :reorder_level, :cost_per_unit, :status, :expiration_tracking, :is_perishable, :img_url, :image_blob)
     ");
 
     foreach ($names as $i => $name) {
@@ -82,6 +85,19 @@ try {
             }
         }
 
+        // REQ-057: BLOB image (base64 data URI) takes precedence over the paste-URL field.
+        $image_blob = null;
+        if (isset($img_blobs[$i]) && is_string($img_blobs[$i]) && trim($img_blobs[$i]) !== '') {
+            $b64 = $img_blobs[$i];
+            if (strpos($b64, 'base64,') !== false) {
+                $b64 = substr($b64, strpos($b64, 'base64,') + 7);
+            }
+            $decoded = base64_decode($b64, true);
+            if ($decoded !== false && $decoded !== '') {
+                $image_blob = $decoded;
+            }
+        }
+
         $stmtInsert->execute([
             ':name' => $name,
             ':description' => $description,
@@ -92,7 +108,9 @@ try {
             ':status' => $status,
             ':expiration_tracking' => $expiration_tracking,
             ':is_perishable' => $is_perishable,
-            ':img_url' => $img_url
+            ':img_url' => $img_url,
+
+            ':image_blob' => $image_blob
         ]);
 
         $added[] = $name;

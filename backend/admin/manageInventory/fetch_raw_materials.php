@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../db.php';
 header('Content-Type: application/json');
 
 try {
+    require_once __DIR__ . '/../../image_blob_helper.php';
     // Added WHERE status = 'ACTIVE' to filter out soft-deleted items
     $stmt = $pdo->query("
         SELECT 
@@ -16,13 +17,17 @@ try {
             reorder_level, 
             status, 
             is_perishable, 
-            img_url
+            img_url,
+            image_blob
         FROM raw_materials
         WHERE status = 'ACTIVE'
         ORDER BY raw_material_name ASC
     ");
 
     $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // REQ-057: base64-encode image_blob so tables render data URIs.
+    hof_encode_blob_columns($materials, ['image_blob' => 'image_blob']);
 
     echo json_encode(['status' => 'success', 'data' => $materials]);
 } catch (PDOException $e) {

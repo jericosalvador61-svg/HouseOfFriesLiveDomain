@@ -113,7 +113,11 @@ function renderMenus(list) {
         const col = document.createElement("div");
         col.className = "col";
 
-        const imgUrl = menu.image_url ? menu.image_url : "/images/placeholder.png";
+        // REQ-057: render the BLOB image (data URI) when present; the legacy
+        // URL column is now a fallback only (paste-URL no longer primary).
+        const imgUrl = window.HOFImage && HOFImage.blobSrc
+            ? HOFImage.blobSrc(menu, 'image_url', 'image_blob')
+            : (menu.image_blob || menu.image_url || "/images/placeholder.png");
         // Define clean visual badges for internal system tracking updates
         const isUnavailable = menu.status === 'Unavailable';
         const statusBadge = isUnavailable ? `<span class="position-absolute top-0 end-0 m-2 badge bg-danger text-white">Unavailable</span>` : '';
@@ -236,6 +240,8 @@ menuGrid.addEventListener("click", async (e) => {
 formAddMenu.addEventListener("submit", async (e) => {
     e.preventDefault();
     const formData = new FormData(formAddMenu);
+    // REQ-057: attach the compressed base64 image (image_blob column).
+    if (menuImageBlob) formData.append('image_blob', menuImageBlob);
     const menuId = document.getElementById("editMenuId").value;
     const url = menuId ? API.updateMenu : API.addMenu;
 
@@ -260,8 +266,21 @@ formAddMenu.addEventListener("submit", async (e) => {
     }
 });
 
-// --- 5.5 Client-side Image Compression ---
+// --- 5.5 Client-side Image Compression (REQ-057: shared HOFImage helper) ---
+let menuImageBlob = null; // base64 data-URI of the compressed image for image_blob
+
 function compressImage(file, maxWidth, quality, callback) {
+    if (window.HOFImage && HOFImage.compress) {
+        HOFImage.compress(file, maxWidth, quality).then(function (blob) {
+            // Convert the compressed Blob into a base64 data URI for storage.
+            const reader = new FileReader();
+            reader.onload = function (e) { callback(e.target.result); };
+            reader.onerror = function () { callback(null); };
+            reader.readAsDataURL(blob || file);
+        });
+        return;
+    }
+    // Fallback path when the shared helper is unavailable (should not happen).
     const reader = new FileReader();
     reader.onload = (e) => {
         const img = new Image();
@@ -272,7 +291,9 @@ function compressImage(file, maxWidth, quality, callback) {
             canvas.width = w; canvas.height = h;
             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
             canvas.toBlob((blob) => {
-                if (blob) callback(blob); else callback(file);
+                const r2 = new FileReader();
+                r2.onload = (e2) => callback(e2.target.result);
+                r2.readAsDataURL(blob);
             }, 'image/jpeg', quality);
         };
         img.src = e.target.result;
@@ -282,10 +303,8 @@ function compressImage(file, maxWidth, quality, callback) {
 
 document.getElementById('imageUpload').addEventListener('change', function(e) {
     if (this.files && this.files[0]) {
-        compressImage(this.files[0], 800, 0.7, (compressed) => {
-            const dt = new DataTransfer();
-            dt.items.add(new File([compressed], this.files[0].name, {type: 'image/jpeg'}));
-            this.files = dt.files;
+        compressImage(this.files[0], 800, 0.65, (dataUri) => {
+            menuImageBlob = dataUri;
         });
     }
 });

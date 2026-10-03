@@ -34,6 +34,14 @@ try {
 
     $stmtGetRowItems = $pdo->prepare("SELECT raw_material_id, quantity FROM stock_out_items WHERE stock_out_id = ? AND is_deleted = 0");
 
+    // REQ-057: fill unit_cost snapshot on approve for rows created before the
+    // unit_cost column existed (pending records may carry 0.00).
+    $stmtUnitCost = $pdo->prepare("SELECT cost_per_unit FROM raw_materials WHERE raw_material_id = ?");
+    $stmtUpdateUnitCost = $pdo->prepare("
+        UPDATE stock_out_items SET unit_cost = ? 
+        WHERE stock_out_id = ? AND raw_material_id = ? AND is_deleted = 0 AND (unit_cost = 0 OR unit_cost IS NULL)
+    ");
+
     $processedCount = 0;
     $touchedMaterialIds = [];
 
@@ -53,6 +61,12 @@ try {
                 hof_deduct_fifo($pdo, $materialId, $qtyToDeduct);
 
                 $stmtUpdateStock->execute([$qtyToDeduct, $materialId]);
+
+                // REQ-057: snapshot the current cost_per_unit when the stored
+                // value is still 0 (legacy/pre-column records).
+                $stmtUnitCost->execute([$materialId]);
+                $unitCost = (float)$stmtUnitCost->fetchColumn();
+                $stmtUpdateUnitCost->execute([$unitCost, $id, $materialId]);
 
                 $touchedMaterialIds[] = $materialId;
             }

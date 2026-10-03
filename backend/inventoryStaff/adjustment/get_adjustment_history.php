@@ -3,6 +3,19 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../db.php';
 
 try {
+    // REQ-057 pagination: 10 rows/page, server-side LIMIT/OFFSET.
+    $page = max(1, (int)($_GET['page'] ?? 1));
+    $limit = 10;
+    $offset = ($page - 1) * $limit;
+
+    $countStmt = $pdo->prepare("
+        SELECT COUNT(*) FROM adjustments a
+        JOIN adjustment_items ai ON a.adjustment_id = ai.adjustment_id
+        JOIN raw_materials rm ON ai.raw_material_id = rm.raw_material_id
+    ");
+    $countStmt->execute();
+    $total = (int)$countStmt->fetchColumn();
+
     // Changed u_staff.username to a CONCAT function for first and last name
     $sql = "SELECT 
                 a.adjustment_id,
@@ -25,9 +38,12 @@ try {
             JOIN raw_materials rm ON ai.raw_material_id = rm.raw_material_id
             LEFT JOIN users u_staff ON a.user_id = u_staff.user_id
             LEFT JOIN users u_admin ON a.approved_by = u_admin.user_id
-            ORDER BY a.created_at DESC";
+            ORDER BY a.created_at DESC
+            LIMIT :limit OFFSET :offset";
 
     $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -44,7 +60,13 @@ try {
 
     echo json_encode([
         'status' => 'success',
-        'data' => $history
+        'data' => $history,
+        'pagination' => [
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $limit,
+            'total_pages' => (int)ceil($total / $limit)
+        ]
     ]);
 } catch (Exception $e) {
     echo json_encode([

@@ -14,6 +14,20 @@ $description = trim($_POST['description'] ?? '');
 $image       = $_FILES['image'] ?? null;
 $prepTime    = isset($_POST['estimated_prep_time_minutes']) ? max(0, min(480, (int)$_POST['estimated_prep_time_minutes'])) : 0;
 
+// REQ-057: BLOB image upload (base64 data URI) — takes precedence over the URL field.
+$imgBlobRaw = $_POST['image_blob'] ?? '';
+$image_blob = null;
+if (is_string($imgBlobRaw) && trim($imgBlobRaw) !== '') {
+    $b64 = $imgBlobRaw;
+    if (strpos($b64, 'base64,') !== false) {
+        $b64 = substr($b64, strpos($b64, 'base64,') + 7);
+    }
+    $decoded = base64_decode($b64, true);
+    if ($decoded !== false && $decoded !== '') {
+        $image_blob = $decoded;
+    }
+}
+
 if (!$item_name || !$category_id || !$price) {
     http_response_code(400);
     echo json_encode(["success" => false, "message" => "Item name, category, and price are required"]);
@@ -52,8 +66,8 @@ if ($image && $image['tmp_name']) {
 
 try {
     $stmt = $pdo->prepare("
-        INSERT INTO menu_items (item_name, description, category_id, price, image_url, estimated_prep_time_minutes)
-        VALUES (:item_name, :description, :category_id, :price, :image_url, :estimated_prep_time_minutes)
+        INSERT INTO menu_items (item_name, description, category_id, price, image_url, image_blob, estimated_prep_time_minutes)
+        VALUES (:item_name, :description, :category_id, :price, :image_url, :image_blob, :estimated_prep_time_minutes)
     ");
     $stmt->execute([
         ":item_name"   => $item_name,
@@ -61,6 +75,7 @@ try {
         ":category_id" => $category_id,
         ":price"       => $price,
         ":image_url"   => $imageUrl,
+        ":image_blob"  => $image_blob,
         ":estimated_prep_time_minutes" => $prepTime
     ]);
 

@@ -15,13 +15,27 @@ $status       = $_POST['status'] ?? 'Available';
 $image        = $_FILES['image'] ?? null;
 $prepTime     = isset($_POST['estimated_prep_time_minutes']) ? max(0, min(480, (int)$_POST['estimated_prep_time_minutes'])) : 0;
 
+// REQ-057: BLOB image upload (base64 data URI) — takes precedence over the URL field.
+$imgBlobRaw = $_POST['image_blob'] ?? '';
+$image_blob = null;
+if (is_string($imgBlobRaw) && trim($imgBlobRaw) !== '') {
+    $b64 = $imgBlobRaw;
+    if (strpos($b64, 'base64,') !== false) {
+        $b64 = substr($b64, strpos($b64, 'base64,') + 7);
+    }
+    $decoded = base64_decode($b64, true);
+    if ($decoded !== false && $decoded !== '') {
+        $image_blob = $decoded;
+    }
+}
+
 if (!$menu_item_id || !$item_name || !$category_id || !$price) {
     http_response_code(400);
     echo json_encode(["success" => false, "message" => "All fields are required"]);
     exit;
 }
 
-$stmtCheck = $pdo->prepare("SELECT image_url FROM menu_items WHERE menu_item_id = ?");
+$stmtCheck = $pdo->prepare("SELECT image_url, image_blob FROM menu_items WHERE menu_item_id = ?");
 $stmtCheck->execute([$menu_item_id]);
 $menu = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 if (!$menu) {
@@ -31,6 +45,10 @@ if (!$menu) {
 }
 
 $imageUrl = $menu['image_url'];
+if ($image_blob === null) {
+    // Preserve the existing blob when no new image was uploaded.
+    $image_blob = $menu['image_blob'];
+}
 
 if ($image && $image['tmp_name']) {
     $targetDir = __DIR__ . "/../../../images/menu/";
@@ -59,13 +77,14 @@ if ($image && $image['tmp_name']) {
 }
 
 try {
-    // UPDATED: Added status and prep_time fields
+    // UPDATED: Added status and prep_time fields + REQ-057 image_blob column
     $stmt = $pdo->prepare("
         UPDATE menu_items
         SET item_name = :item_name, 
             category_id = :category_id, 
             price = :price, 
             image_url = :image_url,
+            image_blob = :image_blob,
             status = :status,
             estimated_prep_time_minutes = :estimated_prep_time_minutes
         WHERE menu_item_id = :menu_item_id
@@ -76,6 +95,7 @@ try {
         ":category_id"    => $category_id,
         ":price"          => $price,
         ":image_url"      => $imageUrl,
+        ":image_blob"     => $image_blob,
         ":status"         => $status,
         ":estimated_prep_time_minutes" => $prepTime,
         ":menu_item_id"   => $menu_item_id

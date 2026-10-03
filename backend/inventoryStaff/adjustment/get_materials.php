@@ -4,9 +4,11 @@ require_once __DIR__ . '/../../db.php';
 header('Content-Type: application/json');
 
 try {
+    require_once __DIR__ . '/../../image_blob_helper.php';
+
     $stmt = $pdo->query("
         SELECT raw_material_id, raw_material_name, description, unit, 
-               current_quantity, reorder_level, status, is_perishable, img_url, updated_at
+               current_quantity, reorder_level, status, is_perishable, img_url, image_blob, updated_at
         FROM raw_materials
         ORDER BY raw_material_name ASC
     ");
@@ -17,31 +19,12 @@ try {
     }
     unset($mat);
 
-    $totalItems = count($materials);
-
-    $stmtLow = $pdo->query("
-        SELECT COUNT(*) 
-        FROM raw_materials 
-        WHERE current_quantity > 0 
-        AND current_quantity <= reorder_level
-    ");
-    $lowStock = $stmtLow->fetchColumn();
-
-    $stmtOut = $pdo->query("SELECT COUNT(*) FROM raw_materials WHERE current_quantity <= 0");
-    $outStock = $stmtOut->fetchColumn();
-
-    $stmtDamaged = $pdo->query("SELECT SUM(quantity_lost) FROM spoilage");
-    $damagedTotal = $stmtDamaged->fetchColumn() ?: 0;
+    // REQ-057: base64-encode image_blob so dropdowns render data URIs.
+    hof_encode_blob_columns($materials, ['image_blob' => 'image_blob']);
 
     echo json_encode([
         'status' => 'success',
-        'data' => $materials,
-        'stats' => [
-            'total' => $totalItems,
-            'low' => (int)$lowStock,
-            'out' => (int)$outStock,
-            'damaged' => (float)$damagedTotal
-        ]
+        'data' => $materials
     ]);
 } catch (PDOException $e) {
     http_response_code(500);

@@ -5,6 +5,19 @@ require_once __DIR__ . '/../../db.php';
 header("Content-Type: application/json");
 
 try {
+    // REQ-057 pagination: 10 rows/page, server-side LIMIT/OFFSET.
+    $page = max(1, (int)($_GET['page'] ?? 1));
+    $limit = 10;
+    $offset = ($page - 1) * $limit;
+
+    $countStmt = $pdo->prepare("
+        SELECT COUNT(*) FROM stock_in si
+        JOIN stock_in_items sii ON si.stock_in_id = sii.stock_in_id
+        JOIN raw_materials rm ON sii.raw_material_id = rm.raw_material_id
+    ");
+    $countStmt->execute();
+    $total = (int)$countStmt->fetchColumn();
+
     // Fetch ALL Stock In Records with comprehensive itemization and approval metrics
     $stmtAllRecords = $pdo->prepare("
         SELECT 
@@ -35,13 +48,22 @@ try {
         LEFT JOIN users u_staff ON si.user_id = u_staff.user_id
         LEFT JOIN users u_admin ON si.approved_by = u_admin.user_id
         ORDER BY si.created_at DESC
+        LIMIT :limit OFFSET :offset
     ");
+    $stmtAllRecords->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmtAllRecords->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmtAllRecords->execute();
     $allRecords = $stmtAllRecords->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
         "success" => true,
-        "approved" => $allRecords
+        "approved" => $allRecords,
+        "pagination" => [
+            "total" => $total,
+            "page" => $page,
+            "per_page" => $limit,
+            "total_pages" => (int)ceil($total / $limit)
+        ]
     ]);
 } catch (Exception $e) {
     echo json_encode([

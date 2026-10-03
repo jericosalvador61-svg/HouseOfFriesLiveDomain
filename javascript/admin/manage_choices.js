@@ -337,12 +337,28 @@ function addOptionRow(container, option) {
     const optionDiv = document.createElement("div");
     optionDiv.className = "option-row d-flex align-items-center gap-2 mb-2";
 
+    // REQ-057: optional per-choice image upload (base64 data URI via HOFImage).
     optionDiv.innerHTML = `
         <input type="hidden" class="option-id-input" value="${option && option.menu_choice_id ? option.menu_choice_id : ''}">
+        <input type="hidden" class="option-img-blob-input" value="">
         <input type="text" class="form-control form-control-sm option-name-input" placeholder="Option name (e.g. Iced Tea)" value="${escapeHtml(option ? option.choice_name : '')}">
+        <input type="file" class="form-control form-control-sm option-img-file" accept="image/*" style="max-width: 200px;">
         ${option && option.status === 'Inactive' ? '<span class="badge bg-secondary">Inactive</span>' : ''}
         <button type="button" class="btn btn-sm btn-outline-danger remove-option-btn"><i class="bi bi-x-lg"></i></button>
     `;
+
+    const fileInput = optionDiv.querySelector(".option-img-file");
+    fileInput.addEventListener("change", function () {
+        const file = this.files && this.files[0];
+        if (!file || !window.HOFImage || !HOFImage.compress) return;
+        HOFImage.compress(file, 800, 0.65).then(function (blob) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                optionDiv.querySelector(".option-img-blob-input").value = e.target.result;
+            };
+            reader.readAsDataURL(blob);
+        });
+    });
 
     optionDiv.querySelector(".remove-option-btn").addEventListener("click", () => {
         const hasId = option && option.menu_choice_id;
@@ -386,17 +402,18 @@ btnSaveChoices.addEventListener("click", async () => {
     }
 
     const groups = [];
-    choiceGroupsContainer.querySelectorAll(".choice-group-row").forEach(groupRow => {
+        choiceGroupsContainer.querySelectorAll(".choice-group-row").forEach(groupRow => {
         const groupName = groupRow.querySelector(".group-name-input").value.trim();
         const options = [];
         groupRow.querySelectorAll(".option-row").forEach(optRow => {
             const name = optRow.querySelector(".option-name-input").value.trim();
             const id = optRow.querySelector(".option-id-input").value;
+            const imgBlob = optRow.querySelector(".option-img-blob-input")?.value || null;
             if (!name) return;
             if (id) {
-                options.push({ menu_choice_id: parseInt(id, 10), choice_name: name });
+                options.push({ menu_choice_id: parseInt(id, 10), choice_name: name, image_blob: imgBlob });
             } else {
-                options.push({ choice_name: name });
+                options.push({ choice_name: name, image_blob: imgBlob });
             }
         });
         if (!groupName || !options.length) return;
@@ -468,16 +485,32 @@ function addAddonRowElement(addon) {
     const row = document.createElement("div");
     row.className = "addon-row d-flex align-items-center gap-2 mb-2";
 
+    // REQ-057: optional per-addon image upload (base64 data URI via HOFImage).
     row.innerHTML = `
         <input type="hidden" class="addon-id-input" value="${addon && addon.menu_addon_id ? addon.menu_addon_id : ''}">
+        <input type="hidden" class="addon-img-blob-input" value="">
         <input type="text" class="form-control form-control-sm addon-name-input" placeholder="Add-on name (e.g. Gravy)" value="${escapeHtml(addon ? addon.addon_name : '')}">
         <div class="input-group input-group-sm" style="max-width: 130px;">
             <span class="input-group-text">₱</span>
             <input type="number" step="0.01" min="0" class="form-control addon-price-input" placeholder="0.00" value="${addon ? parseFloat(addon.price).toFixed(2) : ''}">
         </div>
+        <input type="file" class="form-control form-control-sm addon-img-file" accept="image/*" style="max-width: 190px;">
         ${addon && addon.status === 'Inactive' ? '<span class="badge bg-secondary">Inactive</span>' : ''}
         <button type="button" class="btn btn-sm btn-outline-danger remove-addon-btn"><i class="bi bi-x-lg"></i></button>
     `;
+
+    const fileInput = row.querySelector(".addon-img-file");
+    fileInput.addEventListener("change", function () {
+        const file = this.files && this.files[0];
+        if (!file || !window.HOFImage || !HOFImage.compress) return;
+        HOFImage.compress(file, 800, 0.65).then(function (blob) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                row.querySelector(".addon-img-blob-input").value = e.target.result;
+            };
+            reader.readAsDataURL(blob);
+        });
+    });
 
     row.querySelector(".remove-addon-btn").addEventListener("click", () => {
         const hasId = addon && addon.menu_addon_id;
@@ -521,8 +554,9 @@ btnSaveAddons.addEventListener("click", async () => {
         const name = row.querySelector(".addon-name-input").value.trim();
         const price = parseFloat(row.querySelector(".addon-price-input").value);
         const id = row.querySelector(".addon-id-input").value;
+        const imgBlob = row.querySelector(".addon-img-blob-input")?.value || null;
         if (!name) return;
-        const addon = { addon_name: name, price: isNaN(price) ? 0 : price };
+        const addon = { addon_name: name, price: isNaN(price) ? 0 : price, image_blob: imgBlob };
         if (id) addon.menu_addon_id = parseInt(id, 10);
         addons.push(addon);
     });
