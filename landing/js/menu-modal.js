@@ -59,6 +59,7 @@ function renderCats(){
 
 function setCat(cid){
   activeCat = cid;
+  renderCats();   // refresh .cat-btn.active highlight (REQ-059 review fix)
   renderGrid();
 }
 
@@ -116,6 +117,7 @@ document.addEventListener('click', function(e){
   var opener = e.target && e.target.closest ? e.target.closest('[data-open-menu]') : null;
   if (!opener) return;
   e.preventDefault();
+  e.stopPropagation(); // do NOT let this same click reach the backdrop-close listener
   lastOpener = opener;
   openModal();
 });

@@ -80,11 +80,14 @@ try {
             $choicesByItem[$id][$group][] = [
                 'menu_choice_id' => (int)$row['menu_choice_id'],
                 'choice_name'    => $row['choice_name'],
+                'image_blob'     => $row['image_blob'] ?? null,
             ];
         }
         foreach ($choicesByItem as &$groups) {
             foreach ($groups as &$options) {
-                hof_encode_blob_columns($options, ['image_blob' => 'image_blob']);
+                if (function_exists('hof_encode_blob_columns')) {
+                    hof_encode_blob_columns($options, ['image_blob' => 'image_blob']);
+                }
             }
             unset($options);
         }
@@ -110,8 +113,10 @@ try {
             $a['price'] = (float)$a['price'];
         }
         unset($a);
-        hof_encode_blob_columns($addons, ['image_blob' => 'image_blob']);
-    } catch (PDOException $e) {
+        if (function_exists('hof_encode_blob_columns')) {
+            hof_encode_blob_columns($addons, ['image_blob' => 'image_blob']);
+        }
+    } catch (Throwable $e) {
         error_log('get_menu_for_landing choices/addons degrade: ' . $e->getMessage());
         $choices = [];
         $addons = [];
