@@ -68,6 +68,21 @@ class SalesReport {
     }
 
     /**
+     * REQ-056: subtotal_amount / discount_type_id are also REQ-049 additive
+     * columns that may be absent on live. Mirror discountExpr() so export
+     * queries never reference a missing column.
+     */
+    private function subtotalExpr(): string {
+        return $this->hasColumn('orders', 'subtotal_amount') ? 'o.subtotal_amount' : 'o.total_amount';
+    }
+
+    private function discountTypeJoin(): string {
+        return $this->hasColumn('orders', 'discount_type_id')
+            ? "LEFT JOIN discount_types dt ON dt.discount_type_id = o.discount_type_id"
+            : "";
+    }
+
+    /**
      * Get KPI stats (Total Revenue, Paid Orders, Avg Order Value, Best Seller)
      */
     /**
@@ -477,7 +492,7 @@ class SalesReport {
                     o.ordered_at,
                     o.order_type,
                     o.total_amount,
-                    o.subtotal_amount,
+                    {$this->subtotalExpr()} AS subtotal_amount,
                     {$this->discountExpr()} AS discount_amount,
                     COALESCE(dt.name, '') AS discount_type_name,
                     o.status,
@@ -493,7 +508,7 @@ class SalesReport {
                 JOIN menu_items mi ON oi.menu_item_id = mi.menu_item_id
                 {$this->paidJoin()}
                 LEFT JOIN users u ON u.user_id = COALESCE(p.user_id, o.user_id)
-                LEFT JOIN discount_types dt ON dt.discount_type_id = o.discount_type_id
+                {$this->discountTypeJoin()}
                 WHERE DATE(p.paid_at) BETWEEN :start AND :end";
 
         $params = [':start' => $startDate, ':end' => $endDate];
