@@ -20,6 +20,25 @@ async function fetchJSON(url, options = {}) {
 }
 
 /* ===================== RENDER LOGIC ===================== */
+let currentRawPage = 1;
+
+function renderPager(totalRows, perPage, pagerEl) {
+    if (!pagerEl) return;
+    const pages = Math.max(1, Math.ceil(totalRows / perPage));
+    let html = '';
+    for (let i = 1; i <= pages; i++) {
+        html += `<li class="page-item ${i === currentRawPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+    }
+    pagerEl.innerHTML = html;
+    pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            currentRawPage = parseInt(a.dataset.page, 10);
+            loadRawMaterials();
+        });
+    });
+}
+
 function renderTable(data) {
     if (!data.length) {
         tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">No materials match your criteria.</td></tr>`;
@@ -50,7 +69,7 @@ function renderTable(data) {
             : '<span class="badge bg-danger">No</span>';
 
         tr.innerHTML = `
-            <td><img src="/${mat.img_url || 'images/placeholder.png'}" class="rounded border bg-white" width="40" alt="icon"></td>
+            <td><img src="${mat.image_blob ? 'data:image/jpeg;base64,' + mat.image_blob : '/' + (mat.img_url || 'images/placeholder.png')}" class="rounded border bg-white" width="40" alt="icon"></td>
             <td class="fw-bold">${mat.raw_material_name}</td>
             <td>${mat.description || '-'}</td>
             <td>${mat.unit}</td>
@@ -62,10 +81,10 @@ function renderTable(data) {
                 <button class="btn btn-sm btn-light border bg-white" onclick="viewMaterialBatches(${mat.raw_material_id}, '${mat.raw_material_name.replace(/'/g, "\\'")}')" title="View Stock Batches">
                     <i class="bi bi-eye text-primary"></i>
                 </button>
-                <button class="btn btn-sm btn-light border bg-white" onclick="openEditModal(${mat.raw_material_id})">
+                <button class="btn btn-sm btn-light border bg-white d-none js-material-edit-btn" onclick="openEditModal(${mat.raw_material_id})">
                     <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-light border text-danger bg-white" onclick="deleteMaterial(${mat.raw_material_id}, '${mat.raw_material_name.replace(/'/g, "\\'")}')">
+                <button class="btn btn-sm btn-light border text-danger bg-white d-none js-material-delete-btn" onclick="deleteMaterial(${mat.raw_material_id}, '${mat.raw_material_name.replace(/'/g, "\\'")}')">
                     <i class="bi bi-trash"></i>
                 </button>
             </td>
@@ -358,20 +377,12 @@ function handleFilter() {
 /* ===================== FETCH DATA ===================== */
 async function loadRawMaterials() {
     try {
-        const json = await fetchJSON('/backend/inventoryStaff/rawMaterials/get_materials.php');
+        const json = await fetchJSON('/backend/inventoryStaff/rawMaterials/get_materials.php?page=' + currentRawPage);
         if (json.status !== 'success') throw new Error(json.message);
 
         allRawMaterials = json.data;
-        const stats = json.stats;
-
-        document.getElementById('totalItems').textContent = stats.total;
-        document.getElementById('lowStock').textContent = stats.low;
-        document.getElementById('outStock').textContent = stats.out;
-        if (document.getElementById('damagedStock')) {
-            document.getElementById('damagedStock').textContent = stats.damaged;
-        }
-
         renderTable(allRawMaterials);
+        renderPager(json.pagination ? json.pagination.total : allRawMaterials.length, 10, document.getElementById('rawMaterialsPager'));
 
         // Process Notifications inside the same data response stream!
         checkStockAlerts(allRawMaterials);

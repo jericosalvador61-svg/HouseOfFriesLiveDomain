@@ -4,6 +4,26 @@
 // ==========================================
 document.addEventListener('DOMContentLoaded', function () {
     let allReturnsRecords = [];
+    let returnsPage = 1;
+    let returnsTotal = 0;
+
+    function renderAdminReturnsPager() {
+        const pagerEl = document.getElementById('returnsPager');
+        if (!pagerEl) return;
+        const pages = Math.max(1, Math.ceil(returnsTotal / 10));
+        let html = '';
+        for (let i = 1; i <= pages; i++) {
+            html += `<li class="page-item ${i === returnsPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+        }
+        pagerEl.innerHTML = html;
+        pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                returnsPage = parseInt(a.dataset.page, 10);
+                fetchReturnsHistory();
+            });
+        });
+    }
     let returnsItems = [];
 
     // --- 1. INITIAL LOAD ---
@@ -62,11 +82,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const pendingCountBadge = document.getElementById('pendingApprovalCount');
         const batchActionContainer = document.getElementById('batchActionContainer');
 
-        authenticatedFetch("/backend/admin/manageInventory/get_return_history.php")
+        authenticatedFetch("/backend/admin/manageInventory/get_return_history.php?page=" + returnsPage)
             .then(r => r.json())
             .then(result => {
                 if (result.success) {
                     allReturnsRecords = result.data || [];
+                    returnsTotal = (result.pagination && result.pagination.total) || allReturnsRecords.length;
+                    renderAdminReturnsPager();
                     let pendingHtml = '', historyHtml = '', pendingCount = 0;
 
                     allReturnsRecords.forEach(row => {

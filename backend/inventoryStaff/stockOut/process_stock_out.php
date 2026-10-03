@@ -35,11 +35,13 @@ try {
 
     $stockOutId = $pdo->lastInsertId();
 
-    // 2. Process each item requested for stock out using FIFO
+    // 2. Process each item requested for stock out using FIFO.
+    // REQ-057: snapshot current cost_per_unit into stock_out_items.unit_cost.
     $stmtItem = $pdo->prepare("
-        INSERT INTO stock_out_items (stock_out_id, raw_material_id, quantity) 
-        VALUES (?, ?, ?)
+        INSERT INTO stock_out_items (stock_out_id, raw_material_id, quantity, unit_cost) 
+        VALUES (?, ?, ?, ?)
     ");
+    $stmtUnitCost = $pdo->prepare("SELECT cost_per_unit FROM raw_materials WHERE raw_material_id = ?");
 
     foreach ($data['items'] as $item) {
         $materialId = $item['id'];
@@ -76,11 +78,16 @@ try {
             $remainingToAllocate -= $takeFromThisBatch;
         }
 
+        // REQ-057 unit-cost snapshot (gross-profit basis for REQ-056).
+        $stmtUnitCost->execute([$materialId]);
+        $unitCost = (float)$stmtUnitCost->fetchColumn();
+
         // Insert primary item record linked to this pending checkout request
         $stmtItem->execute([
             $stockOutId,
             $materialId,
-            $requestedQty
+            $requestedQty,
+            $unitCost
         ]);
     }
 

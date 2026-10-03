@@ -12,7 +12,8 @@ if (!$id) {
     exit;
 }
 
-$auth = authenticate(['Admin']);
+// REQ-057 RBAC: Admin + Supervisor manage raw materials (staff read-only).
+$auth = authenticate(['Admin', 'Supervisor']);
 
 try {
     $stmt = $pdo->prepare("UPDATE raw_materials SET status = 'INACTIVE' WHERE raw_material_id = ?");

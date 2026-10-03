@@ -5,46 +5,41 @@ require_once __DIR__ . '/../../db.php';
 header('Content-Type: application/json');
 
 try {
+    require_once __DIR__ . '/../../image_blob_helper.php';
+
     // NOTE: INACTIVE rows are soft-deleted materials. The Manage Inventory UI
     // filters by mat.status client-side, so both ACTIVE + INACTIVE are returned
-    // here and stats below exclude INACTIVE to match the visible table.
-    $stmt = $pdo->query("
+    // here (stats removed — REQ-057: KPI cards live on the dashboard only).
+    // REQ-057 pagination: 10 rows/page, server-side LIMIT/OFFSET.
+    $page = max(1, (int)($_GET['page'] ?? 1));
+    $limit = 10;
+    $offset = ($page - 1) * $limit;
+
+    $total = (int)$pdo->query("SELECT COUNT(*) FROM raw_materials")->fetchColumn();
+
+    $stmt = $pdo->prepare("
         SELECT raw_material_id, raw_material_name, description, unit, 
-               current_quantity, reorder_level, status, is_perishable, img_url, updated_at
+               current_quantity, reorder_level, status, is_perishable, img_url, image_blob, updated_at
         FROM raw_materials
         ORDER BY raw_material_name ASC
+        LIMIT :limit OFFSET :offset
     ");
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Stats count ACTIVE rows only (INACTIVE = soft-deleted, hidden by default filter)
-    $totalItems = count(array_filter($materials, fn($m) => ($m['status'] ?? '') === 'ACTIVE'));
-
-    // Low Stock (ACTIVE only)
-    $stmtLow = $pdo->query("
-        SELECT COUNT(*) 
-        FROM raw_materials 
-        WHERE status = 'ACTIVE'
-        AND current_quantity > 0 
-        AND current_quantity <= reorder_level
-    ");
-    $lowStock = $stmtLow->fetchColumn();
-
-    // Out of Stock (ACTIVE only)
-    $stmtOut = $pdo->query("SELECT COUNT(*) FROM raw_materials WHERE status = 'ACTIVE' AND current_quantity <= 0");
-    $outStock = $stmtOut->fetchColumn();
-
-    // --- Damaged/Spoilage Stat ---
-    $stmtDamaged = $pdo->query("SELECT SUM(quantity_lost) FROM spoilage");
-    $damagedTotal = $stmtDamaged->fetchColumn() ?: 0;
+    // REQ-057: base64-encode image_blob so tables render data URIs.
+    hof_encode_blob_columns($materials, ['image_blob' => 'image_blob']);
 
     echo json_encode([
         'status' => 'success',
         'data' => $materials,
-        'stats' => [
-            'total' => $totalItems,
-            'low' => (int)$lowStock,
-            'out' => (int)$outStock,
-            'damaged' => (float)$damagedTotal
+        'pagination' => [
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $limit,
+            'total_pages' => (int)ceil($total / $limit)
         ]
     ]);
 } catch (PDOException $e) {

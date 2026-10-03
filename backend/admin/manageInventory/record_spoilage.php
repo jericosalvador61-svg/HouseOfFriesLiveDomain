@@ -11,11 +11,30 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$auth = authenticate(['Admin']);
+$auth = authenticate(['Admin', 'Supervisor']);
 
 $spoilage_date = $_POST['spoilage_date'] ?? date('Y-m-d');
 $general_remarks = $_POST['remarks'] ?? '';
 $ref_number = 'REF-' . strtoupper(uniqid());
+
+// REQ-057: required proof photo (SPOILAGE/WASTE/DAMAGE) stored as BLOB.
+// Client sends a compressed JPEG data-URI (no scheme prefix) via FormData.
+$photo_raw = '';
+if (empty($_POST['photo']) || !is_string($_POST['photo']) || trim($_POST['photo']) === '') {
+    http_response_code(422);
+    echo json_encode(['status' => 'error', 'message' => 'A proof photo is required for SPOILAGE / WASTE / DAMAGE submissions.']);
+    exit;
+}
+if (is_string($_POST['photo'])) {
+    $photo = $_POST['photo'];
+    if (strpos($photo, 'base64,') !== false) {
+        $photo = substr($photo, strpos($photo, 'base64,') + 7);
+    }
+    $decoded = base64_decode($photo, true);
+    if ($decoded !== false) {
+        $photo_raw = $decoded;
+    }
+}
 
 try {
     $pdo->beginTransaction();
@@ -33,8 +52,8 @@ try {
             INSERT INTO spoilage (
                 user_id, raw_material_id, spoilage_type, quantity_lost, 
                 source, status, approved_by, approved_at, 
-                reference_number, remarks, spoilage_date
-            ) VALUES (?, ?, ?, ?, ?, 'APPROVED', ?, NOW(), ?, ?, ?)
+                reference_number, remarks, spoilage_date, photo
+            ) VALUES (?, ?, ?, ?, ?, 'APPROVED', ?, NOW(), ?, ?, ?, ?)
         ");
         $stmt->execute([
             $auth['user_id'],
@@ -45,7 +64,8 @@ try {
             $auth['user_id'],
             $ref_number,
             $general_remarks,
-            $spoilage_date
+            $spoilage_date,
+            $photo_raw !== '' ? $photo_raw : null
         ]);
 
         if ($source === 'RAW') {
@@ -82,7 +102,7 @@ try {
         $spParts[] = "{$mName} x{$qty}";
     }
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
-        'SPOILAGE', "Spoilage: " . implode(', ', $spParts),
+        'SPOILAGE', "Spoilage: " . implode(', ', $spParts) . ($photo_raw !== '' ? ' (photo attached)' : ''),
         'raw_material', (int)$_POST['material_id'][0]);
 
     echo json_encode(['status' => 'success', 'message' => 'Spoilage recorded and stock updated successfully.']);

@@ -4,7 +4,8 @@ require_once __DIR__ . '/../../auth_middleware.php';
 require_once __DIR__ . '/../../log_activity_helper.php';
 header('Content-Type: application/json');
 
-$auth = authenticate(['Admin', 'Inventory Staff']);
+// REQ-057 RBAC: raw-materials writes are Admin/Supervisor only; staff is READ-ONLY.
+$auth = authenticate(['Admin', 'Supervisor']);
 $userId = (int)$auth['user_id'];
 $username = $auth['username'] ?? 'unknown';
 $role = $auth['role'] ?? '';
@@ -16,6 +17,8 @@ $unit       = $_POST['unit'] ?? null;
 $reorder    = $_POST['reorder_level'] ?? 0;
 $cost       = $_POST['cost_per_unit'] ?? 0;
 $imgUrl     = $_POST['img_url'] ?? '';
+// REQ-057: BLOB image upload (base64 data URI) — takes precedence over the URL field.
+$imgBlobRaw = $_POST['image_blob'] ?? '';
 
 // CONVERSION: Map "Yes"/"No" to 1/0 for the database
 $expTrack   = ($_POST['expiration_tracking'] === 'Yes') ? 1 : 0;
@@ -43,6 +46,19 @@ try {
         }
     }
 
+    // REQ-057: BLOB image (base64 data URI) takes precedence over the URL field.
+    $image_blob = null;
+    if (is_string($imgBlobRaw) && trim($imgBlobRaw) !== '') {
+        $b64 = $imgBlobRaw;
+        if (strpos($b64, 'base64,') !== false) {
+            $b64 = substr($b64, strpos($b64, 'base64,') + 7);
+        }
+        $decoded = base64_decode($b64, true);
+        if ($decoded !== false && $decoded !== '') {
+            $image_blob = $decoded;
+        }
+    }
+
     $sql = "UPDATE raw_materials 
             SET raw_material_name = ?, 
                 description = ?, 
@@ -52,6 +68,7 @@ try {
                 expiration_tracking = ?, 
                 is_perishable = ?, 
                 img_url = ?, 
+                image_blob = COALESCE(?, image_blob), 
                 updated_at = NOW() 
             WHERE raw_material_id = ?";
 
@@ -65,6 +82,7 @@ try {
         $expTrack,
         $perishable,
         $imgUrl,
+        $image_blob,
         $id
     ]);
 

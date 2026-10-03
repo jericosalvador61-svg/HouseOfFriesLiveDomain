@@ -4,7 +4,8 @@ require_once __DIR__ . '/../../auth_middleware.php';
 require_once __DIR__ . '/../../log_activity_helper.php';
 header('Content-Type: application/json');
 
-$auth = authenticate(['Admin', 'Inventory Staff', 'Supervisor']);
+// REQ-057 RBAC: raw-materials writes are Admin/Supervisor only; staff is READ-ONLY.
+$auth = authenticate(['Admin', 'Supervisor']);
 $userId = (int)$auth['user_id'];
 $username = $auth['username'] ?? 'unknown';
 $role = $auth['role'] ?? '';

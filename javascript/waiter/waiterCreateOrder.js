@@ -116,15 +116,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Use only the filename from the normalised path, then rebuild
                     // it relative to this page so both root and sub-folder
-                    // deployments resolve correctly.
+                    // deployments resolve correctly. REQ-057: prefer the BLOB
+                    // (data URI) over the legacy URL column.
                     let imageName = item.image;
-                    if (imageName) {
+                    if (item.image_blob) {
+                        imageName = item.image_blob;
+                    } else if (imageName) {
                         const parts = String(imageName).split('/');
                         imageName = parts[parts.length - 1];
                     } else {
                         imageName = 'default.jpg';
                     }
-                    const finalImagePath = `../../images/menu/${encodeURIComponent(imageName)}`;
+                    const finalImagePath = /^data:image\//i.test(imageName)
+                        ? imageName
+                        : `../../images/menu/${encodeURIComponent(imageName)}`;
 
                     const safeName = esc(item.name);
                     const safeDesc = esc(item.description || '');

@@ -103,38 +103,6 @@
                         <p class="text-muted">Monitor and manage your stock levels.</p>
                     </div>
                 </div>
-                <!-- STATS -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-3">
-                        <div class="inventory-card bg-total text-center shadow-sm">
-                            <div class="icon-box icon-total"> <i class="bi bi-box-seam"></i> </div>
-                            <p class="mb-1 fw-semibold text-dark">Total Items</p>
-                            <h2 class="fw-bold mb-0" id="totalItems">0</h2>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="inventory-card bg-low text-center shadow-sm">
-                            <div class="icon-box icon-low"> <i class="bi bi-exclamation-triangle"></i> </div>
-                            <p class="mb-1 fw-semibold text-dark">Low Stock</p>
-                            <h2 class="fw-bold mb-0" id="lowStock">0</h2>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="inventory-card bg-out text-center shadow-sm">
-                            <div class="icon-box icon-out"> <i class="bi bi-x-circle"></i> </div>
-                            <p class="mb-1 fw-semibold text-dark">Out of Stock</p>
-                            <h2 class="fw-bold mb-0" id="outStock">0</h2>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="inventory-card bg-damaged text-center shadow-sm">
-                            <div class="icon-box icon-damaged"> <i class="bi bi-trash3"></i> </div>
-                            <p class="mb-1 fw-semibold text-dark">Damaged</p>
-                            <h2 class="fw-bold mb-0" id="damagedStock">0</h2>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- FILTERS -->
                 <div class="row g-2 mb-4">
 
@@ -206,6 +174,9 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                <nav aria-label="Spoilage pagination" class="mt-2">
+                                    <ul class="pagination pagination-sm justify-content-center mb-0" id="spoilagePager"></ul>
+                                </nav>
                             </div>
                         </div>
                     </div>
@@ -240,6 +211,7 @@
                             <select id="inputType" class="form-select">
                                 <option value="SPOILAGE">Spoilage</option>
                                 <option value="WASTE">Waste</option>
+                                <option value="DAMAGE">Damage</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -257,6 +229,11 @@
                             <button type="button" id="addToListBtn" class="btn btn-primary w-100 fw-bold">
                                 <i class="bi bi-plus-circle me-1"></i>Add to List
                             </button>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">Proof Photo <span class="text-danger">*</span> <small class="text-muted">(required — compressed client-side, stored in DB)</small></label>
+                            <input type="file" id="spoilagePhoto" accept="image/*" class="form-control" required>
+                            <div class="mt-2 d-none" id="spoilagePhotoPreviewWrap"><img id="spoilagePhotoPreview" class="img-thumbnail" style="max-height:140px;object-fit:contain;" alt="Photo preview"></div>
                         </div>
                     </div>
 

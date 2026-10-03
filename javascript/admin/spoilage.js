@@ -4,6 +4,26 @@
 // ==========================================
 document.addEventListener('DOMContentLoaded', function () {
     let allSpoilageRecords = [];
+    let spoilagePage = 1;
+    let spoilageTotal = 0;
+
+    function renderAdminSpoilagePager() {
+        const pagerEl = document.getElementById('spoilagePager');
+        if (!pagerEl) return;
+        const pages = Math.max(1, Math.ceil(spoilageTotal / 10));
+        let html = '';
+        for (let i = 1; i <= pages; i++) {
+            html += `<li class="page-item ${i === spoilagePage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+        }
+        pagerEl.innerHTML = html;
+        pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                spoilagePage = parseInt(a.dataset.page, 10);
+                fetchSpoilageHistory();
+            });
+        });
+    }
     let spoilageItems = [];
 
     // --- 1. INITIAL LOAD ---
@@ -63,11 +83,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const pendingCountBadge = document.getElementById('pendingApprovalCount');
         const batchActionContainer = document.getElementById('batchActionContainer');
 
-        authenticatedFetch("/backend/admin/manageInventory/get_spoilage_history.php")
+        authenticatedFetch("/backend/admin/manageInventory/get_spoilage_history.php?page=" + spoilagePage)
             .then(r => r.json())
             .then(result => {
                 if (result.status === 'success') {
                     allSpoilageRecords = result.data || [];
+                    spoilageTotal = (result.pagination && result.pagination.total) || allSpoilageRecords.length;
+                    renderAdminSpoilagePager();
                     let pendingHtml = '', historyHtml = '', pendingCount = 0;
 
                     allSpoilageRecords.forEach(row => {
@@ -271,32 +293,54 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!result.isConfirmed) return;
 
                 const submitBtn = spoilageForm.querySelector('button[type="submit"]');
+
+                const photoInput = document.getElementById('spoilagePhoto');
+                if (!photoInput || !photoInput.files || photoInput.files.length === 0) {
+                    Swal.fire('Photo Required', 'Attach a proof photo for SPOILAGE / WASTE / DAMAGE before confirming.', 'warning');
+                    return;
+                }
                 LoadingManager.show(submitBtn || spoilageForm, { text: 'Recording...' });
+                const photoReader = new FileReader();
+                photoReader.onload = (ev) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const scale = Math.min(1, 800 / Math.max(img.width, img.height));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(img.width * scale));
+                        canvas.height = Math.max(1, Math.round(img.height * scale));
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const photoBase64 = canvas.toDataURL('image/jpeg', 0.65).split(',')[1];
 
-                // Build FormData from staging items
-                const fd = new FormData();
-                fd.append('spoilage_date', date);
-                fd.append('remarks', remarks);
-                spoilageItems.forEach(item => {
-                    fd.append('material_id[]', item.material_id);
-                    fd.append('type[]', item.type);
-                    fd.append('source[]', item.source);
-                    fd.append('quantity[]', item.quantity);
-                });
+                        // Build FormData from staging items
+                        const fd = new FormData();
+                        fd.append('spoilage_date', date);
+                        fd.append('remarks', remarks);
+                        fd.append('photo', photoBase64);
+                        spoilageItems.forEach(item => {
+                            fd.append('material_id[]', item.material_id);
+                            fd.append('type[]', item.type);
+                            fd.append('source[]', item.source);
+                            fd.append('quantity[]', item.quantity);
+                        });
 
-                authenticatedFetch("/backend/admin/manageInventory/record_spoilage.php", {
-                    method: "POST", body: fd
-                })
-                    .then(r => r.json())
-                    .then(result => {
-                        if (result.status === 'success') {
-                            Swal.fire('Success', result.message, 'success').then(() => location.reload());
-                        } else {
-                            Swal.fire('Error', result.message, 'error');
-                        }
-                    })
-                    .catch(err => { console.error(err); Swal.fire('Error', 'Server error.', 'error'); })
-                    .finally(() => LoadingManager.hide(submitBtn || spoilageForm));
+                        authenticatedFetch("/backend/admin/manageInventory/record_spoilage.php", {
+                            method: "POST", body: fd
+                        })
+                            .then(r => r.json())
+                            .then(result => {
+                                if (result.status === 'success') {
+                                    Swal.fire('Success', result.message, 'success').then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', result.message, 'error');
+                                }
+                            })
+                            .catch(err => { console.error(err); Swal.fire('Error', 'Server error.', 'error'); })
+                            .finally(() => LoadingManager.hide(submitBtn || spoilageForm));
+                    };
+                    img.onerror = () => { LoadingManager.hide(submitBtn || spoilageForm); Swal.fire('Error', 'Could not read the photo file.', 'error'); };
+                    img.src = ev.target.result;
+                };
+                photoReader.readAsDataURL(photoInput.files[0]);
             });
         });
     }
@@ -337,6 +381,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <tr><td class="text-muted">Date:</td><td>${fd}</td></tr>
                     <tr><td class="text-muted">Remarks:</td><td>${item.remarks || '—'}</td></tr>
                     <tr><td class="text-muted">Status:</td><td><span class="badge ${status === 'APPROVED' ? 'bg-success' : status === 'PENDING' ? 'bg-warning text-dark' : 'bg-danger'}">${item.status || 'Pending'}</span></td></tr>
+                    ${item.photo_data_uri ? `<tr><td class="text-muted align-top">Proof Photo:</td><td><img src="${item.photo_data_uri}" class="img-thumbnail" style="max-width:220px;max-height:180px;object-fit:contain;" alt="Spoilage proof photo"></td></tr>` : ''}
                 </table></div>`,
             icon: status === 'APPROVED' ? 'success' : status === 'PENDING' ? 'info' : 'error',
             confirmButtonText: 'Close'

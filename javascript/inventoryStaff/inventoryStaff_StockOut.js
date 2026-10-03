@@ -1,9 +1,29 @@
 // 1. GLOBAL STATE - Only declare once!
 let selectedItems = [];
 let allStockOutRecords = []; // Global cache placeholder for filtering datasets
+let stockOutPage = 1;
+let stockOutTotal = 0;
 
 // Live DOM Filter Elements
 let searchInput, statusFilter, dateFilter, historyBody;
+
+function renderStockOutPager() {
+    const pagerEl = document.getElementById("stockOutPager");
+    if (!pagerEl) return;
+    const pages = Math.max(1, Math.ceil(stockOutTotal / 10));
+    let html = '';
+    for (let i = 1; i <= pages; i++) {
+        html += `<li class="page-item ${i === stockOutPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+    }
+    pagerEl.innerHTML = html;
+    pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            stockOutPage = parseInt(a.dataset.page, 10);
+            fetchStockOutHistory();
+        });
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize DOM references
@@ -109,11 +129,11 @@ function fetchInventoryStats() {
         })
         .then(result => {
             if (result.status === 'success' || result.success) {
-                const stats = result.stats;
-                updateCount('totalItems', stats.total);
-                updateCount('lowStock', stats.low);
-                updateCount('outStock', stats.out);
-                updateCount('damagedStock', stats.damaged);
+                const stats = result.stats || {};
+                updateCount('totalItems', stats.total ?? 0);
+                updateCount('lowStock', stats.low ?? 0);
+                updateCount('outStock', stats.out ?? 0);
+                updateCount('damagedStock', stats.damaged ?? 0);
 
                 checkStockAlerts(result.data);
             }
@@ -316,7 +336,7 @@ function fetchStockOutHistory() {
     if (!historyBody) return;
 
     // 🔑 FIX: Securely pass token context
-    fetch("/backend/inventoryStaff/stockOut/get_stock_out_history.php", {
+    fetch("/backend/inventoryStaff/stockOut/get_stock_out_history.php?page=" + stockOutPage, {
         method: "GET",
         headers: getAuthHeaders(null)
     })
@@ -324,7 +344,9 @@ function fetchStockOutHistory() {
         .then(result => {
             if (result.status === 'success' || result.success) {
                 allStockOutRecords = result.data || [];
+                stockOutTotal = (result.pagination && result.pagination.total) || allStockOutRecords.length;
                 renderHistoryRowsHTML(allStockOutRecords);
+                renderStockOutPager();
             }
         })
         .catch(error => console.error('Error fetching history:', error));

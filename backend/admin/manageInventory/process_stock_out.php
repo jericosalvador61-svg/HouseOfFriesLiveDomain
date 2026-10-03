@@ -32,9 +32,11 @@ try {
     $stockOutId = $pdo->lastInsertId();
 
     $stmtItem = $pdo->prepare("
-        INSERT INTO stock_out_items (stock_out_id, raw_material_id, quantity) 
-        VALUES (?, ?, ?)
+        INSERT INTO stock_out_items (stock_out_id, raw_material_id, quantity, unit_cost) 
+        VALUES (?, ?, ?, ?)
     ");
+
+    $stmtUnitCost = $pdo->prepare("SELECT cost_per_unit FROM raw_materials WHERE raw_material_id = ?");
 
     $stmtUpdateStock = $pdo->prepare("
         UPDATE raw_materials 
@@ -47,10 +49,15 @@ try {
         $materialId = $item['id'];
         $qtyToDeduct = floatval($item['quantity']);
 
+        // REQ-057 unit-cost snapshot (gross-profit basis for REQ-056).
+        $stmtUnitCost->execute([$materialId]);
+        $unitCost = (float)$stmtUnitCost->fetchColumn();
+
         $stmtItem->execute([
             $stockOutId,
             $materialId,
-            $qtyToDeduct
+            $qtyToDeduct,
+            $unitCost
         ]);
 
         hof_deduct_fifo($pdo, $materialId, $qtyToDeduct);

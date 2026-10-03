@@ -4,6 +4,26 @@
 // ==========================================
 let inventoryMaterials = [];
 let allAdjustmentRecords = [];
+let adjustmentPage = 1;
+let adjustmentTotal = 0;
+
+function renderAdminAdjustmentPager() {
+    const pagerEl = document.getElementById('adjustmentPager');
+    if (!pagerEl) return;
+    const pages = Math.max(1, Math.ceil(adjustmentTotal / 10));
+    let html = '';
+    for (let i = 1; i <= pages; i++) {
+        html += `<li class="page-item ${i === adjustmentPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+    }
+    pagerEl.innerHTML = html;
+    pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            adjustmentPage = parseInt(a.dataset.page, 10);
+            loadAdjustmentHistory();
+        });
+    });
+}
 let adjItems = [];
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -50,11 +70,13 @@ async function loadAdjustmentHistory() {
     if (!mainTbody) return;
 
     try {
-        const res = await authenticatedFetch("/backend/admin/manageInventory/get_adjustment_history.php");
+        const res = await authenticatedFetch("/backend/admin/manageInventory/get_adjustment_history.php?page=" + adjustmentPage);
         const result = await res.json();
         if (result.status === 'success') {
             const raw = Array.isArray(result.data) ? result.data : [];
             allAdjustmentRecords = raw;
+            adjustmentTotal = (result.pagination && result.pagination.total) || raw.length;
+            renderAdminAdjustmentPager();
             const approved = raw.filter(r => (r.status || '').toLowerCase() !== 'pending');
             const pending = raw.filter(r => (r.status || '').toLowerCase() === 'pending');
 
@@ -186,10 +208,11 @@ function updateQuickStats(materials) {
 }
 
 function updateQuickStatsFromBackend(stats) {
-    setStatValue('totalItems', stats.total);
-    setStatValue('lowStock', stats.low);
-    setStatValue('outStock', stats.out);
-    setStatValue('damagedStock', stats.damaged);
+    const s = stats || {};
+    setStatValue('totalItems', s.total ?? 0);
+    setStatValue('lowStock', s.low ?? 0);
+    setStatValue('outStock', s.out ?? 0);
+    setStatValue('damagedStock', s.damaged ?? 0);
 }
 
 function setStatValue(id, value) { const el = document.getElementById(id); if (el) { el.textContent = value ?? 0; el.classList.add('fw-bold'); } }

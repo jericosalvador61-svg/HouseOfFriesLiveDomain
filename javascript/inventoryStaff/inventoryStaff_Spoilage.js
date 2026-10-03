@@ -6,6 +6,26 @@
 document.addEventListener('DOMContentLoaded', function () {
     let allSpoilageRecords = [];
     let spoilageItems = [];
+    let spoilagePage = 1;
+    let spoilageTotal = 0;
+
+    function renderSpoilagePager() {
+        const pagerEl = document.getElementById('spoilagePager');
+        if (!pagerEl) return;
+        const pages = Math.max(1, Math.ceil(spoilageTotal / 10));
+        let html = '';
+        for (let i = 1; i <= pages; i++) {
+            html += `<li class="page-item ${i === spoilagePage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+        }
+        pagerEl.innerHTML = html;
+        pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                spoilagePage = parseInt(a.dataset.page, 10);
+                fetchSpoilageHistory();
+            });
+        });
+    }
 
     // --- 1. INITIAL LOAD ---
     fetchMaterialsAndStats();
@@ -39,11 +59,11 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(r => r.json())
             .then(result => {
                 if (result.status === 'success' || result.success) {
-                    const stats = result.stats;
-                    updateCount('totalItems', stats.total);
-                    updateCount('lowStock', stats.low);
-                    updateCount('outStock', stats.out);
-                    updateCount('damagedStock', stats.damaged);
+                    const stats = result.stats || {};
+                    updateCount('totalItems', stats.total ?? 0);
+                    updateCount('lowStock', stats.low ?? 0);
+                    updateCount('outStock', stats.out ?? 0);
+                    updateCount('damagedStock', stats.damaged ?? 0);
                     checkStockAlerts(result.data);
                     if (inputMaterial && Array.isArray(result.data)) {
                         inputMaterial.innerHTML = '<option value="" selected disabled>Select Material...</option>';
@@ -70,14 +90,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const tableBody = document.getElementById('spoilageTableBody');
         if (!tableBody) return;
 
-        fetch("/backend/inventoryStaff/spoilage/get_spoilage_history.php", {
+        fetch("/backend/inventoryStaff/spoilage/get_spoilage_history.php?page=" + spoilagePage, {
             method: "GET", headers: getAuthHeaders(null)
         })
             .then(r => r.json())
             .then(result => {
                 if (result.status === 'success' || result.success) {
                     allSpoilageRecords = result.data || [];
+                    spoilageTotal = (result.pagination && result.pagination.total) || allSpoilageRecords.length;
                     renderSpoilageRows(allSpoilageRecords);
+                    renderSpoilagePager();
                 }
             })
             .catch(err => console.error('Error fetching spoilage:', err));
@@ -252,8 +274,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!result.isConfirmed) return;
 
                 const submitBtn = spoilageForm.querySelector('button[type="submit"]');
-                LoadingManager.show(submitBtn || spoilageForm, { text: 'Recording...' });
 
+                const photoInput = document.getElementById('spoilagePhoto');
+                if (!photoInput || !photoInput.files || photoInput.files.length === 0) {
+                    Swal.fire({ icon: 'warning', title: 'Photo Required', text: 'Attach a proof photo for SPOILAGE / WASTE / DAMAGE before confirming.', confirmButtonColor: '#FFB800' });
+                    return;
+                }
+                LoadingManager.show(submitBtn || spoilageForm, { text: 'Recording...' });
                 const payload = {
                     spoilage_date: date,
                     remarks: remarks,
@@ -265,20 +292,36 @@ document.addEventListener('DOMContentLoaded', function () {
                     }))
                 };
 
-                fetch("/backend/inventoryStaff/spoilage/record_spoilage.php", {
-                    method: "POST", headers: getAuthHeaders('application/json'),
-                    body: JSON.stringify(payload)
-                })
-                    .then(r => r.json())
-                    .then(result => {
-                        if (result.status === 'success' || result.success) {
-                            Swal.fire({ icon: 'success', title: 'Spoilage Recorded', text: result.message, confirmButtonColor: '#FFB800' }).then(() => location.reload());
-                        } else {
-                            Swal.fire({ icon: 'error', title: 'Error', text: result.message, confirmButtonColor: '#FFB800' });
-                        }
-                    })
-                    .catch(err => { console.error(err); Swal.fire({ icon: 'error', title: 'Error', text: 'Server error.', confirmButtonColor: '#FFB800' }); })
-                    .finally(() => LoadingManager.hide(submitBtn || spoilageForm));
+                // Client-side compression (800px, JPEG ~0.65) — InfinityFree has no GD/Imagick.
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const scale = Math.min(1, 800 / Math.max(img.width, img.height));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(img.width * scale));
+                        canvas.height = Math.max(1, Math.round(img.height * scale));
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                        payload.photo = canvas.toDataURL('image/jpeg', 0.65).split(',')[1];
+                        fetch("/backend/inventoryStaff/spoilage/record_spoilage.php", {
+                            method: "POST", headers: getAuthHeaders('application/json'),
+                            body: JSON.stringify(payload)
+                        })
+                            .then(r => r.json())
+                            .then(result => {
+                                if (result.status === 'success' || result.success) {
+                                    Swal.fire({ icon: 'success', title: 'Spoilage Recorded', text: result.message, confirmButtonColor: '#FFB800' }).then(() => location.reload());
+                                } else {
+                                    Swal.fire({ icon: 'error', title: 'Error', text: result.message, confirmButtonColor: '#FFB800' });
+                                }
+                            })
+                            .catch(err => { console.error(err); Swal.fire({ icon: 'error', title: 'Error', text: 'Server error.', confirmButtonColor: '#FFB800' }); })
+                            .finally(() => LoadingManager.hide(submitBtn || spoilageForm));
+                    };
+                    img.onerror = () => { LoadingManager.hide(submitBtn || spoilageForm); Swal.fire({ icon: 'error', title: 'Error', text: 'Could not read the photo file.', confirmButtonColor: '#FFB800' }); };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(photoInput.files[0]);
             });
         });
     }
@@ -319,6 +362,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <tr><td class="text-muted">Date:</td><td>${fd}</td></tr>
                     <tr><td class="text-muted">Remarks:</td><td>${item.remarks || '—'}</td></tr>
                     <tr><td class="text-muted">Status:</td><td><span class="badge ${cs === 'APPROVED' ? 'bg-success' : cs === 'PENDING' ? 'bg-warning text-dark' : 'bg-danger'}">${item.status || 'Pending'}</span></td></tr>
+                    ${item.photo_data_uri ? `<tr><td class="text-muted align-top">Proof Photo:</td><td><img src="${item.photo_data_uri}" class="img-thumbnail" style="max-width:220px;max-height:180px;object-fit:contain;" alt="Spoilage proof photo"></td></tr>` : ''}
                 </table></div>`,
             icon: cs === 'APPROVED' ? 'success' : cs === 'PENDING' ? 'info' : 'error',
             confirmButtonText: 'Close',

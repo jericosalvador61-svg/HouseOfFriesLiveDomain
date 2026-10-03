@@ -10,6 +10,27 @@ const statusFilter = document.getElementById("filterStatus");
 
 let allRawMaterials = []; // Master list from DB
 let tempMaterials = [];   // Staging for Modal
+let adminMatPage = 1;
+let adminMatTotal = 0;
+
+function renderAdminMatPager(totalRows) {
+    const pagerEl = document.getElementById('rawMaterialsPager');
+    if (!pagerEl) return;
+    adminMatTotal = totalRows || adminMatTotal;
+    const pages = Math.max(1, Math.ceil(adminMatTotal / 10));
+    let html = '';
+    for (let i = 1; i <= pages; i++) {
+        html += `<li class="page-item ${i === adminMatPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+    }
+    pagerEl.innerHTML = html;
+    pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            adminMatPage = parseInt(a.dataset.page, 10);
+            loadRawMaterials();
+        });
+    });
+}
 
 /* ===================== UTIL (JWT auth — matches manage_menu.js pattern) ===================== */
 function getAuthToken() {
@@ -428,15 +449,18 @@ function handleFilter() {
 /* ===================== FETCH DATA ===================== */
 async function loadRawMaterials() {
    try {
-       const json = await fetchJSON('../../backend/admin/manageInventory/get_materials.php');
+       const json = await fetchJSON('../../backend/admin/manageInventory/get_materials.php?page=' + adminMatPage);
        if (json.status !== 'success') throw new Error(json.message);
 
        allRawMaterials = json.data;
-       const stats = json.stats;
+       const stats = json.stats || {};
+       renderAdminMatPager(json.pagination ? json.pagination.total : (json.data || []).length);
 
-       document.getElementById('totalItems').textContent = stats.total;
-       document.getElementById('lowStock').textContent = stats.low;
-       document.getElementById('outStock').textContent = stats.out;
+       // KPI cards live on the dashboard only (REQ-057) — the IDs may not exist on this page.
+       const setIf = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+       setIf('totalItems', stats.total ?? 0);
+       setIf('lowStock', stats.low ?? 0);
+       setIf('outStock', stats.out ?? 0);
        // "Damage" was replaced by "Expired" (#24). Derive the count locally so
        // it always matches the badge semantics shown in the table.
        const expiredEl = document.getElementById('expiredStock');

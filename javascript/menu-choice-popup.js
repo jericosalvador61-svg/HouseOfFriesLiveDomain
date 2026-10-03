@@ -61,6 +61,8 @@
             '.hof-choice-popup-opt{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;border:1px solid #e5e5e5;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:background .15s ease,border-color .15s ease;}',
             '.hof-choice-popup-opt input{margin:3px 0 0;}',
             '.hof-choice-popup-opt span{font-size:14px;}',
+            '.hof-choice-popup-opt-img{width:34px;height:34px;object-fit:cover;border-radius:8px;flex-shrink:0;cursor:pointer;}',
+            '.hof-choice-popup-addon-img{width:34px;height:34px;object-fit:cover;border-radius:8px;flex-shrink:0;cursor:pointer;}',
             '.hof-choice-popup-opt.selected{border-color:#28a745;background:rgba(40,167,69,0.06);}',
             '.hof-choice-popup-addon{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid #e5e5e5;border-radius:10px;margin-bottom:8px;}',
             '.hof-choice-popup-addon-info{display:flex;align-items:center;gap:8px;font-size:14px;}',
@@ -113,6 +115,14 @@
         return '/' + url;
     }
 
+    // REQ-057: prefer a base64 BLOB (data URI) over the legacy URL column.
+    function resolveItemImage(url, blob) {
+        if (blob && typeof blob === 'string' && blob.length > 0) {
+            return /^data:image\//i.test(blob) ? blob : 'data:image/jpeg;base64,' + blob;
+        }
+        return resolveImageUrl(url);
+    }
+
     // ---- State of the currently open popup ----
     var state = null;
     var root = null;
@@ -121,7 +131,7 @@
         var item = cfg.item || {};
         var itemName = cfg.title || item.item_name || 'Menu Item';
         var basePrice = toNumber(item.price, 0);
-        var imageUrl = resolveImageUrl(item.image_url);
+        var imageUrl = resolveItemImage(item.image_url, item.image_blob);
 
         var html = '';
         html += '<div class="hof-choice-popup-overlay">';
@@ -140,27 +150,40 @@
         html += '</div>';
 
         // 2. Choice groups (exactly one radio per group, unique radio names).
+        //    REQ-057: each option shows a small clickable thumbnail when it has an image.
         (item.choices || []).forEach(function (group, groupIndex) {
             html += '<div class="hof-choice-popup-section" data-choice-group="' + escapeHtml(group.group_name) + '">';
             html += '<h3 class="hof-choice-popup-section-label">' + escapeHtml(group.group_name) + '</h3>';
             (group.options || []).forEach(function (opt) {
+                var optImg = resolveItemImage(opt.image_url, opt.image_blob);
+                var hasImg = opt.image_blob || opt.image_url;
                 html += '<label class="hof-choice-popup-opt">';
                 html += '<span class="hof-choice-popup-check" aria-hidden="true"></span>';
                 html += '<input type="radio" name="hof-choice-group-' + groupIndex + '" value="' + escapeHtml(opt.menu_choice_id) + '">';
+                if (hasImg) {
+                    html += '<img src="' + escapeHtml(optImg) + '" alt="' + escapeHtml(opt.choice_name) + '" class="hof-choice-popup-opt-img" onerror="this.style.display=\'none\';">';
+                }
                 html += '<span>' + escapeHtml(opt.choice_name) + '</span>';
                 html += '</label>';
             });
             html += '</div>';
         });
 
-        // 3. Add-ons with quantity steppers.
+        // 3. Add-ons with quantity steppers. REQ-057: clickable thumbnail too.
         var addons = item.addons || [];
         if (addons.length) {
             html += '<div class="hof-choice-popup-section">';
             html += '<h3 class="hof-choice-popup-section-label">Add-ons</h3>';
             addons.forEach(function (addon) {
+                var addonImg = resolveItemImage(addon.image_url, addon.image_blob);
+                var hasImg = addon.image_blob || addon.image_url;
                 html += '<div class="hof-choice-popup-addon" data-addon-id="' + escapeHtml(addon.menu_addon_id) + '">';
-                html += '<div class="hof-choice-popup-addon-info"><span class="hof-choice-popup-check" aria-hidden="true"></span>' + escapeHtml(addon.addon_name);
+                html += '<div class="hof-choice-popup-addon-info">';
+                html += '<span class="hof-choice-popup-check" aria-hidden="true"></span>';
+                if (hasImg) {
+                    html += '<img src="' + escapeHtml(addonImg) + '" alt="' + escapeHtml(addon.addon_name) + '" class="hof-choice-popup-addon-img" onerror="this.style.display=\'none\';">';
+                }
+                html += escapeHtml(addon.addon_name);
                 html += '<span class="hof-choice-popup-addon-price">' + formatPeso(toNumber(addon.price, 0)) + ' each</span>';
                 html += '</div>';
                 html += '<span class="hof-choice-popup-stepper">';

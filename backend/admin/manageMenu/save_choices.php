@@ -12,6 +12,19 @@ if (!is_array($data)) {
     exit;
 }
 
+// REQ-057: decode a base64 data-URI (strip scheme) into raw BLOB bytes.
+function hof_decode_blob_upload(?string $b64): ?string
+{
+    if ($b64 === null || trim($b64) === '') {
+        return null;
+    }
+    if (strpos($b64, 'base64,') !== false) {
+        $b64 = substr($b64, strpos($b64, 'base64,') + 7);
+    }
+    $decoded = base64_decode($b64, true);
+    return ($decoded !== false && $decoded !== '') ? $decoded : null;
+}
+
 try {
     $pdo->beginTransaction();
 
@@ -61,18 +74,23 @@ try {
 
                 $choiceId = isset($option['menu_choice_id']) ? (int)$option['menu_choice_id'] : 0;
 
+                // REQ-057: optional per-choice BLOB image (base64 data URI).
+                $choiceBlob = hof_decode_blob_upload($option['image_blob'] ?? null);
+
                 if ($choiceId > 0) {
                     // Update name + group (in case admin moved it) and preserve sort_order
                     $upd = $pdo->prepare("
                         UPDATE menu_item_choices
                         SET group_name = :group_name, choice_name = :choice_name,
-                            sort_order = :sort_order, status = 'Active'
+                            sort_order = :sort_order, status = 'Active',
+                            image_blob = COALESCE(:image_blob, image_blob)
                         WHERE menu_choice_id = :menu_choice_id AND menu_item_id = :menu_item_id
                     ");
                     $upd->execute([
                         ':group_name'      => $groupName,
                         ':choice_name'     => $choiceName,
                         ':sort_order'      => $sortIndex,
+                        ':image_blob'      => $choiceBlob,
                         ':menu_choice_id'  => $choiceId,
                         ':menu_item_id'    => $menuItemId
                     ]);
@@ -106,26 +124,29 @@ try {
                     if ($existingId) {
                         $upd = $pdo->prepare("
                             UPDATE menu_item_choices
-                            SET status = 'Active', sort_order = :sort_order
+                            SET status = 'Active', sort_order = :sort_order,
+                                image_blob = COALESCE(:image_blob, image_blob)
                             WHERE menu_choice_id = :menu_choice_id
                         ");
                         $upd->execute([
                             ':sort_order'      => $sortIndex,
+                            ':image_blob'      => $choiceBlob,
                             ':menu_choice_id'  => (int)$existingId
                         ]);
                         $curGroups[(int)$existingId] = $resolvedGroup;
                     } else {
                         $ins = $pdo->prepare("
                             INSERT INTO menu_item_choices
-                                (menu_item_id, group_name, choice_name, sort_order, status)
+                                (menu_item_id, group_name, choice_name, sort_order, status, image_blob)
                             VALUES
-                                (:menu_item_id, :group_name, :choice_name, :sort_order, 'Active')
+                                (:menu_item_id, :group_name, :choice_name, :sort_order, 'Active', :image_blob)
                         ");
                         $ins->execute([
                             ':menu_item_id' => $menuItemId,
                             ':group_name'   => $resolvedGroup,
                             ':choice_name'  => $choiceName,
-                            ':sort_order'   => $sortIndex
+                            ':sort_order'   => $sortIndex,
+                            ':image_blob'   => $choiceBlob
                         ]);
 
                         $newId = (int)$pdo->lastInsertId();
@@ -174,17 +195,22 @@ try {
 
             $addonId = isset($addon['menu_addon_id']) ? (int)$addon['menu_addon_id'] : 0;
 
+            // REQ-057: optional per-addon BLOB image (base64 data URI).
+            $addonBlob = hof_decode_blob_upload($addon['image_blob'] ?? null);
+
             if ($addonId > 0) {
                 $upd = $pdo->prepare("
                     UPDATE menu_item_addons
                     SET addon_name = :addon_name, price = :price,
-                        sort_order = :sort_order, status = 'Active'
+                        sort_order = :sort_order, status = 'Active',
+                        image_blob = COALESCE(:image_blob, image_blob)
                     WHERE menu_addon_id = :menu_addon_id
                 ");
                 $upd->execute([
                     ':addon_name'    => $addonName,
                     ':price'         => $price,
                     ':sort_order'    => $sortIndex,
+                    ':image_blob'    => $addonBlob,
                     ':menu_addon_id' => $addonId
                 ]);
             } else {
@@ -201,23 +227,26 @@ try {
                 if ($existingId) {
                     $upd = $pdo->prepare("
                         UPDATE menu_item_addons
-                        SET price = :price, sort_order = :sort_order, status = 'Active'
+                        SET price = :price, sort_order = :sort_order, status = 'Active',
+                            image_blob = COALESCE(:image_blob, image_blob)
                         WHERE menu_addon_id = :menu_addon_id
                     ");
                     $upd->execute([
                         ':price'         => $price,
                         ':sort_order'    => $sortIndex,
+                        ':image_blob'    => $addonBlob,
                         ':menu_addon_id' => (int)$existingId
                     ]);
                 } else {
                     $ins = $pdo->prepare("
-                        INSERT INTO menu_item_addons (addon_name, price, sort_order, status)
-                        VALUES (:addon_name, :price, :sort_order, 'Active')
+                        INSERT INTO menu_item_addons (addon_name, price, sort_order, status, image_blob)
+                        VALUES (:addon_name, :price, :sort_order, 'Active', :image_blob)
                     ");
                     $ins->execute([
                         ':addon_name' => $addonName,
                         ':price'      => $price,
-                        ':sort_order' => $sortIndex
+                        ':sort_order' => $sortIndex,
+                        ':image_blob' => $addonBlob
                     ]);
                 }
             }

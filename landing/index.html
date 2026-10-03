@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/menu-modal.css">
 <style>
 :root{
   --bg:#140c08; --bg2:#1d110b; --panel:rgba(29,17,11,.72);
@@ -201,9 +202,9 @@ footer ul a:hover{color:var(--gold)}
     <span><b>House of Fries</b><small>Tagoloan · Since 1983</small></span>
   </a>
   <nav class="top">
-    <a href="#signature">Specialties</a><a href="#menu">Menu</a><a href="#about">Our Story</a><a href="#find">Find Us</a>
+    <a href="#signature">Specialties</a><a href="#" data-open-menu>Menu</a><a href="#about">Our Story</a><a href="#find">Find Us</a>
   </nav>
-  <a class="btn gold" style="padding:12px 22px;min-height:44px" href="#menu">Order·QR</a>
+  <a class="btn gold" style="padding:12px 22px;min-height:44px" href="#" data-open-menu>View Menu Items</a>
 </header>
 
 <div id="audioDock" role="button" aria-label="Toggle background music" tabindex="0">
@@ -223,7 +224,7 @@ footer ul a:hover{color:var(--gold)}
         stacking burgers and pouring ice-cold smoothies for over four decades.
         Scan your table's QR code, order in seconds — we handle the rest.</p>
       <div class="hero-cta">
-        <a class="btn solid reveal" href="#menu">Explore the menu</a>
+        <a class="btn solid reveal" href="#" data-open-menu>Explore the menu</a>
         <a class="btn reveal" href="https://www.facebook.com/Houseoffries1988" target="_blank" rel="noopener">Facebook ↗</a>
       </div>
       <div class="scroll-cue"><span>Scroll</span><div class="stem"></div></div>
@@ -243,18 +244,6 @@ footer ul a:hover{color:var(--gold)}
         <p class="reveal" style="max-width:34ch;color:var(--muted);font-size:14px">Picked straight from our live menu — when admin adds a specialty, it lands here first.</p>
       </div>
       <div class="sig-grid" id="sigGrid"></div>
-    </div>
-  </section>
-
-  <!-- MENU -->
-  <section id="menu">
-    <div class="panel wrap">
-      <div class="kicker reveal">The Full Menu</div>
-      <h2 class="reveal" style="font-size:clamp(34px,4.8vw,68px);margin-top:20px">Pick your <em class="red-i">craving.</em></h2>
-      <div class="cats reveal" id="catBar"></div>
-      <div class="menu-grid" id="menuGrid"></div>
-      <p class="menu-note reveal">✨ Live from our system — prices &amp; availability update automatically.<br>
-        Dine-in guests: scan the <b>QR code on your table</b> to order these directly, pay via <b>GCash</b>.</p>
     </div>
   </section>
 
@@ -313,7 +302,7 @@ footer ul a:hover{color:var(--gold)}
       </div>
       <div>
         <h4>Explore</h4>
-        <ul><li><a href="#signature">Specialties</a></li><li><a href="#menu">Full menu</a></li><li><a href="#about">Our story</a></li><li><a href="#find">Find us</a></li><li><a href="https://www.facebook.com/Houseoffries1988" target="_blank" rel="noopener">Facebook page ↗</a></li></ul>
+        <ul><li><a href="#signature">Specialties</a></li><li><a href="#" data-open-menu>Full menu</a></li><li><a href="#about">Our story</a></li><li><a href="#find">Find us</a></li><li><a href="https://www.facebook.com/Houseoffries1988" target="_blank" rel="noopener">Facebook page ↗</a></li></ul>
       </div>
       <div>
         <h4>Visit</h4>
@@ -326,6 +315,22 @@ footer ul a:hover{color:var(--gold)}
     </div>
   </footer>
 </main>
+
+<!-- MENU MODAL (REQ-059) -->
+<div id="menuModal" class="mm-overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="mmTitle">
+  <div class="mm-backdrop" data-mm-close></div>
+  <div class="mm-dialog" role="document">
+    <div class="mm-head">
+      <h2 id="mmTitle">The Full Menu</h2>
+      <button type="button" class="mm-close" data-mm-close aria-label="Close menu">&times;</button>
+    </div>
+    <div class="cats mm-cats" id="mmCatBar"></div>
+    <div class="mm-scroll">
+      <div class="menu-grid" id="mmGrid"></div>
+    </div>
+    <p class="menu-note mm-note">Live from our system — prices &amp; availability update automatically.<br>Dine-in guests: scan the <b>QR code on your table</b> to order, pay via <b>GCash</b>.</p>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -538,43 +543,12 @@ function imgUrl(u){
   if (!u) return null;
   return u; // live API returns root-absolute (/landing/images/m/…), fallback JSON is landing-relative (images/m/…) — both usable as-is
 }
+function sigImgSrc(it){
+  if (it.image_blob) return it.image_blob; // REQ-059: prefer data-URI blob from the API
+  return imgUrl(it.image_url);
+}
 function priceFmt(p){ return '\u20B1' + Number(p).toFixed(0); }
 
-function renderCats(){
-  var bar = document.getElementById('catBar');
-  bar.innerHTML = '';
-  var all = document.createElement('button');
-  all.className='cat-btn active'; all.textContent='All';
-  all.addEventListener('click', function(){ setCat(null); });
-  bar.appendChild(all);
-  MENU.cats.forEach(function(c){
-    var b=document.createElement('button');
-    b.className='cat-btn'; b.textContent=c.category_name;
-    b.addEventListener('click', function(){ setCat(c.category_id); });
-    bar.appendChild(b);
-  });
-}
-var activeCat = null;
-function setCat(cid){
-  activeCat = cid;
-  document.querySelectorAll('.cat-btn').forEach(function(b,i){
-    b.classList.toggle('active', i===0 ? cid===null : MENU.cats[i-1].category_id===cid);
-  });
-  renderMenu();
-}
-function cardHTML(it, idx){
-  var u = imgUrl(it.image_url);
-  return '<article class="m-card" style="animation-delay:'+Math.min(idx*45,500)+'ms">'
-    + '<div class="ph">'
-    + (u ? '<img loading="lazy" src="'+u+'" alt="'+it.item_name.replace(/"/g,'&quot;')+'" onerror="this.outerHTML=\'<span class=\\\'fallback\\\'>Hof</span>\'">' : '<span class="fallback">Hof</span>')
-    + '</div><div class="info"><h3>'+it.item_name+'</h3>'
-    + '<div class="row"><span class="p">'+priceFmt(it.price)+'</span><span class="cat">'+(CAT_NAMES[it.category_id]||'')+'</span></div></div></article>';
-}
-function renderMenu(){
-  var grid = document.getElementById('menuGrid');
-  var list = activeCat ? MENU.items.filter(function(i){return i.category_id===activeCat;}) : MENU.items;
-  grid.innerHTML = list.map(cardHTML).join('');
-}
 function loadMenu(){
   return fetch('../backend/get_menu_for_landing.php', {cache:'no-store'})
     .then(function(r){ if(!r.ok) throw 0; return r.json(); })
@@ -590,7 +564,8 @@ function loadMenu(){
     })
     .then(function(){
       MENU.cats.forEach(function(c){ CAT_NAMES[c.category_id]=c.category_name; });
-      renderCats(); renderMenu();
+      window.__hofMenu = { cats: MENU.cats, items: MENU.items };
+      window.dispatchEvent(new CustomEvent('hof:menu-ready'));
       var nEl = document.querySelector('[data-count-items]');
       if (nEl) nEl.textContent = MENU.items.length + '+';
     });
@@ -611,7 +586,7 @@ function renderSignature(){
   picked = picked.slice(0,5);
   var labels = ['House Favorite','Fan Pick','For the Barkada','The Feast','Grilled & Gold'];
   grid.innerHTML = picked.map(function(it,i){
-    var u = imgUrl(it.image_url);
+    var u = sigImgSrc(it);
     var tall = i===3 ? ' tall' : '';
     return '<article class="sig-card'+tall+' reveal'+(i>0?'':' in')+'">'
       + '<span class="lab">'+labels[i]+'</span>'
@@ -759,5 +734,6 @@ Promise.race([menuReady, new Promise(function(r){setTimeout(r,4500);})]).then(fu
 counters();
 })();
 </script>
+<script src="js/menu-modal.js"></script>
 </body>
 </html>

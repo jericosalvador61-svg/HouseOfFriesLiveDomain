@@ -5,7 +5,15 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../db.php';
 
 try {
-    $stmt = $pdo->query("
+    // REQ-057 pagination: 10 returns/page, server-side LIMIT/OFFSET.
+    // Paginate by DISTINCT return rows (each return may have multiple items).
+    $page = max(1, (int)($_GET['page'] ?? 1));
+    $limit = 10;
+    $offset = ($page - 1) * $limit;
+
+    $total = (int)$pdo->query("SELECT COUNT(*) FROM returns r")->fetchColumn();
+
+    $stmt = $pdo->prepare("
         SELECT 
             r.return_id,
             r.reference_number,
@@ -26,7 +34,11 @@ try {
         LEFT JOIN return_items ri ON r.return_id = ri.return_id AND ri.is_deleted = 0
         LEFT JOIN raw_materials rm ON ri.raw_material_id = rm.raw_material_id
         ORDER BY r.created_at DESC
+        LIMIT :limit OFFSET :offset
     ");
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Group items by return_id
@@ -58,7 +70,16 @@ try {
         }
     }
 
-    echo json_encode(['success' => true, 'data' => array_values($returns)]);
+    echo json_encode([
+        'success' => true,
+        'data' => array_values($returns),
+        'pagination' => [
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $limit,
+            'total_pages' => (int)ceil($total / $limit)
+        ]
+    ]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
