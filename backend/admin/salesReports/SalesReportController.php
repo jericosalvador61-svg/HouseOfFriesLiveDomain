@@ -45,14 +45,21 @@ class SalesReportController {
     public function getChartData() {
         list($start, $end) = $this->getDateRange();
         $groupBy = $_GET['group_by'] ?? 'day';
+        $metric = $_GET['metric'] ?? 'revenue';
         $menuItemId = isset($_GET['menu_item_id']) ? (int)$_GET['menu_item_id'] : null;
 
         if ($menuItemId) {
-            $data = $this->model->getChartDataByMenuItem($start, $end, $menuItemId, $groupBy);
+            $data = $this->model->getChartDataByMenuItem($start, $end, $menuItemId, $groupBy, $metric);
         } else {
-            $data = $this->model->getChartData($start, $end, $groupBy);
+            $data = $this->model->getChartData($start, $end, $groupBy, $metric);
         }
 
+        $this->respond(['status' => 'success', 'data' => $data]);
+    }
+
+    public function getReport() {
+        list($start, $end) = $this->getDateRange();
+        $data = $this->model->getReportByDay($start, $end);
         $this->respond(['status' => 'success', 'data' => $data]);
     }
 

@@ -26,7 +26,7 @@ function fetchAdminDashboardData() {
                 animateCurrencyDisplay('todayRevenueDisplay', result.sales_stats.today_revenue);
                 updateAdminStat('activeOrdersDisplay', result.sales_stats.active_orders);
                 updateAdminStat('customersTodayDisplay', result.sales_stats.customers_today);
-                animateCurrencyDisplay('avgOrderValueDisplay', result.sales_stats.avg_order_value);
+                animateCurrencyDisplay('grossProfitDisplay', result.sales_stats.gross_profit);
 
                 // 2. RUN NOTIFICATION DROPDOWN SYSTEM
                 checkStockAlerts(result.data);

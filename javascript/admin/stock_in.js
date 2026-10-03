@@ -525,13 +525,59 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (!confirmAction.isConfirmed) return;
 
+                // REQ-056: BEFORE approving, ALWAYS let the approver update the
+                // unit cost of the pending materials (persisted as the new
+                // raw_materials.cost_per_unit used for future cost).
+                let costUpdates = {};
+                try {
+                    const pendingRows = allStockInRecords.filter(r => selectedIds.includes(String(r.stock_in_id)));
+                    // Unique raw materials among the selected pending rows
+                    const seen = {};
+                    const rows = [];
+                    pendingRows.forEach(r => {
+                        const mid = r.raw_material_id;
+                        if (!seen[mid]) { seen[mid] = true; rows.push(r); }
+                    });
+                    if (rows.length > 0) {
+                        const costResult = await Swal.fire({
+                            title: 'Unit Cost changed? If yes, edit + save new cost_per_unit',
+                            html: rows.map(r => `
+                                <div class="d-flex align-items-center justify-content-between mb-2 text-start" style="font-size:.9rem;">
+                                    <span class="me-2">${escapeHtml(r.raw_material_name)}</span>
+                                    <input type="number" class="form-control form-control-sm" style="max-width:150px;" step="0.01" min="0"
+                                           id="cost_${r.raw_material_id}" value="${Number(r.current_cost || 0).toFixed(2)}">
+                                </div>`).join(''),
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonColor: '#198754',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: 'Approve',
+                            focusConfirm: false,
+                            preConfirm: () => {
+                                rows.forEach(r => {
+                                    const input = document.getElementById('cost_' + r.raw_material_id);
+                                    const newVal = parseFloat(input ? input.value : NaN);
+                                    const oldVal = parseFloat(r.current_cost || 0);
+                                    if (!isNaN(newVal) && Math.abs(newVal - oldVal) > 0.001) {
+                                        costUpdates[r.raw_material_id] = newVal;
+                                    }
+                                });
+                            }
+                        });
+                        if (!costResult.isConfirmed) return;
+                    }
+                } catch (e) {
+                    // If the cost prompt fails for any reason, proceed with approval only.
+                    costUpdates = {};
+                }
+
                 LoadingManager.show(approveBtn, { text: 'Approving...' });
 
                 try {
                     const res = await fetch("/backend/admin/manageInventory/batch_approve_stock_in.php", {
                         method: "POST",
                         headers: getHeaders("application/json"),
-                        body: JSON.stringify({ stock_in_ids: selectedIds })
+                        body: JSON.stringify({ stock_in_ids: selectedIds, cost_updates: costUpdates })
                     });
                     const data = await res.json();
 

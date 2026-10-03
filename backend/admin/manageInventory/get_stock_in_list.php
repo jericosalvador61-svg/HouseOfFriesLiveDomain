@@ -29,7 +29,8 @@ try {
             sii.quantity, 
             sii.unit_cost, 
             sii.subtotal,
-            sii.expiration_date
+            sii.expiration_date,
+            rm.cost_per_unit AS current_cost
         FROM stock_in si
         JOIN stock_in_items sii ON si.stock_in_id = sii.stock_in_id
         JOIN raw_materials rm ON sii.raw_material_id = rm.raw_material_id

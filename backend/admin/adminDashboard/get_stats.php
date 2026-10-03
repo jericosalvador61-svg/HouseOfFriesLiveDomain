@@ -74,6 +74,29 @@ try {
     ");
     $avgOrderValue = (float)($stmtAvgOrder->fetchColumn() ?: 0.00);
 
+    // E. Gross Profit TODAY = today's revenue − today's COGS.
+    // Schema-agnostic: COALESCE(soi.unit_cost, rm.cost_per_unit) IF
+    // stock_out_items.unit_cost exists (REQ-057), else rm.cost_per_unit.
+    $costExpr = "rm.cost_per_unit";
+    $stmtColCheck = $pdo->prepare("
+        SELECT COUNT(*) FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'stock_out_items' AND column_name = 'unit_cost'
+    ");
+    $stmtColCheck->execute();
+    if ((int)$stmtColCheck->fetchColumn() > 0) {
+        $costExpr = "COALESCE(soi.unit_cost, rm.cost_per_unit)";
+    }
+    $stmtTodayCogs = $pdo->query("
+        SELECT SUM(soi.quantity * $costExpr)
+        FROM stock_out so
+        JOIN stock_out_items soi ON so.stock_out_id = soi.stock_out_id
+        JOIN raw_materials rm ON soi.raw_material_id = rm.raw_material_id
+        WHERE so.status = 'APPROVED'
+          AND DATE(so.stock_out_date) = CURDATE()
+    ");
+    $todayCogs = (float)($stmtTodayCogs->fetchColumn() ?: 0.00);
+    $todayGrossProfit = $todayRevenue - $todayCogs;
+
 
     // 3. RECENT SPOILAGE FEED
     $stmtRecentSpoilage = $pdo->query("
@@ -221,7 +244,8 @@ try {
             'today_revenue' => $todayRevenue,
             'active_orders' => $activeOrdersCount,
             'customers_today' => $customersTodayCount,
-            'avg_order_value' => $avgOrderValue
+            'avg_order_value' => $avgOrderValue,
+            'gross_profit' => $todayGrossProfit
         ],
         'weekly_sales' => $chartDataFormatted,
         'recent_orders' => $recentOrders,
