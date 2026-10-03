@@ -564,6 +564,10 @@
                 const avatarEl = document.querySelector('.user-avatar');
                 if (nameEl) nameEl.textContent = `${data.first_name} ${data.last_name}`;
                 if (roleEl) roleEl.textContent = data.role;
+                // REQ-057: raw materials are READ-ONLY for Inventory Staff — hide manage controls.
+                if (String(data.role).toLowerCase() === 'inventory staff') {
+                    document.querySelectorAll('.js-material-edit-btn, .js-material-delete-btn, #inventoryActionBtn, .js-raw-add-btn').forEach(el => { if (el) el.classList.add('d-none'); });
+                }
                 // REQ-052 B2-2: sidebar avatar shows the user's initial
                 if (avatarEl) avatarEl.textContent = (data.first_name || 'U')[0].toUpperCase();
                 

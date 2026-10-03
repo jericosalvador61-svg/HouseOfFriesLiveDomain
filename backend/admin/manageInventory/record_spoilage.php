@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$auth = authenticate(['Admin']);
+$auth = authenticate(['Admin', 'Supervisor']);
 
 $spoilage_date = $_POST['spoilage_date'] ?? date('Y-m-d');
 $general_remarks = $_POST['remarks'] ?? '';
@@ -20,7 +20,12 @@ $ref_number = 'REF-' . strtoupper(uniqid());
 // REQ-057: required proof photo (SPOILAGE/WASTE/DAMAGE) stored as BLOB.
 // Client sends a compressed JPEG data-URI (no scheme prefix) via FormData.
 $photo_raw = '';
-if (!empty($_POST['photo']) && is_string($_POST['photo'])) {
+if (empty($_POST['photo']) || !is_string($_POST['photo']) || trim($_POST['photo']) === '') {
+    http_response_code(422);
+    echo json_encode(['status' => 'error', 'message' => 'A proof photo is required for SPOILAGE / WASTE / DAMAGE submissions.']);
+    exit;
+}
+if (is_string($_POST['photo'])) {
     $photo = $_POST['photo'];
     if (strpos($photo, 'base64,') !== false) {
         $photo = substr($photo, strpos($photo, 'base64,') + 7);

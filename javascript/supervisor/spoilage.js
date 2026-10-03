@@ -293,14 +293,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!result.isConfirmed) return;
 
                 const submitBtn = spoilageForm.querySelector('button[type="submit"]');
-                LoadingManager.show(submitBtn || spoilageForm, { text: 'Recording...' });
 
                 const photoInput = document.getElementById('spoilagePhoto');
                 if (!photoInput || !photoInput.files || photoInput.files.length === 0) {
-                    LoadingManager.hide(submitBtn || spoilageForm);
                     Swal.fire('Photo Required', 'Attach a proof photo for SPOILAGE / WASTE / DAMAGE before confirming.', 'warning');
                     return;
                 }
+                LoadingManager.show(submitBtn || spoilageForm, { text: 'Recording...' });
                 const photoReader = new FileReader();
                 photoReader.onload = (ev) => {
                     const img = new Image();

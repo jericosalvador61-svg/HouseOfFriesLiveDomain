@@ -81,10 +81,10 @@ function renderTable(data) {
                 <button class="btn btn-sm btn-light border bg-white" onclick="viewMaterialBatches(${mat.raw_material_id}, '${mat.raw_material_name.replace(/'/g, "\\'")}')" title="View Stock Batches">
                     <i class="bi bi-eye text-primary"></i>
                 </button>
-                <button class="btn btn-sm btn-light border bg-white" onclick="openEditModal(${mat.raw_material_id})">
+                <button class="btn btn-sm btn-light border bg-white d-none js-material-edit-btn" onclick="openEditModal(${mat.raw_material_id})">
                     <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-light border text-danger bg-white" onclick="deleteMaterial(${mat.raw_material_id}, '${mat.raw_material_name.replace(/'/g, "\\'")}')">
+                <button class="btn btn-sm btn-light border text-danger bg-white d-none js-material-delete-btn" onclick="deleteMaterial(${mat.raw_material_id}, '${mat.raw_material_name.replace(/'/g, "\\'")}')">
                     <i class="bi bi-trash"></i>
                 </button>
             </td>

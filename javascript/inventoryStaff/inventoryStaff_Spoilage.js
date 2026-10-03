@@ -274,13 +274,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!result.isConfirmed) return;
 
                 const submitBtn = spoilageForm.querySelector('button[type="submit"]');
-                LoadingManager.show(submitBtn || spoilageForm, { text: 'Recording...' });
 
                 const photoInput = document.getElementById('spoilagePhoto');
                 if (!photoInput || !photoInput.files || photoInput.files.length === 0) {
                     Swal.fire({ icon: 'warning', title: 'Photo Required', text: 'Attach a proof photo for SPOILAGE / WASTE / DAMAGE before confirming.', confirmButtonColor: '#FFB800' });
                     return;
                 }
+                LoadingManager.show(submitBtn || spoilageForm, { text: 'Recording...' });
                 const payload = {
                     spoilage_date: date,
                     remarks: remarks,

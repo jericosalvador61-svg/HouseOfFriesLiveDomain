@@ -340,9 +340,10 @@ function addOptionRow(container, option) {
     // REQ-057: optional per-choice image upload (base64 data URI via HOFImage).
     optionDiv.innerHTML = `
         <input type="hidden" class="option-id-input" value="${option && option.menu_choice_id ? option.menu_choice_id : ''}">
-        <input type="hidden" class="option-img-blob-input" value="">
+        <input type="hidden" class="option-img-blob-input" value="${option && option.image_blob ? option.image_blob : ''}">
         <input type="text" class="form-control form-control-sm option-name-input" placeholder="Option name (e.g. Iced Tea)" value="${escapeHtml(option ? option.choice_name : '')}">
         <input type="file" class="form-control form-control-sm option-img-file" accept="image/*" style="max-width: 200px;">
+        ${option && option.image_blob ? `<img src="${option.image_blob}" class="option-img-thumb rounded border" width="34" height="34" style="object-fit:cover;" alt="choice img">` : ''}
         ${option && option.status === 'Inactive' ? '<span class="badge bg-secondary">Inactive</span>' : ''}
         <button type="button" class="btn btn-sm btn-outline-danger remove-option-btn"><i class="bi bi-x-lg"></i></button>
     `;
@@ -488,13 +489,14 @@ function addAddonRowElement(addon) {
     // REQ-057: optional per-addon image upload (base64 data URI via HOFImage).
     row.innerHTML = `
         <input type="hidden" class="addon-id-input" value="${addon && addon.menu_addon_id ? addon.menu_addon_id : ''}">
-        <input type="hidden" class="addon-img-blob-input" value="">
+        <input type="hidden" class="addon-img-blob-input" value="${addon && addon.image_blob ? addon.image_blob : ''}">
         <input type="text" class="form-control form-control-sm addon-name-input" placeholder="Add-on name (e.g. Gravy)" value="${escapeHtml(addon ? addon.addon_name : '')}">
         <div class="input-group input-group-sm" style="max-width: 130px;">
             <span class="input-group-text">₱</span>
             <input type="number" step="0.01" min="0" class="form-control addon-price-input" placeholder="0.00" value="${addon ? parseFloat(addon.price).toFixed(2) : ''}">
         </div>
         <input type="file" class="form-control form-control-sm addon-img-file" accept="image/*" style="max-width: 190px;">
+        ${addon && addon.image_blob ? `<img src="${addon.image_blob}" class="addon-img-thumb rounded border" width="34" height="34" style="object-fit:cover;" alt="addon img">` : ''}
         ${addon && addon.status === 'Inactive' ? '<span class="badge bg-secondary">Inactive</span>' : ''}
         <button type="button" class="btn btn-sm btn-outline-danger remove-addon-btn"><i class="bi bi-x-lg"></i></button>
     `;

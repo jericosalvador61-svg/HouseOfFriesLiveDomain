@@ -27,7 +27,10 @@ try {
     // REQ-057: required proof photo (SPOILAGE/WASTE/DAMAGE) stored as BLOB.
     // Client sends a compressed JPEG data-URI (no scheme prefix) via JSON.
     $photo_raw = '';
-    if (!empty($data['photo']) && is_string($data['photo'])) {
+    if (empty($data['photo']) || !is_string($data['photo']) || trim($data['photo']) === '') {
+        throw new Exception('A proof photo is required for SPOILAGE / WASTE / DAMAGE submissions.');
+    }
+    if (is_string($data['photo'])) {
         $photo = $data['photo'];
         // Strip a possible data-URI scheme; keep only the base64 payload.
         if (strpos($photo, 'base64,') !== false) {
@@ -87,7 +90,7 @@ try {
         ['Supervisor'], '/public/supervisor/supervisor_approvals.html');
 
     // Watch stock levels for items reported lost (pre-approval visibility)
-    hof_check_low_stock($pdo, array_map(function ($i) { return $i['material_id']; }, $data['items']));
+    hof_check_low_stock($pdo, array_map(function ($i) { return $i['raw_material_id'] ?? $i['material_id'] ?? null; }, $data['items']));
 
     echo json_encode([
         'status' => 'success',
