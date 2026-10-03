@@ -697,27 +697,7 @@ function setupCartNavigation() {
                         const selectedPayment = editPaymentInput.value;
                         // REQ-054 B4-B: carry the cart's payment choice to checkout.
                         localStorage.setItem('payment_method', selectedPayment);
-                        if (selectedPayment === 'GCASH') {
-                            try {
-                                const deviceId = (window.HOFDevice ? HOFDevice.id() : '');
-                                const linkResp = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ order_id: editOrderId, ref: editRefNumber, purpose: 'pay', device_id: deviceId })
-                                });
-                                const linkData = await linkResp.json();
-                                if (linkData.success && linkData.signed_url) {
-                                    window.location.href = linkData.signed_url;
-                                } else {
-                                    throw new Error(linkData.message || 'Could not generate payment link');
-                                }
-                            } catch (e) {
-                                alert('Failed to create payment link: ' + e.message);
-                            }
-                        } else {
-                            localStorage.setItem('payment_method', 'CASH');
-                            window.location.href = 'checkout.html';
-                        }
+                        window.location.href = 'checkout.html';
                         return;
                     }
                     localStorage.removeItem('editOrderId');
@@ -876,18 +856,7 @@ function setupCartNavigation() {
                         try {
                           const rebuiltTotal = await rebuildCartFromOrder(result.order_id);
                           Swal.fire({ icon: 'info', title: 'Continuing Order', text: result.message, confirmButtonColor: '#FFB800' });
-                          const devIdDup = (window.HOFDevice ? HOFDevice.id() : '');
-                          const linkRespDup = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ order_id: result.order_id, ref: result.reference_number, purpose: 'pay', device_id: devIdDup })
-                          });
-                          const linkDataDup = await linkRespDup.json();
-                          if (linkDataDup.success && linkDataDup.signed_url) {
-                              window.location.href = linkDataDup.signed_url;
-                          } else {
-                              throw new Error(linkDataDup.message || 'Could not generate payment link');
-                          }
+                          window.location.href = 'checkout.html';
                         } catch (e) {
                           alert('Failed to load order items: ' + e.message);
                           placeOrderBtn.innerText = "Proceed to Payment";
@@ -909,24 +878,7 @@ function setupCartNavigation() {
                                 created_at: new Date().toISOString()
                             });
                         }
-                        try {
-                            const devIdNew = (window.HOFDevice ? HOFDevice.id() : '');
-                            const linkRespNew = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ order_id: result.order_id, ref: result.reference_number, purpose: 'pay', device_id: devIdNew })
-                            });
-                            const linkDataNew = await linkRespNew.json();
-                            if (linkDataNew.success && linkDataNew.signed_url) {
-                                window.location.href = linkDataNew.signed_url;
-                            } else {
-                                throw new Error(linkDataNew.message || 'Could not generate payment link');
-                            }
-                        } catch (e) {
-                            alert('Failed to create payment link: ' + e.message);
-                            placeOrderBtn.innerText = "Proceed to Payment";
-                            placeOrderBtn.disabled = false;
-                        }
+                        window.location.href = 'checkout.html';
                     } else {
                         throw new Error(result.message || 'Failed to create order');
                     }

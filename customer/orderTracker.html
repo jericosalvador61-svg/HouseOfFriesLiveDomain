@@ -95,8 +95,38 @@
             transition: all 0.4s ease;
         }
         .status-pending { background: rgba(255, 184, 0, 0.15); color: var(--primary-yellow); animation: pulse 2s infinite; }
-        .status-preparing { background: rgba(255, 184, 0, 0.15); color: var(--primary-yellow); }
+        .status-preparing { background: rgba(0, 122, 255, 0.12); color: #007AFF; }
         .status-ready { background: rgba(0, 132, 68, 0.1); color: var(--success-green); }
+        .status-cooking { background: rgba(255, 149, 0, 0.15); color: #FF9500; }
+        .tracker-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-top: 1px solid var(--border-color);
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .tracker-total strong { color: var(--success-green); }
+        .countdown-bar {
+            background: rgba(255, 184, 0, 0.15);
+            border: 1px solid #FFB800;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-weight: 600;
+            margin: 12px 0;
+            color: var(--text-main);
+            text-align: center;
+        }
+        .countdown-warn {
+            background: rgba(255, 59, 48, 0.12);
+            border-color: #FF3B30;
+            color: #FF3B30;
+            animation: pulse 1s infinite;
+        }
+        .card-flash { animation: hofCardFlash .6s ease 3; }
+        @keyframes hofCardFlash { 0%,100% { box-shadow: 0 0 0 0 rgba(255,184,0,0); } 50% { box-shadow: 0 0 0 14px rgba(255,184,0,.35); } }
         h2 { font-size: 24px; font-weight: 700; margin: 10px 0 6px 0; color: var(--text-main); }
         p.desc { color: var(--text-muted); font-size: 13px; line-height: 1.6; margin-bottom: 25px; padding: 0 10px; }
         .steps-wrapper { margin-top: 10px; text-align: left; position: relative; }

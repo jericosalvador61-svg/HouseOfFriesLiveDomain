@@ -142,6 +142,31 @@ if ($preOrderType === 'TAKE_OUT' && $preCustomerName === '') {
     exit;
 }
 
+// REQ-062 #2: if the takeout "name" is actually a phone number (10-13 digits
+// after stripping spaces/dashes), normalize it to 09XXXXXXXXX and validate.
+// Plain names (including ones containing digits like "Juan 2") stay as-is —
+// only the WHOLE trimmed value being digits counts as a phone.
+$nameDigits = preg_replace('/[^0-9]/', '', $preCustomerName);
+if (strlen($nameDigits) >= 10 && strlen($nameDigits) <= 13) {
+    $normPhone = $nameDigits;
+    if (strlen($normPhone) === 12 && substr($normPhone, 0, 2) === '63') {
+        $normPhone = '0' . substr($normPhone, -10);
+    }
+    if (!preg_match('/^09\d{9}$/', $normPhone)) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'blocked' => 'CUSTOMER_NAME',
+            'message' => 'Enter a valid PH phone number (09XXXXXXXXX) or a name.',
+            'field'   => 'customer_name'
+        ]);
+        exit;
+    }
+    $preCustomerName = $normPhone;
+    // Store the normalized value so the order INSERT uses the cleaned phone.
+    $data['customer_name'] = $normPhone;
+}
+
 // ── 3. TABLE VALIDATION (deleted / maintenance / stale QR) ──
 // A QR that points at a soft-deleted table must NEVER create an order,
 // even if the customer's device still holds a stale cached session.

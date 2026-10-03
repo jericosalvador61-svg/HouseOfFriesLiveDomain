@@ -36,6 +36,7 @@
     window.loadHistory = function () {
         if (window.HOFCustomer && window.HOFCustomer.isLoggedIn()) {
             renderFilters();
+            seedDeviceFromServer();
             loadServerOrders();
         } else {
             var orders = window.HOFDevice ? HOFDevice.orders() : [];
@@ -43,6 +44,35 @@
             renderOrders(orders);
         }
     };
+
+    // REQ-062 #14: logged-in customers seed the device registry from server
+    // history (only what's missing — never merge guest orders, never remove).
+    function seedDeviceFromServer() {
+        if (!window.HOFDevice) return;
+        fetch('get_my_orders.php', {
+            headers: { 'Authorization': 'Bearer ' + (window.HOFCustomer.getToken() || '') }
+        })
+            .then(function (r) {
+                if (r.status === 401) return null;
+                return r.json();
+            })
+            .then(function (data) {
+                if (!data || !data.success || !Array.isArray(data.orders)) return;
+                data.orders.forEach(function (o) {
+                    var exists = HOFDevice.orders().some(function (x) { return String(x.order_id) === String(o.order_id); });
+                    if (exists) return;
+                    HOFDevice.addOrder({
+                        order_id: o.order_id,
+                        ref: o.reference_number || o.ref,
+                        status: o.status,
+                        paid: o.payment_status === 'COMPLETED',
+                        table_number: o.table_number || null,
+                        created_at: o.ordered_at || o.created_at
+                    });
+                });
+            })
+            .catch(function () {});
+    }
 
     // REQ-052 B3: logged-in customers fetch their server-side order history
     // (get_my_orders.php — scoped by the validated token only). On failure we
