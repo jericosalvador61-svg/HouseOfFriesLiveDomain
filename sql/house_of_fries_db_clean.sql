@@ -300,6 +300,7 @@ CREATE TABLE `spoilage` (
   `quantity_lost` decimal(10,2) DEFAULT 0.00,
   `source` enum('KITCHEN','RAW') DEFAULT 'RAW',
   `estimated_loss_cost` decimal(12,2) DEFAULT 0.00,
+  `photo` LONGBLOB NULL,
   `status` enum('PENDING','APPROVED','REJECTED') DEFAULT 'PENDING',
   `approved_by` int(11) DEFAULT NULL,
   `approved_at` datetime DEFAULT NULL,
