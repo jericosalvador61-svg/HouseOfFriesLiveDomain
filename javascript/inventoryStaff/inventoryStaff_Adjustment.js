@@ -1,8 +1,28 @@
 let inventoryMaterials = [];
 let allAdjustmentRecords = []; // Global cache placeholder for filtering datasets
+let adjustmentPage = 1;
+let adjustmentTotal = 0;
 
 // Live DOM Filter Elements
 let searchInput, statusFilter, dateFilter, historyBody;
+
+function renderAdjustmentPager() {
+    const pagerEl = document.getElementById("adjustmentPager");
+    if (!pagerEl) return;
+    const pages = Math.max(1, Math.ceil(adjustmentTotal / 10));
+    let html = '';
+    for (let i = 1; i <= pages; i++) {
+        html += `<li class="page-item ${i === adjustmentPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+    }
+    pagerEl.innerHTML = html;
+    pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            adjustmentPage = parseInt(a.dataset.page, 10);
+            loadAdjustmentHistory();
+        });
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     // Set default date to today safely adjusting for local timezone offsets
@@ -116,7 +136,7 @@ async function loadAdjustmentHistory() {
 
     try {
         // 🔑 FIX: Securely pass token context to history query
-        const response = await fetch("/backend/inventoryStaff/adjustment/get_adjustment_history.php", {
+        const response = await fetch("/backend/inventoryStaff/adjustment/get_adjustment_history.php?page=" + adjustmentPage, {
             method: "GET",
             headers: getAuthHeaders(null)
         });
@@ -124,7 +144,9 @@ async function loadAdjustmentHistory() {
 
         if (result.status === 'success' || result.success) {
             allAdjustmentRecords = result.data || [];
+            adjustmentTotal = (result.pagination && result.pagination.total) || allAdjustmentRecords.length;
             renderAdjustmentRowsHTML(allAdjustmentRecords);
+            renderAdjustmentPager();
         }
     } catch (err) {
         console.error("Failed to load history:", err);

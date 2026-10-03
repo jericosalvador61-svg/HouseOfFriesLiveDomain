@@ -18,6 +18,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusFilter = document.getElementById("filterStatus");
     const dateFilter = document.getElementById("filterDate");
     const mainTbody = document.getElementById("stockinTableBody");
+    let stockInPage = 1;
+    let stockInTotal = 0;
+
+    function renderPager(totalRows, perPage, pagerEl) {
+        if (!pagerEl) return;
+        const pages = Math.max(1, Math.ceil(totalRows / perPage));
+        let html = '';
+        for (let i = 1; i <= pages; i++) {
+            html += `<li class="page-item ${i === stockInPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+        }
+        pagerEl.innerHTML = html;
+        pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                stockInPage = parseInt(a.dataset.page, 10);
+                loadStockInHistory();
+            });
+        });
+    }
 
     let items = [];
     let allStockInRecords = []; // Global cache placeholder for filtering datasets
@@ -392,7 +411,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             // 🔑 FIX: Secure token forwarding added
-            const res = await fetch("/backend/inventoryStaff/stockIn/get_stock_in_list.php", {
+            const res = await fetch("/backend/inventoryStaff/stockIn/get_stock_in_list.php?page=" + stockInPage, {
                 method: "GET",
                 headers: getAuthHeaders(null)
             });
@@ -400,7 +419,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (json.success) {
                 allStockInRecords = json.approved || [];
+                stockInTotal = (json.pagination && json.pagination.total) || allStockInRecords.length;
                 renderHistoryTableHTML(allStockInRecords);
+                renderPager(stockInTotal, 10, document.getElementById("stockInPager"));
 
                 if (pendingBadge) pendingBadge.textContent = json.pending ? json.pending.length : 0;
                 if (json.pending && json.pending.length > 0 && pendingTbody) {

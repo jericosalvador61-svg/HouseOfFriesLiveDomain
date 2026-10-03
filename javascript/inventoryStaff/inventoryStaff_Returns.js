@@ -6,6 +6,26 @@
 document.addEventListener('DOMContentLoaded', function () {
     let allReturnsRecords = [];
     let returnsItems = [];
+    let returnsPage = 1;
+    let returnsTotal = 0;
+
+    function renderReturnsPager() {
+        const pagerEl = document.getElementById('returnsPager');
+        if (!pagerEl) return;
+        const pages = Math.max(1, Math.ceil(returnsTotal / 10));
+        let html = '';
+        for (let i = 1; i <= pages; i++) {
+            html += `<li class="page-item ${i === returnsPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+        }
+        pagerEl.innerHTML = html;
+        pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                returnsPage = parseInt(a.dataset.page, 10);
+                fetchReturnsHistory();
+            });
+        });
+    }
 
     // --- 1. INITIAL LOAD ---
     fetchMaterialsAndStats();
@@ -70,14 +90,16 @@ document.addEventListener('DOMContentLoaded', function () {
     function fetchReturnsHistory() {
         const tableBody = document.getElementById('returnsTableBody');
         if (!tableBody) return;
-        fetch("/backend/inventoryStaff/InventoryStaffDashboard/get_returns.php", {
+        fetch("/backend/inventoryStaff/InventoryStaffDashboard/get_returns.php?page=" + returnsPage, {
             method: "GET", headers: getAuthHeaders(null)
         })
             .then(r => r.json())
             .then(result => {
                 if (result.success) {
                     allReturnsRecords = result.data || [];
+                    returnsTotal = (result.pagination && result.pagination.total) || allReturnsRecords.length;
                     renderReturnsRows(allReturnsRecords);
+                    renderReturnsPager();
                 }
             })
             .catch(err => console.error('Error fetching returns:', err));

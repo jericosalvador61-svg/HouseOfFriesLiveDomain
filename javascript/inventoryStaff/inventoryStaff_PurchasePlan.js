@@ -1,6 +1,26 @@
 // Global memory state for tracking current lists
 let rawMaterialsCache = [];
 let purchasePlansCache = [];
+let purchasePlanPage = 1;
+let purchasePlanTotal = 0;
+
+function renderPurchasePlanPager() {
+    const pagerEl = document.getElementById('purchasePlanPager');
+    if (!pagerEl) return;
+    const pages = Math.max(1, Math.ceil(purchasePlanTotal / 10));
+    let html = '';
+    for (let i = 1; i <= pages; i++) {
+        html += `<li class="page-item ${i === purchasePlanPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+    }
+    pagerEl.innerHTML = html;
+    pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            purchasePlanPage = parseInt(a.dataset.page, 10);
+            fetchInitialData();
+        });
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchInitialData();
@@ -15,7 +35,7 @@ async function fetchInitialData() {
         // Replace these URLs with your exact backend PHP endpoints
         const [materialsRes, plansRes] = await Promise.all([
             fetch('../../backend/inventoryStaff/purchasePlan/get_raw_materials.php'),
-            fetch('../../backend/inventoryStaff/purchasePlan/get_purchase_plans.php')
+            fetch('../../backend/inventoryStaff/purchasePlan/get_purchase_plans.php?page=' + purchasePlanPage)
         ]);
 
         rawMaterialsCache = await materialsRes.json();
@@ -25,7 +45,9 @@ async function fetchInitialData() {
         checkStockAlerts(rawMaterialsCache);
 
         // Render the main table layout history
-        renderPurchasePlanTable(purchasePlansCache);
+        renderPurchasePlanTable(purchasePlansCache.plans || purchasePlansCache);
+        purchasePlanTotal = (purchasePlansCache.pagination && purchasePlansCache.pagination.total) || (purchasePlansCache.plans || []).length;
+        renderPurchasePlanPager();
     } catch (error) {
         console.error("Error loading House of Fries data system:", error);
     }

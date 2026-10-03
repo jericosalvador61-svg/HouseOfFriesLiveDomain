@@ -6,6 +6,26 @@
 document.addEventListener('DOMContentLoaded', function () {
     let allSpoilageRecords = [];
     let spoilageItems = [];
+    let spoilagePage = 1;
+    let spoilageTotal = 0;
+
+    function renderSpoilagePager() {
+        const pagerEl = document.getElementById('spoilagePager');
+        if (!pagerEl) return;
+        const pages = Math.max(1, Math.ceil(spoilageTotal / 10));
+        let html = '';
+        for (let i = 1; i <= pages; i++) {
+            html += `<li class="page-item ${i === spoilagePage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+        }
+        pagerEl.innerHTML = html;
+        pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                spoilagePage = parseInt(a.dataset.page, 10);
+                fetchSpoilageHistory();
+            });
+        });
+    }
 
     // --- 1. INITIAL LOAD ---
     fetchMaterialsAndStats();
@@ -70,14 +90,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const tableBody = document.getElementById('spoilageTableBody');
         if (!tableBody) return;
 
-        fetch("/backend/inventoryStaff/spoilage/get_spoilage_history.php", {
+        fetch("/backend/inventoryStaff/spoilage/get_spoilage_history.php?page=" + spoilagePage, {
             method: "GET", headers: getAuthHeaders(null)
         })
             .then(r => r.json())
             .then(result => {
                 if (result.status === 'success' || result.success) {
                     allSpoilageRecords = result.data || [];
+                    spoilageTotal = (result.pagination && result.pagination.total) || allSpoilageRecords.length;
                     renderSpoilageRows(allSpoilageRecords);
+                    renderSpoilagePager();
                 }
             })
             .catch(err => console.error('Error fetching spoilage:', err));
@@ -340,6 +362,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <tr><td class="text-muted">Date:</td><td>${fd}</td></tr>
                     <tr><td class="text-muted">Remarks:</td><td>${item.remarks || '—'}</td></tr>
                     <tr><td class="text-muted">Status:</td><td><span class="badge ${cs === 'APPROVED' ? 'bg-success' : cs === 'PENDING' ? 'bg-warning text-dark' : 'bg-danger'}">${item.status || 'Pending'}</span></td></tr>
+                    ${item.photo_data_uri ? `<tr><td class="text-muted align-top">Proof Photo:</td><td><img src="${item.photo_data_uri}" class="img-thumbnail" style="max-width:220px;max-height:180px;object-fit:contain;" alt="Spoilage proof photo"></td></tr>` : ''}
                 </table></div>`,
             icon: cs === 'APPROVED' ? 'success' : cs === 'PENDING' ? 'info' : 'error',
             confirmButtonText: 'Close',
