@@ -342,9 +342,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (tableBody) {
         tableBody.addEventListener("click", (e) => {
+            const editBtn = e.target.closest(".btn-edit");
             const resetBtn = e.target.closest(".btn-reset");
             const toggleBtn = e.target.closest(".btn-toggle");
-            if (resetBtn) {
+            if (editBtn) {
+                openEditCustomer({ customer_id: editBtn.dataset.id, name: editBtn.dataset.name, phone_number: editBtn.dataset.phone });
+            } else if (resetBtn) {
                 generateResetCode(resetBtn.dataset.id, resetBtn.dataset.phone);
             } else if (toggleBtn) {
                 toggleCustomer(toggleBtn.dataset.id, toggleBtn.dataset.active === '1');
