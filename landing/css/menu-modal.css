@@ -1,0 +1,98 @@
+/* ============================================================
+   REQ-059 — Landing "View Menu Items" modal
+   Matches the landing design system (dark panels, gold accents,
+   Fraunces headings, Space Grotesk body). No Bootstrap.
+   ============================================================ */
+
+.mm-overlay{
+  position:fixed;inset:0;z-index:90;
+  display:flex;align-items:center;justify-content:center;
+  padding:clamp(12px,3vw,28px);
+}
+.mm-overlay[hidden]{display:none}
+.mm-backdrop{
+  position:absolute;inset:0;
+  background:rgba(12,7,4,.78);
+  -webkit-backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px);
+}
+.mm-dialog{
+  position:relative;
+  width:min(1080px,94vw);
+  max-height:88vh;
+  display:flex;flex-direction:column;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:24px;
+  padding:clamp(18px,3vw,34px);
+  overflow:hidden;
+}
+.mm-head{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  margin-bottom:6px;
+}
+.mm-head h2{
+  font-family:var(--fd);
+  font-size:clamp(24px,3.4vw,36px);
+  font-weight:500;
+  color:var(--ink);
+}
+.mm-head h2::first-letter{color:var(--gold)}
+.mm-close{
+  width:44px;height:44px;min-width:44px;min-height:44px;
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);border-radius:999px;
+  background:transparent;color:var(--muted);
+  font-size:24px;line-height:1;cursor:pointer;
+  transition:all .35s;
+}
+.mm-close:hover{border-color:var(--gold);color:var(--gold)}
+.mm-close:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.mm-cats{margin:24px 0 22px}
+@media(max-width:640px){
+  .mm-cats{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .mm-cats::-webkit-scrollbar{height:6px}
+  .mm-cats::-webkit-scrollbar-track{background:transparent}
+  .mm-cats::-webkit-scrollbar-thumb{background:#46301f;border-radius:99px}
+  .mm-cats::-webkit-scrollbar-thumb:hover{background:var(--gold)}
+}
+
+.mm-scroll{
+  overflow-y:auto;flex:1;min-height:0;
+  overscroll-behavior:contain;
+  padding:2px 6px 8px 2px;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+}
+.mm-scroll::-webkit-scrollbar{width:10px}
+.mm-scroll::-webkit-scrollbar-track{background:transparent}
+.mm-scroll::-webkit-scrollbar-thumb{background:#46301f;border-radius:99px;border:2px solid transparent;background-clip:padding-box}
+.mm-scroll::-webkit-scrollbar-thumb:hover{background:#ffc61c;border:2px solid transparent;background-clip:padding-box}
+
+.mm-note{
+  margin:22px 0 0;
+  padding-top:16px;
+  border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--muted);text-align:center;
+}
+.mm-note b{color:var(--gold);font-weight:500}
+
+.mm-loading{
+  grid-column:1/-1;
+  padding:44px 0;
+  text-align:center;
+  font-size:12.5px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--muted);
+}
+
+.m-card .ph .fallback{font-size:52px;color:rgba(255,198,28,.35);font-family:var(--fd);font-style:italic}
+
+@media(max-width:640px){
+  .mm-overlay{padding:10px}
+  .mm-dialog{width:100%;max-height:92vh;padding:18px 14px;border-radius:18px}
+  .mm-cats{margin:18px 0 16px}
+  .mm-scroll{padding-right:2px}
+  .menu-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .mm-head h2{font-size:22px}
+}
