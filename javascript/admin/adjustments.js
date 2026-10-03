@@ -208,10 +208,11 @@ function updateQuickStats(materials) {
 }
 
 function updateQuickStatsFromBackend(stats) {
-    setStatValue('totalItems', stats.total);
-    setStatValue('lowStock', stats.low);
-    setStatValue('outStock', stats.out);
-    setStatValue('damagedStock', stats.damaged);
+    const s = stats || {};
+    setStatValue('totalItems', s.total ?? 0);
+    setStatValue('lowStock', s.low ?? 0);
+    setStatValue('outStock', s.out ?? 0);
+    setStatValue('damagedStock', s.damaged ?? 0);
 }
 
 function setStatValue(id, value) { const el = document.getElementById(id); if (el) { el.textContent = value ?? 0; el.classList.add('fw-bold'); } }

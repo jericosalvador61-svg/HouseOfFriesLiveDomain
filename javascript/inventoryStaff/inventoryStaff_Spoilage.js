@@ -59,11 +59,11 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(r => r.json())
             .then(result => {
                 if (result.status === 'success' || result.success) {
-                    const stats = result.stats;
-                    updateCount('totalItems', stats.total);
-                    updateCount('lowStock', stats.low);
-                    updateCount('outStock', stats.out);
-                    updateCount('damagedStock', stats.damaged);
+                    const stats = result.stats || {};
+                    updateCount('totalItems', stats.total ?? 0);
+                    updateCount('lowStock', stats.low ?? 0);
+                    updateCount('outStock', stats.out ?? 0);
+                    updateCount('damagedStock', stats.damaged ?? 0);
                     checkStockAlerts(result.data);
                     if (inputMaterial && Array.isArray(result.data)) {
                         inputMaterial.innerHTML = '<option value="" selected disabled>Select Material...</option>';
