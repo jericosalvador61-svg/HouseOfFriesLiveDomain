@@ -456,9 +456,11 @@ async function loadRawMaterials() {
        const stats = json.stats || {};
        renderAdminMatPager(json.pagination ? json.pagination.total : (json.data || []).length);
 
-       document.getElementById('totalItems').textContent = stats.total ?? 0;
-       document.getElementById('lowStock').textContent = stats.low ?? 0;
-       document.getElementById('outStock').textContent = stats.out ?? 0;
+       // KPI cards live on the dashboard only (REQ-057) — the IDs may not exist on this page.
+       const setIf = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+       setIf('totalItems', stats.total ?? 0);
+       setIf('lowStock', stats.low ?? 0);
+       setIf('outStock', stats.out ?? 0);
        // "Damage" was replaced by "Expired" (#24). Derive the count locally so
        // it always matches the badge semantics shown in the table.
        const expiredEl = document.getElementById('expiredStock');

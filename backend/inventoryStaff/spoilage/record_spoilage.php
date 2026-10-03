@@ -28,7 +28,9 @@ try {
     // Client sends a compressed JPEG data-URI (no scheme prefix) via JSON.
     $photo_raw = '';
     if (empty($data['photo']) || !is_string($data['photo']) || trim($data['photo']) === '') {
-        throw new Exception('A proof photo is required for SPOILAGE / WASTE / DAMAGE submissions.');
+        http_response_code(422);
+        echo json_encode(['status' => 'error', 'message' => 'A proof photo is required for SPOILAGE / WASTE / DAMAGE submissions.']);
+        exit;
     }
     if (is_string($data['photo'])) {
         $photo = $data['photo'];
