@@ -52,7 +52,9 @@ try {
     if ($hasItemBlob && file_exists(__DIR__ . '/image_blob_helper.php')) {
         require_once __DIR__ . '/image_blob_helper.php';
         if (function_exists('hof_encode_blob_columns')) {
-            hof_encode_blob_columns($items, ['image_blob' => 'image_blob']);
+            // keepMissing=true: preserve the image_blob key — the helper writes the
+            // data URI into the SAME key, and unsetting it would hide the blob from JS.
+            hof_encode_blob_columns($items, ['image_blob' => 'image_blob'], true);
         }
     }
 
@@ -86,7 +88,7 @@ try {
         foreach ($choicesByItem as &$groups) {
             foreach ($groups as &$options) {
                 if (function_exists('hof_encode_blob_columns')) {
-                    hof_encode_blob_columns($options, ['image_blob' => 'image_blob']);
+                    hof_encode_blob_columns($options, ['image_blob' => 'image_blob'], true);
                 }
             }
             unset($options);
@@ -114,7 +116,7 @@ try {
         }
         unset($a);
         if (function_exists('hof_encode_blob_columns')) {
-            hof_encode_blob_columns($addons, ['image_blob' => 'image_blob']);
+            hof_encode_blob_columns($addons, ['image_blob' => 'image_blob'], true);
         }
     } catch (Throwable $e) {
         error_log('get_menu_for_landing choices/addons degrade: ' . $e->getMessage());

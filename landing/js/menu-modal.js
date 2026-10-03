@@ -17,6 +17,15 @@ var activeCat = null;
 
 function priceFmt(p){ return '\u20B1' + Number(p).toFixed(0); }
 
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function catName(id){
   if (!data || !data.cats) return '';
   for (var i=0;i<data.cats.length;i++){
@@ -32,13 +41,14 @@ function itemImgSrc(it){
 
 function cardHTML(it, idx){
   var u = itemImgSrc(it);
+  var name = esc(it.item_name);
   var img = u
-    ? '<img loading="lazy" src="'+u+'" alt="'+String(it.item_name||'').replace(/"/g,'&quot;')+'" onerror="this.outerHTML=\'<span class=\\\'fallback\\\'>Hof</span>\'">'
+    ? '<img loading="lazy" src="'+u+'" alt="'+name+'" onerror="this.outerHTML=\'<span class=\\\'fallback\\\'>Hof</span>\'">'
     : '<span class="fallback">Hof</span>';
   return '<article class="m-card" style="animation-delay:'+Math.min(idx*45,500)+'ms">'
     + '<div class="ph">' + img + '</div>'
-    + '<div class="info"><h3>'+String(it.item_name||'')+'</h3>'
-    + '<div class="row"><span class="p">'+priceFmt(it.price)+'</span><span class="cat">'+catName(it.category_id)+'</span></div></div></article>';
+    + '<div class="info"><h3>'+name+'</h3>'
+    + '<div class="row"><span class="p">'+priceFmt(it.price)+'</span><span class="cat">'+esc(catName(it.category_id))+'</span></div></div></article>';
 }
 
 function renderCats(){
@@ -117,7 +127,7 @@ document.addEventListener('click', function(e){
   var opener = e.target && e.target.closest ? e.target.closest('[data-open-menu]') : null;
   if (!opener) return;
   e.preventDefault();
-  e.stopPropagation(); // do NOT let this same click reach the backdrop-close listener
+  e.stopImmediatePropagation(); // stop ALL other document click listeners (incl. backdrop-close) for this click
   lastOpener = opener;
   openModal();
 });
