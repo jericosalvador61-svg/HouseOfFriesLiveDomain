@@ -32,9 +32,47 @@ class SalesReport {
     }
 
     /**
+     * REQ-056: SCHEMA-AGNOSTIC column guard.
+     * New columns (orders.discount_amount, stock_out_items.unit_cost) are applied
+     * to the live DB AFTER deploy (REQ-049 / REQ-057). Never write a query that
+     * fatals when the column is absent — check information_schema first.
+     */
+    private function hasColumn(string $table, string $column): bool {
+        $stmt = $this->db->prepare("
+            SELECT COUNT(*) FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
+        ");
+        $stmt->execute([$table, $column]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * Gross profit cost side: COGS for the SOLD menu items + addons folded into
+     * order_items.price (choices_addons_helper.php), matched against stock-out
+     * quantities. Uses stock_out_items.unit_cost snapshot when present (REQ-057),
+     * otherwise falls back to raw_materials.cost_per_unit.
+     */
+    private function cogsCostExpression(): string {
+        if ($this->hasColumn('stock_out_items', 'unit_cost')) {
+            return "COALESCE(soi.unit_cost, rm.cost_per_unit)";
+        }
+        return "rm.cost_per_unit";
+    }
+
+    /**
+     * Discount column expression: orders.discount_amount is a REQ-049 column that
+     * may not exist on the live DB yet — guard with 0.00 so the SUM never fatals.
+     */
+    private function discountExpr(): string {
+        return $this->hasColumn('orders', 'discount_amount') ? 'o.discount_amount' : '0';
+    }
+
+    /**
      * Get KPI stats (Total Revenue, Paid Orders, Avg Order Value, Best Seller)
      */
     public function getStats($startDate, $endDate) {
+        $discountExpr = $this->discountExpr();
+
         // Revenue from actual received payments (cash + GCash)
         $sql = "SELECT 
                     COUNT(DISTINCT o.order_id) AS total_orders,
@@ -42,7 +80,7 @@ class SalesReport {
                     COALESCE(AVG(p.amount_paid), 0) AS avg_order_value,
                     COALESCE(SUM(CASE WHEN UPPER(p.payment_method) IN ('GCASH','ONLINE','CARD') THEN p.amount_paid ELSE 0 END), 0) AS gcash_revenue,
                     COALESCE(SUM(CASE WHEN UPPER(p.payment_method) = 'CASH' THEN p.amount_paid ELSE 0 END), 0) AS cash_revenue,
-                    COALESCE(SUM(o.discount_amount), 0) AS total_discount
+                    COALESCE(SUM($discountExpr), 0) AS total_discount
                 FROM orders o
                 {$this->paidJoin()}
                 WHERE DATE(p.paid_at) BETWEEN :start AND :end";
@@ -50,6 +88,8 @@ class SalesReport {
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':start' => $startDate, ':end' => $endDate]);
         $stats = $stmt->fetch();
+
+        // Best seller item fetch (unchanged, below).
 
         // Get best selling item (by revenue, among PAID orders)
         $sqlBest = "SELECT 
