@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../log_activity_helper.php';
 header("Content-Type: application/json");
 
 // --- SECURE AUTHORIZATION CHECK ---
-$auth = authenticate(['Admin']);
+$auth = authenticate(['Admin', 'Supervisor']);
 $admin_id = (int)$auth['user_id'];
 $admin_username = $auth['username'] ?? 'Admin';
 $admin_role = $auth['role'] ?? 'Admin';

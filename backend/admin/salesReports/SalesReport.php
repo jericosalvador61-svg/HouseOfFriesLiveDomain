@@ -147,13 +147,14 @@ class SalesReport {
             ];
         }
 
-        // 2. Per-day COGS from APPROVED stock-outs (schema-agnostic cost expr)
+        // 2. Per-day COGS from APPROVED stock-outs (schema-agnostic cost expr).
+        // A revenue day with no approved stock-out rows has no COGS entry — its
+        // gross profit is the full revenue (cogs 0), never left at 0.0.
         $cogsByDay = $this->cogsByDateRange($startDate, $endDate, true);
-        foreach ($cogsByDay as $day => $cogs) {
-            if (isset($byDay[$day])) {
-                $byDay[$day]['gross_profit'] = $byDay[$day]['revenue'] - $cogs;
-            }
+        foreach ($byDay as $day => &$row) {
+            $row['gross_profit'] = $row['revenue'] - ($cogsByDay[$day] ?? 0);
         }
+        unset($row);
 
         // 3. Zero-fill the calendar between start/end
         $startDt = new DateTimeImmutable($startDate);
@@ -477,7 +478,7 @@ class SalesReport {
                     o.order_type,
                     o.total_amount,
                     o.subtotal_amount,
-                    o.discount_amount,
+                    {$this->discountExpr()} AS discount_amount,
                     COALESCE(dt.name, '') AS discount_type_name,
                     o.status,
                     UPPER(p.payment_method) AS payment_method,
