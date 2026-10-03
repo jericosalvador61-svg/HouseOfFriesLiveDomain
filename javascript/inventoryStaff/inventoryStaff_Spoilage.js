@@ -254,6 +254,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 const submitBtn = spoilageForm.querySelector('button[type="submit"]');
                 LoadingManager.show(submitBtn || spoilageForm, { text: 'Recording...' });
 
+                const photoInput = document.getElementById('spoilagePhoto');
+                if (!photoInput || !photoInput.files || photoInput.files.length === 0) {
+                    Swal.fire({ icon: 'warning', title: 'Photo Required', text: 'Attach a proof photo for SPOILAGE / WASTE / DAMAGE before confirming.', confirmButtonColor: '#FFB800' });
+                    return;
+                }
                 const payload = {
                     spoilage_date: date,
                     remarks: remarks,
@@ -265,20 +270,36 @@ document.addEventListener('DOMContentLoaded', function () {
                     }))
                 };
 
-                fetch("/backend/inventoryStaff/spoilage/record_spoilage.php", {
-                    method: "POST", headers: getAuthHeaders('application/json'),
-                    body: JSON.stringify(payload)
-                })
-                    .then(r => r.json())
-                    .then(result => {
-                        if (result.status === 'success' || result.success) {
-                            Swal.fire({ icon: 'success', title: 'Spoilage Recorded', text: result.message, confirmButtonColor: '#FFB800' }).then(() => location.reload());
-                        } else {
-                            Swal.fire({ icon: 'error', title: 'Error', text: result.message, confirmButtonColor: '#FFB800' });
-                        }
-                    })
-                    .catch(err => { console.error(err); Swal.fire({ icon: 'error', title: 'Error', text: 'Server error.', confirmButtonColor: '#FFB800' }); })
-                    .finally(() => LoadingManager.hide(submitBtn || spoilageForm));
+                // Client-side compression (800px, JPEG ~0.65) — InfinityFree has no GD/Imagick.
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const scale = Math.min(1, 800 / Math.max(img.width, img.height));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(img.width * scale));
+                        canvas.height = Math.max(1, Math.round(img.height * scale));
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                        payload.photo = canvas.toDataURL('image/jpeg', 0.65).split(',')[1];
+                        fetch("/backend/inventoryStaff/spoilage/record_spoilage.php", {
+                            method: "POST", headers: getAuthHeaders('application/json'),
+                            body: JSON.stringify(payload)
+                        })
+                            .then(r => r.json())
+                            .then(result => {
+                                if (result.status === 'success' || result.success) {
+                                    Swal.fire({ icon: 'success', title: 'Spoilage Recorded', text: result.message, confirmButtonColor: '#FFB800' }).then(() => location.reload());
+                                } else {
+                                    Swal.fire({ icon: 'error', title: 'Error', text: result.message, confirmButtonColor: '#FFB800' });
+                                }
+                            })
+                            .catch(err => { console.error(err); Swal.fire({ icon: 'error', title: 'Error', text: 'Server error.', confirmButtonColor: '#FFB800' }); })
+                            .finally(() => LoadingManager.hide(submitBtn || spoilageForm));
+                    };
+                    img.onerror = () => { LoadingManager.hide(submitBtn || spoilageForm); Swal.fire({ icon: 'error', title: 'Error', text: 'Could not read the photo file.', confirmButtonColor: '#FFB800' }); };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(photoInput.files[0]);
             });
         });
     }

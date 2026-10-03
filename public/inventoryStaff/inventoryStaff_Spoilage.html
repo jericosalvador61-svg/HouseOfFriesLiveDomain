@@ -240,6 +240,7 @@
                             <select id="inputType" class="form-select">
                                 <option value="SPOILAGE">Spoilage</option>
                                 <option value="WASTE">Waste</option>
+                                <option value="DAMAGE">Damage</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -257,6 +258,11 @@
                             <button type="button" id="addToListBtn" class="btn btn-primary w-100 fw-bold">
                                 <i class="bi bi-plus-circle me-1"></i>Add to List
                             </button>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">Proof Photo <span class="text-danger">*</span> <small class="text-muted">(required — compressed client-side, stored in DB)</small></label>
+                            <input type="file" id="spoilagePhoto" accept="image/*" class="form-control" required>
+                            <div class="mt-2 d-none" id="spoilagePhotoPreviewWrap"><img id="spoilagePhotoPreview" class="img-thumbnail" style="max-height:140px;object-fit:contain;" alt="Photo preview"></div>
                         </div>
                     </div>
 
