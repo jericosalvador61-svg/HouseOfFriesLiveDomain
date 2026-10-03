@@ -4,6 +4,26 @@
 // ==========================================
 let selectedItems = [];
 let allStockOutRecords = [];
+let stockOutPage = 1;
+let stockOutTotal = 0;
+
+function renderAdminStockOutPager() {
+    const pagerEl = document.getElementById('stockOutPager');
+    if (!pagerEl) return;
+    const pages = Math.max(1, Math.ceil(stockOutTotal / 10));
+    let html = '';
+    for (let i = 1; i <= pages; i++) {
+        html += `<li class="page-item ${i === stockOutPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+    }
+    pagerEl.innerHTML = html;
+    pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            stockOutPage = parseInt(a.dataset.page, 10);
+            fetchStockOutHistory();
+        });
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     fetchInventoryStats();
@@ -256,12 +276,14 @@ function fetchStockOutHistory() {
     const pendingCard = document.querySelector('.pending-table-card');
     if (!mainTbody) return;
 
-    authenticatedFetch("/backend/admin/manageInventory/get_stock_out_history.php")
+    authenticatedFetch("/backend/admin/manageInventory/get_stock_out_history.php?page=" + stockOutPage)
         .then(r => r.json())
         .then(result => {
             if (result.status === 'success' || result.success) {
                 const raw = Array.isArray(result.data) ? result.data : [];
                 allStockOutRecords = raw;
+                stockOutTotal = (result.pagination && result.pagination.total) || raw.length;
+                renderAdminStockOutPager();
                 const approved = raw.filter(r => (r.status || '').toLowerCase() !== 'pending');
                 const pending = raw.filter(r => (r.status || '').toLowerCase() === 'pending');
 

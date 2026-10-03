@@ -14,6 +14,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let items = [];
     let allStockInRecords = [];
+    let stockInPage = 1;
+    let stockInTotal = 0;
+
+    function renderAdminStockInPager() {
+        const pagerEl = document.getElementById('stockInPager');
+        if (!pagerEl) return;
+        const pages = Math.max(1, Math.ceil(stockInTotal / 10));
+        let html = '';
+        for (let i = 1; i <= pages; i++) {
+            html += `<li class="page-item ${i === stockInPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+        }
+        pagerEl.innerHTML = html;
+        pagerEl.querySelectorAll('a[data-page]').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                stockInPage = parseInt(a.dataset.page, 10);
+                loadStockInRecords();
+            });
+        });
+    }
 
     // Helper method to centrally inject JWT authorization tokens across all actions
     function getHeaders(contentType = "application/json") {
@@ -361,7 +381,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const pendingCard = document.querySelector(".pending-table-card");
 
         try {
-            const res = await fetch("/backend/admin/manageInventory/get_stock_in_list.php", {
+            const res = await fetch("/backend/admin/manageInventory/get_stock_in_list.php?page=" + stockInPage, {
                 method: "GET",
                 headers: getHeaders(null) // Dynamic injection fixes 401 here too
             });
@@ -371,6 +391,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const approvedArr = Array.isArray(json.approved) ? json.approved : [];
                 const pendingArr = Array.isArray(json.pending) ? json.pending : [];
                 allStockInRecords = [...approvedArr, ...pendingArr];
+                stockInTotal = (json.pagination && json.pagination.total) || approvedArr.length;
+                renderAdminStockInPager();
 
                 if (approvedArr.length > 0 && mainTbody) {
                     mainTbody.innerHTML = approvedArr.map(item => {
