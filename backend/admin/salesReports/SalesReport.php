@@ -83,6 +83,13 @@ class SalesReport {
     }
 
     /**
+     * discount_type_name must not reference dt when the guarded join is absent.
+     */
+    private function discountTypeNameExpr(): string {
+        return $this->hasColumn('orders', 'discount_type_id') ? "COALESCE(dt.name, '')" : "''";
+    }
+
+    /**
      * Get KPI stats (Total Revenue, Paid Orders, Avg Order Value, Best Seller)
      */
     /**
@@ -494,7 +501,7 @@ class SalesReport {
                     o.total_amount,
                     {$this->subtotalExpr()} AS subtotal_amount,
                     {$this->discountExpr()} AS discount_amount,
-                    COALESCE(dt.name, '') AS discount_type_name,
+                    {$this->discountTypeNameExpr()} AS discount_type_name,
                     o.status,
                     UPPER(p.payment_method) AS payment_method,
                     p.paid_at,
