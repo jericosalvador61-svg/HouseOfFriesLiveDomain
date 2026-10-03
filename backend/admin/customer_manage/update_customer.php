@@ -27,7 +27,7 @@ if (!$customerId || $name === '' || $phone === '') {
 
 $normalized = preg_replace('/[^0-9]/', '', $phone);
 if (strlen($normalized) === 12 && substr($normalized, 0, 2) === '63') {
-    $normalized = '0' . substr($normalized, 2);
+    $normalized = '0' . substr($normalized, -10);
 }
 $phone = (strlen($normalized) === 11) ? $normalized : $phone;
 
