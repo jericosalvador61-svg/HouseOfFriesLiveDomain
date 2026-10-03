@@ -74,7 +74,7 @@ try {
     ");
     $stmt->execute([':table_id' => $table_id]);
 
-    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_RESTORE', "Restored Table #{$table['table_number']}", 'restaurant_table', $table_id);
+    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_RESTORE', "Restored Table #{$table['table_number']}", 'restaurant_table', $table_id, (string)$table['table_number'], 'Active');
 
     echo json_encode(['success' => true, 'message' => 'Table restored successfully']);
 } catch (PDOException $e) {

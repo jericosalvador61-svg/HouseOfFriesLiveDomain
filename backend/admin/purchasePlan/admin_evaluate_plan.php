@@ -87,7 +87,7 @@ try {
 
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'PURCHASE_PLAN_EVALUATE', "Evaluated plan #{$plan_id} -> {$status}",
-        'purchase_plan', $plan_id);
+        'purchase_plan', $plan_id, (string)$plan_id, $status);
 
     // Notify Inventory Staff: plan evaluation result
     hof_notify_roles($pdo, 'purchase_plan', 'Purchase Plan ' . ucfirst(strtolower($status)),

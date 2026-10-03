@@ -38,7 +38,7 @@ try {
 
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'VOID_ITEM', "Voided item #{$orderItemId} from order",
-        'order', $orderId);
+        'order', $orderId, (string)$orderId, 'VOIDED');
 
     // REQ-054 B4-C: tell the customer tracker the order changed so it re-fetches.
     if (function_exists('broadcastOrderUpdate')) {

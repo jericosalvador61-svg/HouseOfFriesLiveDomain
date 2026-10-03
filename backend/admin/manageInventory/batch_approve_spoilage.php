@@ -68,7 +68,7 @@ try {
 
         logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
             'SPOILAGE_APPROVED', "Approved {$processedCount} spoilage record(s)",
-            'spoilage');
+            'spoilage', null, implode(',', $spoilage_ids), 'APPROVED');
 
         if (!empty($touchedMaterialIds)) {
             hof_check_low_stock($pdo, $touchedMaterialIds);

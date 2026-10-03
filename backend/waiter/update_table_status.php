@@ -87,7 +87,7 @@ try {
         $stmt->execute(['status' => $status, 'table_id' => $tableId]);
     }
 
-    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_STATUS', "Table #{$tableNumber} -> {$status}", 'restaurant_table', $tableId);
+    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_STATUS', "Table #{$tableNumber} -> {$status}", 'restaurant_table', $tableId, (string)$tableNumber, (string)$status);
 
     echo json_encode(['success' => true, 'message' => 'Table updated']);
 } catch (PDOException $e) {

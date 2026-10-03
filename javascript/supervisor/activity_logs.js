@@ -50,9 +50,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingOverlay = document.getElementById('loadingOverlay');
     const pageSizeSelect = document.getElementById('pageSize');
 
-    // Initialize date defaults
+    // Initialize date defaults (last 7 days — REQ-058; inside the 31-day window)
     const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 6);
 
     // REQ-049: Supervisor 31-day rolling window bounds (UI prevention)
     function getWindowBounds() {
@@ -79,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     dateTo.min = windowBounds.min;
     dateTo.max = windowBounds.max;
 
-    dateFrom.value = firstDayOfMonth.toISOString().split('T')[0];
+    dateFrom.value = sevenDaysAgo.toISOString().split('T')[0];
     dateTo.value = today.toISOString().split('T')[0];
 
     // REQ-050: escapeHtml — XSS-safe escaping for EVERY rendered data field
@@ -104,7 +105,8 @@ document.addEventListener('DOMContentLoaded', function() {
         'KITCHEN': 'badge-kitchen',
         'MENU': 'badge-menu',
         'SETTINGS': 'badge-settings',
-        'SYSTEM': 'badge-system'
+        'SYSTEM': 'badge-system',
+        'CUSTOMER': 'badge-customer'
     };
     const categoryBadgeLabels = {
         'ORDER': 'Order',
@@ -116,7 +118,8 @@ document.addEventListener('DOMContentLoaded', function() {
         'KITCHEN': 'Kitchen',
         'MENU': 'Menu',
         'SETTINGS': 'Settings',
-        'SYSTEM': 'System'
+        'SYSTEM': 'System',
+        'CUSTOMER': 'Customer'
     };
 
     // Status badge mapping (safe map — badge built from known classes, label escaped)
@@ -143,7 +146,10 @@ document.addEventListener('DOMContentLoaded', function() {
         'READ': 'bg-success',
         'Pending': 'bg-warning text-dark',
         'Approved': 'bg-success',
-        'Rejected': 'bg-danger'
+        'Rejected': 'bg-danger',
+        'VOIDED': 'bg-danger',
+        'CLAIMED': 'bg-info text-dark',
+        'Available': 'bg-success'
     };
 
     // Show/hide loading
@@ -242,6 +248,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
+            if (!response.ok) {
+                if (response.status === 401) {
+                    localStorage.removeItem('hof_token');
+                    redirectToLogin();
+                    return;
+                }
+                const errData = await response.json().catch(() => ({}));
+                showError(errData.message || ('Request failed (' + response.status + ')'));
+                return;
+            }
             const data = await response.json();
 
             if (data.success) {
@@ -416,6 +432,14 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
+    // Redirect to login based on current page depth (REQ-058)
+    function redirectToLogin() {
+        const path = window.location.pathname;
+        const depth = path.split('/').filter(Boolean).length;
+        const prefix = '../'.repeat(Math.max(0, depth - 1));
+        window.location.href = prefix + 'index.html';
+    }
+
     // Export to CSV — REQ-050: pass export=1 so the server returns the FULL filtered set (no 100-row clamp)
     function exportCSV() {
         const params = new URLSearchParams({
@@ -435,7 +459,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Authorization': `Bearer ${localStorage.getItem('hof_token') || ''}`
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                if (response.status === 401) {
+                    localStorage.removeItem('hof_token');
+                    redirectToLogin();
+                    throw new Error('__redirect__');
+                }
+                return response.json().catch(() => ({})).then(errData => {
+                    showToast(errData.message || ('Request failed (' + response.status + ')'), 'danger');
+                    throw new Error('__stopped__');
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success && data.data.length > 0) {
                 const headers = ['Date & Time', 'Category', 'Action Type', 'Reference', 'Description', 'Actor', 'Role', 'Status'];
@@ -545,7 +582,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     resetFiltersBtn.addEventListener('click', function() {
-        dateFrom.value = firstDayOfMonth.toISOString().split('T')[0];
+        dateFrom.value = sevenDaysAgo.toISOString().split('T')[0];
         dateTo.value = today.toISOString().split('T')[0];
         actionTypeSelect.value = '';
         roleFilterSelect.value = '';

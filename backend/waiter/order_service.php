@@ -349,7 +349,8 @@ if (!function_exists('hof_waiter_create_order')) {    /**
                 "Waiter created order #{$referenceNumber}",
                 'order',
                 $orderId,
-                $referenceNumber
+                $referenceNumber,
+                'PENDING'
             );
         }
 

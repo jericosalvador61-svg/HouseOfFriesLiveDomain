@@ -147,7 +147,27 @@
     display: flex;
     align-items: center;
 }
-.topbar.float-topbar { position: sticky; top: 10px; margin: 10px 12px 0; }
+.topbar.float-topbar,
+.content-wrapper > nav.navbar.navbar-expand-lg.float-topbar,
+.content-wrapper > .navbar.navbar-expand-lg.float-topbar,
+nav.topbar.float-topbar {
+    position: sticky;
+    top: 10px;
+    z-index: 995;
+    margin: 10px 12px 0;
+    margin-left: auto;
+    width: fit-content;
+    max-width: calc(100% - 24px);
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 18px;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 50px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.08);
+}
 
 /* Mobile: pin the topbar fixed so content can scroll under it; offset body
    so the first card doesn't end up hidden behind a big empty gap. */
@@ -160,6 +180,14 @@
         left: 0;
         right: 0;
         z-index: 995;
+    }
+    .topbar.float-topbar,
+    .content-wrapper > nav.navbar.navbar-expand-lg.float-topbar,
+    .content-wrapper > .navbar.navbar-expand-lg.float-topbar,
+    nav.topbar.float-topbar {
+        position: fixed; top: 0; left: 0; right: 0;
+        width: auto; max-width: none;
+        margin: 0; border-radius: 0;
     }
     body { padding-top: 65px; }
 }

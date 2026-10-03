@@ -83,7 +83,7 @@ try {
 
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'MENU_UPDATE', "Updated {$item_name}",
-        'menu_item', $menu_item_id, null);
+        'menu_item', $menu_item_id, (string)$menu_item_id, $status ?: 'Active');
 
     echo json_encode(["success" => true, "message" => "Menu updated successfully"]);
 } catch (PDOException $e) {

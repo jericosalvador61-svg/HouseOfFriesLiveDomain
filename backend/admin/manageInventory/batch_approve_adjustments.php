@@ -77,7 +77,7 @@ try {
 
     logActivity($pdo, $admin_id, $admin_username ?? 'Admin', $admin_role ?? 'Admin',
         'ADJUSTMENT_APPROVED', "Approved {$processedCount} adjustment(s)",
-        'adjustment');
+        'adjustment', null, implode(',', $adjustment_ids), 'APPROVED');
 
     hof_check_low_stock($pdo, $touchedMaterialIds);
 

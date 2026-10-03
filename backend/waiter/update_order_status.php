@@ -64,7 +64,7 @@ try {
     $ref      = $orderRow['reference_number'] ?? ('#' . $orderId);
     $tableId  = $orderRow['table_id'] ?? null;
 
-    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'ORDER_STATUS', "Order #{$ref} -> {$status}", 'order', $orderId, $ref);
+    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'ORDER_STATUS', "Order #{$ref} -> {$status}", 'order', $orderId, $ref, (string)$status);
 
     // When served, free the table ONLY if no other live order still needs it.
     // The shared helper in table_state_helper.php is the single source of truth

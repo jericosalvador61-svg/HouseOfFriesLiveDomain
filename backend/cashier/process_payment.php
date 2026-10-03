@@ -148,7 +148,7 @@ try {
 
     logActivity($pdo, $userId, $auth['username'], $auth['role'],
         'PAYMENT_COMPLETED', "Cash: ₱{$amountPaid} paid, ₱{$changeGiven} change",
-        'order', $orderId);
+        'order', $orderId, (string)$txnRef, 'COMPLETED');
 
     echo json_encode([
         'success'       => true,

@@ -62,7 +62,7 @@ try {
         }
     }
 
-    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_QR', "Updated QR for Table #{$tableNumber}", 'restaurant_table', $table_id);
+    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_QR', "Updated QR for Table #{$tableNumber}", 'restaurant_table', $table_id, (string)$tableNumber, 'Active');
 
     echo json_encode([
         'success'  => true,

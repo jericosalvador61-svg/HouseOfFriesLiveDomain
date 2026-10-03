@@ -67,7 +67,7 @@ try {
     $menuItemId = (int) $pdo->lastInsertId();
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
         'MENU_ADD', "Added {$item_name} (₱{$price})",
-        'menu_item', $menuItemId, null);
+        'menu_item', $menuItemId, (string)$menuItemId, 'Active');
 
     echo json_encode(["success" => true, "message" => "Menu added successfully"]);
 } catch (PDOException $e) {

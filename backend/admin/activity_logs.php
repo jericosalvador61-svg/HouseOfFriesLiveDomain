@@ -151,6 +151,11 @@ try {
     $stmt = $db->query($modules_sql);
     $modules = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
+    // REQ-058: merge a STATIC complete module list so categories with no rows in
+    // the current window (e.g. CUSTOMER) still show in the filter dropdown.
+    $allModules = ['AUTH','ORDER','SALES','TABLE','KITCHEN','INVENTORY','USER_MGMT','CUSTOMER','MENU','SETTINGS','SYSTEM'];
+    $modules = array_values(array_unique(array_merge($allModules, $modules)));
+
     $statuses_sql = "SELECT DISTINCT status FROM activity_logs WHERE status IS NOT NULL AND status <> '' ORDER BY status";
     $stmt = $db->query($statuses_sql);
     $statuses = $stmt->fetchAll(PDO::FETCH_COLUMN);

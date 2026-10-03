@@ -21,7 +21,7 @@ try {
         $materialName = ''; // not retrieved in delete; keep simple
         logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'MATERIAL_DELETE',
             "Deleted raw_material #{$id}",
-            'raw_material', (int)$id);
+            'raw_material', (int)$id, (string)$id, 'Inactive');
         echo json_encode(['status' => 'success', 'message' => 'Material marked as inactive']);
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Database update failed']);

@@ -141,7 +141,7 @@ $itemCount = count($orderItemsToVoid);
 
     logActivity($pdo, $cashierId, $auth['username'], $auth['role'],
         'VOID_ORDER', "Voided {$itemCount} item(s) from order #{$orderId}",
-        'order', $orderId);
+        'order', $orderId, (string)$orderId, 'VOIDED');
 
     // REQ-054 B4-C: tell the customer tracker the order changed so it re-fetches.
     if (function_exists('broadcastOrderUpdate')) {

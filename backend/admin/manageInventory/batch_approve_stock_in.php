@@ -56,7 +56,7 @@ try {
 
     logActivity($pdo, $admin_id, $admin_username ?? 'Admin', $admin_role ?? 'Admin',
         'STOCK_IN_APPROVED', "Approved {$processedCount} stock-in record(s)",
-        'stock_in', $processedCount > 0 ? $stock_in_ids[0] : null);
+        'stock_in', $processedCount > 0 ? $stock_in_ids[0] : null, implode(',', $stock_in_ids), 'APPROVED');
 
     echo json_encode([
         "success" => true,

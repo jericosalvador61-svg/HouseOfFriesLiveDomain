@@ -68,7 +68,7 @@ try {
         exit;
     }
 
-    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_DELETE', "Deleted Table #{$tableNumber}", 'restaurant_table', $table_id);
+    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'TABLE_DELETE', "Deleted Table #{$tableNumber}", 'restaurant_table', $table_id, (string)$tableNumber, 'Inactive');
 
     echo json_encode(['success' => true, 'message' => 'Table soft-deleted successfully']);
 } catch (PDOException $e) {

@@ -15,6 +15,6 @@ $code = hof_generate_temp_code(8);
 
 logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
     'USER_TEMP_CODE', "Generated temp code for {$auth['username']}",
-    'user', 0, null);
+    'user', 0, $auth['username']);
 
 echo json_encode(['success' => true, 'code' => $code]);

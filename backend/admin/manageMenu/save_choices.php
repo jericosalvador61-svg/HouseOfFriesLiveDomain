@@ -154,7 +154,7 @@ try {
         $pdo->commit();
         logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
             'MENU_CHOICES_UPDATE', "Updated choices for menu item #{$menuItemId}",
-            'menu_item', $menuItemId, null);
+            'menu_item', $menuItemId, (string)$menuItemId);
 
         echo json_encode(["success" => true, "message" => "Choices saved."]);
         exit;
