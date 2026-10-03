@@ -14,6 +14,20 @@ $admin_role = $auth['role'] ?? 'Admin';
 // Retrieve raw request body input payload
 $input = json_decode(file_get_contents("php://input"), true);
 $stock_in_ids = $input['stock_in_ids'] ?? [];
+$cost_updates = $input['cost_updates'] ?? [];
+
+// REQ-056: optional cost-per-unit overrides {raw_material_id => new_cost}.
+// Validate: must be a map of numeric positive values.
+$cost_updates_clean = [];
+if (is_array($cost_updates)) {
+    foreach ($cost_updates as $mid => $cost) {
+        $midVal = is_numeric($mid) ? (int)$mid : null;
+        if ($midVal === null || $midVal <= 0) continue;
+        $costVal = is_numeric($cost) ? (float)$cost : null;
+        if ($costVal === null || $costVal <= 0) continue;
+        $cost_updates_clean[$midVal] = $costVal;
+    }
+}
 
 if (empty($stock_in_ids) || !is_array($stock_in_ids)) {
     http_response_code(400);
@@ -26,6 +40,7 @@ try {
 
     $stmtGetItems = $pdo->prepare("SELECT raw_material_id, quantity FROM stock_in_items WHERE stock_in_id = ?");
     $stmtUpdateStock = $pdo->prepare("UPDATE raw_materials SET current_quantity = current_quantity + ? WHERE raw_material_id = ?");
+    $stmtUpdateCost = $pdo->prepare("UPDATE raw_materials SET cost_per_unit = ? WHERE raw_material_id = ?");
     $stmtApproveMaster = $pdo->prepare("
         UPDATE stock_in 
         SET status = 'APPROVED', 
@@ -48,6 +63,12 @@ try {
 
             foreach ($items as $item) {
                 $stmtUpdateStock->execute([$item['quantity'], $item['raw_material_id']]);
+
+                // REQ-056: persist any unit-cost override provided by the approver
+                // in the same transaction as the approval.
+                if (isset($cost_updates_clean[$item['raw_material_id']])) {
+                    $stmtUpdateCost->execute([$cost_updates_clean[$item['raw_material_id']], $item['raw_material_id']]);
+                }
             }
         }
     }

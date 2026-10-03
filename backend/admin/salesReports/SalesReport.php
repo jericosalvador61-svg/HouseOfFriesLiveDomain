@@ -70,6 +70,110 @@ class SalesReport {
     /**
      * Get KPI stats (Total Revenue, Paid Orders, Avg Order Value, Best Seller)
      */
+    /**
+     * COGS for a given date range (schema-agnostic): the cost value of APPROVED
+     * stock-out items, optionally restricted to a single day (null $startDate).
+     * Uses the same cogsCostExpression() (stock_out_items.unit_cost snapshot
+     * when present, else raw_materials.cost_per_unit) as getReportByDay().
+     *
+     * @return array map date(Y-m-d) => cogs float when grouped by day, else single float
+     */
+    private function cogsByDateRange(?string $startDate, ?string $endDate, bool $groupByDay = false) {
+        $costExpr = $this->cogsCostExpression();
+
+        $select = $groupByDay
+            ? "DATE(so.stock_out_date) AS d, SUM(soi.quantity * $costExpr) AS cogs"
+            : "SUM(soi.quantity * $costExpr) AS cogs";
+
+        $sql = "SELECT $select
+                FROM stock_out so
+                JOIN stock_out_items soi ON so.stock_out_id = soi.stock_out_id
+                JOIN raw_materials rm ON soi.raw_material_id = rm.raw_material_id
+                WHERE so.status = 'APPROVED'
+                  AND so.stock_out_date BETWEEN :start AND :end
+                " . ($groupByDay ? "GROUP BY d" : "");
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+
+        if ($groupByDay) {
+            $rows = $stmt->fetchAll();
+            $byDay = [];
+            foreach ($rows as $row) {
+                $byDay[$row['d']] = (float)$row['cogs'];
+            }
+            return $byDay;
+        }
+
+        $row = $stmt->fetch();
+        return (float)($row['cogs'] ?? 0);
+    }
+
+    /**
+     * REQ-056: Per-day sales report over a paid range (PAID-only join).
+     * Missing days in the range are zero-filled so the table shows a
+     * continuous calendar. Gross profit per day = revenue − COGS where COGS
+     * is the APPROVED stock-out cost value for that same day.
+     */
+    public function getReportByDay($startDate, $endDate) {
+        $discountExpr = $this->discountExpr();
+
+        // 1. Per-day PAID revenue/orders/net-sales/discount
+        $sql = "SELECT 
+                    DATE(p.paid_at) AS d,
+                    COALESCE(SUM(p.amount_paid), 0) AS revenue,
+                    COUNT(DISTINCT o.order_id) AS order_count,
+                    COALESCE(SUM(o.total_amount), 0) AS net_sales,
+                    COALESCE(SUM($discountExpr), 0) AS discount_amount
+                FROM orders o
+                {$this->paidJoin()}
+                WHERE DATE(p.paid_at) BETWEEN :start AND :end
+                GROUP BY DATE(p.paid_at)
+                ORDER BY d ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        $rows = $stmt->fetchAll();
+
+        $byDay = [];
+        foreach ($rows as $row) {
+            $byDay[$row['d']] = [
+                'date' => $row['d'],
+                'revenue' => (float)$row['revenue'],
+                'order_count' => (int)$row['order_count'],
+                'net_sales' => (float)$row['net_sales'],
+                'discount_amount' => (float)$row['discount_amount'],
+                'gross_profit' => 0.0
+            ];
+        }
+
+        // 2. Per-day COGS from APPROVED stock-outs (schema-agnostic cost expr)
+        $cogsByDay = $this->cogsByDateRange($startDate, $endDate, true);
+        foreach ($cogsByDay as $day => $cogs) {
+            if (isset($byDay[$day])) {
+                $byDay[$day]['gross_profit'] = $byDay[$day]['revenue'] - $cogs;
+            }
+        }
+
+        // 3. Zero-fill the calendar between start/end
+        $startDt = new DateTimeImmutable($startDate);
+        $endDt = new DateTimeImmutable($endDate);
+        $result = [];
+        for ($cursor = $startDt; $cursor <= $endDt; $cursor = $cursor->modify('+1 day')) {
+            $dayKey = $cursor->format('Y-m-d');
+            $result[] = $byDay[$dayKey] ?? [
+                'date' => $dayKey,
+                'revenue' => 0.0,
+                'order_count' => 0,
+                'net_sales' => 0.0,
+                'discount_amount' => 0.0,
+                'gross_profit' => 0.0
+            ];
+        }
+
+        return $result;
+    }
+
     public function getStats($startDate, $endDate) {
         $discountExpr = $this->discountExpr();
 
@@ -80,7 +184,8 @@ class SalesReport {
                     COALESCE(AVG(p.amount_paid), 0) AS avg_order_value,
                     COALESCE(SUM(CASE WHEN UPPER(p.payment_method) IN ('GCASH','ONLINE','CARD') THEN p.amount_paid ELSE 0 END), 0) AS gcash_revenue,
                     COALESCE(SUM(CASE WHEN UPPER(p.payment_method) = 'CASH' THEN p.amount_paid ELSE 0 END), 0) AS cash_revenue,
-                    COALESCE(SUM($discountExpr), 0) AS total_discount
+                    COALESCE(SUM($discountExpr), 0) AS total_discount,
+                    COALESCE(SUM(o.total_amount), 0) AS net_sales
                 FROM orders o
                 {$this->paidJoin()}
                 WHERE DATE(p.paid_at) BETWEEN :start AND :end";
@@ -109,6 +214,9 @@ class SalesReport {
         $stmt->execute([':start' => $startDate, ':end' => $endDate]);
         $bestSeller = $stmt->fetch();
 
+        // COGS across the whole range (schema-agnostic) for Gross Profit
+        $cogs = $this->cogsByDateRange($startDate, $endDate, false);
+
         return [
             'total_orders' => (int)$stats['total_orders'],
             'total_revenue' => (float)$stats['total_revenue'],
@@ -116,6 +224,8 @@ class SalesReport {
             'gcash_revenue' => (float)$stats['gcash_revenue'],
             'cash_revenue' => (float)$stats['cash_revenue'],
             'total_discount' => (float)$stats['total_discount'],
+            'net_sales' => (float)($stats['net_sales'] ?? 0),
+            'gross_profit' => (float)$stats['total_revenue'] - $cogs,
             'best_seller' => $bestSeller ? [
                 'item_name' => $bestSeller['item_name'],
                 'total_revenue' => (float)$bestSeller['total_revenue'],
@@ -125,9 +235,12 @@ class SalesReport {
     }
 
     /**
-     * Get chart data grouped by date (daily/weekly/monthly/yearly)
+     * Get chart data grouped by date (daily/weekly/monthly/yearly).
+     * REQ-061: optional $metric ('revenue'|'orders'|'gross_profit') selects the
+     * dominant series; 'gross_profit' adds a per-period gross-profit array
+     * (revenue − COGS per period, schema-agnostic).
      */
-    public function getChartData($startDate, $endDate, $groupBy = 'day') {
+    public function getChartData($startDate, $endDate, $groupBy = 'day', $metric = 'revenue') {
         $format = $this->getDateFormat($groupBy);
 
         $sql = "SELECT 
@@ -155,17 +268,21 @@ class SalesReport {
             $orders[] = (int)$row['order_count'];
         }
 
+        $grossProfit = $this->computePerPeriodGrossProfit($startDate, $endDate, $groupBy, $results, $labels);
+
         return [
             'labels' => $labels,
             'revenue' => $revenue,
-            'orders' => $orders
+            'orders' => $orders,
+            'gross_profit' => $grossProfit
         ];
     }
 
     /**
-     * Get chart data filtered by specific menu item
+     * Get chart data filtered by specific menu item.
+     * REQ-061: optional $metric + gross_profit series, same shape as getChartData().
      */
-    public function getChartDataByMenuItem($startDate, $endDate, $menuItemId, $groupBy = 'day') {
+    public function getChartDataByMenuItem($startDate, $endDate, $menuItemId, $groupBy = 'day', $metric = 'revenue') {
         $format = $this->getDateFormat($groupBy);
 
         $sql = "SELECT 
@@ -199,11 +316,63 @@ class SalesReport {
             $orders[] = (int)$row['order_count'];
         }
 
+        $grossProfit = $this->computePerPeriodGrossProfit($startDate, $endDate, $groupBy, $results, $labels);
+
         return [
             'labels' => $labels,
             'revenue' => $revenue,
-            'orders' => $orders
+            'orders' => $orders,
+            'gross_profit' => $grossProfit
         ];
+    }
+
+    /**
+     * REQ-061: per-period gross profit = revenue − COGS. Revenue per period is
+     * taken from the already-fetched paid rows; COGS is the APPROVED stock-out
+     * cost value for that period. Falls back to zero for missing periods so the
+     * series always aligns 1:1 with the chart labels.
+     */
+    private function computePerPeriodGrossProfit($startDate, $endDate, $groupBy, $results, $labels) {
+        $costExpr = $this->cogsCostExpression();
+        $periodExpr = match ($groupBy) {
+            'day' => "DATE(so.stock_out_date)",
+            'week' => "DATE_FORMAT(so.stock_out_date, '%Y-%u')",
+            'month' => "DATE_FORMAT(so.stock_out_date, '%Y-%m')",
+            'year' => "DATE_FORMAT(so.stock_out_date, '%Y')",
+            default => "DATE(so.stock_out_date)"
+        };
+
+        $sql = "SELECT $periodExpr AS period, SUM(soi.quantity * $costExpr) AS cogs
+                FROM stock_out so
+                JOIN stock_out_items soi ON so.stock_out_id = soi.stock_out_id
+                JOIN raw_materials rm ON soi.raw_material_id = rm.raw_material_id
+                WHERE so.status = 'APPROVED'
+                  AND so.stock_out_date BETWEEN :start AND :end
+                GROUP BY period";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+
+        $cogsByPeriod = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $cogsByPeriod[$row['period']] = (float)$row['cogs'];
+        }
+
+        // Revenue per period keyed by the same period label as $labels
+        $revenueByPeriod = [];
+        foreach ($results as $row) {
+            $periodLabel = $row['period'];
+            $revenueByPeriod[$periodLabel] = (float)$row['revenue'];
+        }
+
+        $grossProfit = [];
+        foreach ($labels as $label) {
+            $rev = $revenueByPeriod[$label] ?? 0;
+            $cogs = $cogsByPeriod[$label] ?? 0;
+            $grossProfit[] = $rev - $cogs;
+        }
+
+        return $grossProfit;
     }
 
     /**

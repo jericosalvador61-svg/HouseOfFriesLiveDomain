@@ -55,7 +55,9 @@ let currentFilters = {
     start_date: '',
     end_date: '',
     group_by: 'day',
-    menu_item_id: ''
+    menu_item_id: '',
+    chart_type: 'bar',
+    chart_metric: 'revenue'
 };
 
 let autoRefreshInterval = null;
@@ -202,6 +204,21 @@ function setupEvents() {
     if (exportCsvBtn) exportCsvBtn.addEventListener('click', exportCSV);
     if (exportExcelBtn) exportExcelBtn.addEventListener('click', exportExcel);
 
+    const chartTypeSelect = document.getElementById('chartType');
+    const chartMetricSelect = document.getElementById('chartMetric');
+    if (chartTypeSelect) {
+        chartTypeSelect.addEventListener('change', () => {
+            currentFilters.chart_type = chartTypeSelect.value;
+            loadChartData();
+        });
+    }
+    if (chartMetricSelect) {
+        chartMetricSelect.addEventListener('change', () => {
+            currentFilters.chart_metric = chartMetricSelect.value;
+            loadChartData();
+        });
+    }
+
     if (startDateInput) {
         startDateInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') applyFilters();
@@ -347,7 +364,7 @@ function loadStats() {
                 const stats = data.data;
                 animateCurrency('totalRevenue', stats.total_revenue);
                 animateNumber('totalOrders', stats.total_orders);
-                animateCurrency('avgOrderValue', stats.avg_order_value);
+                animateCurrency('grossProfit', typeof stats.gross_profit !== 'undefined' ? stats.gross_profit : 0);
                 if (typeof stats.total_discount !== 'undefined') animateCurrency('totalDiscount', stats.total_discount);
 
                 if (stats.best_seller) {
@@ -366,7 +383,8 @@ function loadStats() {
             console.error('Error loading stats:', err);
             document.getElementById('totalRevenue').textContent = '₱0.00';
             document.getElementById('totalOrders').textContent = '0';
-            document.getElementById('avgOrderValue').textContent = '₱0.00';
+            document.getElementById('grossProfit').textContent = '₱0.00';
+            document.getElementById('totalDiscount').textContent = '₱0.00';
             document.getElementById('bestSeller').textContent = '—';
             document.getElementById('bestSellerRevenue').textContent = 'No data';
         });
@@ -384,6 +402,11 @@ function loadChartData() {
 
     if (currentFilters.menu_item_id) {
         params.append('menu_item_id', currentFilters.menu_item_id);
+    }
+
+    // REQ-061: pass the active metric so gross_profit is computed backend-side
+    if (currentFilters.chart_metric && currentFilters.chart_metric !== 'revenue') {
+        params.append('metric', currentFilters.chart_metric);
     }
 
     apiFetch(`get_chart_data.php?${params.toString()}`, { method: 'GET' })
@@ -412,95 +435,152 @@ function renderChart(chartData) {
         salesChartInstance.destroy();
     }
 
-    salesChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: chartData.labels,
-            datasets: [
-                {
-                    label: 'Revenue (₱)',
-                    data: chartData.revenue,
-                    backgroundColor: 'rgba(255, 193, 7, 0.8)',
-                    borderColor: '#ffc107',
-                    borderWidth: 2,
-                    borderRadius: 4,
-                    yAxisID: 'y',
-                    order: 1
-                },
-                {
-                    label: 'Orders',
-                    data: chartData.orders,
-                    type: 'line',
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                    borderColor: '#0d6efd',
-                    borderWidth: 3,
-                    pointBackgroundColor: '#0d6efd',
-                    pointRadius: 4,
-                    tension: 0.3,
-                    fill: true,
-                    yAxisID: 'y1',
-                    order: 0
-                }
-            ]
+    const chartType = currentFilters.chart_type || 'bar';
+    const metric = currentFilters.chart_metric || 'revenue';
+
+    const COLORS = {
+        revenue: { hex: '#ffc107', rgb: '255, 193, 7' },
+        orders: { hex: '#0d6efd', rgb: '13, 110, 253' },
+        gross_profit: { hex: '#198754', rgb: '25, 135, 84' }
+    };
+
+    const colorKey = metric === 'orders' ? 'orders' : metric === 'gross_profit' ? 'gross_profit' : 'revenue';
+    const color = COLORS[colorKey];
+
+    let datasets;
+    // Default bar + revenue keeps the existing dual-axis Revenue+Orders layout.
+    if (metric === 'revenue' && chartType === 'bar') {
+        datasets = [
+            {
+                label: 'Revenue (₱)',
+                data: chartData.revenue,
+                backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                borderColor: '#ffc107',
+                borderWidth: 2,
+                borderRadius: 4,
+                yAxisID: 'y',
+                order: 1
+            },
+            {
+                label: 'Orders',
+                data: chartData.orders,
+                type: 'line',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                borderColor: '#0d6efd',
+                borderWidth: 3,
+                pointBackgroundColor: '#0d6efd',
+                pointRadius: 4,
+                tension: 0.3,
+                fill: true,
+                yAxisID: 'y1',
+                order: 0
+            }
+        ];
+    } else {
+        const dataArr = metric === 'orders' ? chartData.orders
+            : metric === 'gross_profit' ? (chartData.gross_profit || [])
+            : chartData.revenue;
+        const datasetLabel = metric === 'orders' ? 'Orders'
+            : metric === 'gross_profit' ? 'Gross Profit (₱)'
+            : 'Revenue (₱)';
+        datasets = [{
+            label: datasetLabel,
+            data: dataArr,
+            backgroundColor: `rgba(${color.rgb}, 0.8)`,
+            borderColor: color.hex,
+            borderWidth: 2,
+            borderRadius: 4
+        }];
+    }
+
+    const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            mode: 'index',
+            intersect: false
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: {
+                    usePointStyle: true,
+                    padding: 20
+                }
             },
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            let value = context.raw || 0;
-                            if (context.dataset.label.includes('Revenue')) {
-                                return label + ': ₱' + value.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                            }
-                            return label + ': ' + value;
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        let value = context.raw || 0;
+                        if (context.dataset.label.includes('Revenue') || context.dataset.label.includes('Gross Profit')) {
+                            return label + ': ₱' + value.toLocaleString('en-US', { minimumFractionDigits: 2 });
                         }
+                        return label + ': ' + value;
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                grid: { display: false },
+                ticks: {
+                    maxRotation: 45,
+                    font: { size: 10 }
+                }
+            },
+            y: {
+                position: 'left',
+                beginAtZero: true,
+                grid: { color: 'rgba(0,0,0,0.05)' },
+                ticks: {
+                    callback: function(value) {
+                        return '₱' + value.toLocaleString();
                     }
                 }
             },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: {
-                        maxRotation: 45,
-                        font: { size: 10 }
-                    }
-                },
-                y: {
-                    position: 'left',
-                    beginAtZero: true,
-                    grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: {
-                        callback: function(value) {
-                            return '₱' + value.toLocaleString();
-                        }
-                    }
-                },
-                y1: {
-                    position: 'right',
-                    beginAtZero: true,
-                    grid: { display: false },
-                    ticks: {
-                        callback: function(value) {
-                            return value;
-                        }
+            y1: {
+                position: 'right',
+                beginAtZero: true,
+                grid: { display: false },
+                ticks: {
+                    callback: function(value) {
+                        return value;
                     }
                 }
             }
         }
+    };
+
+    let type = 'bar';
+    if (chartType === 'line') {
+        type = 'line';
+        datasets.forEach(ds => {
+            ds.tension = 0.3;
+            ds.pointRadius = 3;
+            ds.fill = false;
+        });
+    } else if (chartType === 'doughnut') {
+        type = 'doughnut';
+    } else if (chartType === 'area') {
+        type = 'line';
+        datasets.forEach(ds => {
+            ds.fill = true;
+            ds.tension = 0.3;
+            ds.backgroundColor = `rgba(${color.rgb}, 0.3)`;
+        });
+    } else if (chartType === 'horizontalBar') {
+        type = 'bar';
+        options.indexAxis = 'y';
+    }
+
+    salesChartInstance = new Chart(ctx, {
+        type: type,
+        data: {
+            labels: chartData.labels,
+            datasets: datasets
+        },
+        options: options
     });
 }
 
@@ -680,10 +760,38 @@ function renderHourlyChart(hourlyData) {
 }
 
 // ==========================================
-// LOAD REPORT DATA (for export)
+// LOAD REPORT DATA (Sales Report by Day)
 // ==========================================
 function loadReportData() {
-    // Hidden table placeholder
+    const params = new URLSearchParams({ start_date: currentFilters.start_date, end_date: currentFilters.end_date });
+    apiFetch(`get_report.php?${params.toString()}`, { method: 'GET' })
+        .then(data => {
+            if (data.status === 'success') {
+                const tbody = document.getElementById('reportTableBody');
+                if (!tbody) return;
+                if (!data.data || data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No completed payments in range.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.data.map(r => `
+                    <tr>
+                        <td>${escapeHtml(r.date)}</td>
+                        <td>₱${Number(r.revenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td>${Number(r.order_count || 0)}</td>
+                        <td>₱${Number(r.net_sales || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td>₱${Number(r.discount_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td>₱${Number(r.gross_profit || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    </tr>`).join('');
+            } else {
+                const tbody = document.getElementById('reportTableBody');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">' + escapeHtml(data.message || 'No completed payments in range.') + '</td></tr>';
+            }
+        })
+        .catch(err => {
+            console.error('Error loading report data:', err);
+            const tbody = document.getElementById('reportTableBody');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No completed payments in range.</td></tr>';
+        });
 }
 
 // ==========================================

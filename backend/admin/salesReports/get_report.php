@@ -4,10 +4,10 @@ $user = authenticate(['Admin', 'Supervisor']);
 
 require_once __DIR__ . '/SalesReportController.php';
 
-// REQ-056: any PDO/exception must surface as clean JSON, never HTML/500.
+// REQ-056: per-day Sales Report by Day (PAID-only). Clean JSON on any failure.
 try {
     $controller = new SalesReportController($user);
-    $controller->getStats();
+    $controller->getReport();
 } catch (Throwable $e) {
     http_response_code(200);
     header('Content-Type: application/json');
