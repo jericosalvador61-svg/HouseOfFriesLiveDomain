@@ -70,6 +70,10 @@ function renderOrderHistory(orders) {
             .map(i => `${Number(i.quantity)}x ${orderHistoryEscape(i.item_name)}`)
             .join(', ') || '-';
 
+        const notifyCell = (typeof notifyStatusEligible === 'function' && typeof renderNotifyCell === 'function' && notifyStatusEligible(o.status))
+            ? `<span class="notify-host" id="notifyHost-${o.order_id}">${renderNotifyCell(o.order_id, o.reference_number || o.order_id)}</span>`
+            : '';
+
         return `
             <tr>
                 <td>
@@ -82,7 +86,10 @@ function renderOrderHistory(orders) {
                 <td>${orderHistoryFormatDate(o.ordered_at)}</td>
                 <td>${orderHistoryFormatDate(o.completed_at)}</td>
                 <td>${orderHistoryEscape(o.creator_name || '-')}</td>
-                <td><span class="pill ${getStatusPillClass(o.status)}">${orderHistoryStatusLabel(o.status)}</span></td>
+                <td>
+                    <span class="pill ${getStatusPillClass(o.status)}">${orderHistoryStatusLabel(o.status)}</span>
+                    ${notifyCell}
+                </td>
             </tr>
         `;
     }).join('');

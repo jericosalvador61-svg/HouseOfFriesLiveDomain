@@ -104,6 +104,54 @@ function handleOrderCancelled(orderId) {
             window.location.href = 'customer.html';
         }
     });
+    // REQ-055 #2: always kick back to the menu even if the customer dismisses
+    // the dialog (short fallback so the redirect still happens).
+    setTimeout(function () {
+        localStorage.removeItem('cart');
+        window.location.href = 'customer.html';
+    }, 800);
+}
+
+// REQ-055 #2: 0:00 reached on the 15-min auto-cancel countdown → server-side
+// cancel the order (signed cancel sig), warn the customer, then force-redirect
+// to the menu even if they dismiss the dialog.
+async function handleOrderExpired(orderId) {
+    clearCountdownTimer(orderId);
+    window.clearMyTable();
+    try {
+        const sig = await obtainCancelSig(orderId);
+        const found = window.HOFDevice && HOFDevice.orders().find(o => String(o.order_id) === String(orderId));
+        const ref = (found && found.ref) || orderId;
+        const resp = await fetch('cancel_order.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId, ref: String(ref), sig: sig || '' })
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data && data.success && window.HOFDevice) {
+                HOFDevice.updateStatus(orderId, 'CANCELLED', false);
+            }
+        }
+    } catch (e) {
+        console.error('Server cancel on expiry failed:', e);
+    }
+    if (window.HOFDevice) {
+        HOFDevice.updateStatus(orderId, 'CANCELLED', false);
+    }
+    Swal.fire({
+        icon: 'warning',
+        title: 'Order Expired',
+        text: 'Order Expired — redirected to menu. Your unpaid order was auto-cancelled after 15 minutes.',
+        confirmButtonText: 'Back to Menu',
+        confirmButtonColor: '#FFB800',
+        allowOutsideClick: false
+    });
+    // Force-redirect even if the Swal is dismissed.
+    setTimeout(function () {
+        localStorage.removeItem('cart');
+        window.location.href = 'customer.html';
+    }, 1200);
 }
 
 function clearCountdownTimer(orderId) {
@@ -158,6 +206,35 @@ function initTracker() {
                 trackedOrders.push(oid);
             }
         });
+    }
+
+    // REQ-062 #14: logged-in customers seed the device registry from their
+    // server history so Track/My Orders keep working for orders placed on
+    // other devices. Best-effort — never block tracking on failure.
+    if (window.HOFCustomer && window.HOFCustomer.isLoggedIn() && window.HOFDevice) {
+        fetch(`${APP_ROOT}/customer/get_my_orders.php`, {
+            headers: { 'Authorization': 'Bearer ' + (window.HOFCustomer.getToken() || '') }
+        })
+            .then(function (r) {
+                if (r.status === 401) return null;
+                return r.json();
+            })
+            .then(function (data) {
+                if (!data || !data.success || !Array.isArray(data.orders)) return;
+                data.orders.forEach(function (o) {
+                    var existing = HOFDevice.orders().some(function (x) { return String(x.order_id) === String(o.order_id); });
+                    if (existing) return;
+                    HOFDevice.addOrder({
+                        order_id: o.order_id,
+                        ref: o.reference_number || o.ref,
+                        status: o.status,
+                        paid: o.payment_status === 'COMPLETED',
+                        table_number: o.table_number || null,
+                        created_at: o.ordered_at || o.created_at
+                    });
+                });
+            })
+            .catch(function () {});
     }
 
     if (trackedOrders.length === 0) {
@@ -216,6 +293,17 @@ function initTracker() {
                 } else {
                     updateSingleCard(payload.order_id, payload.status);
                 }
+            }
+        });
+
+        pusherChannel.bind('customer-notify', function (data) {
+            let payload = typeof data === 'string' ? JSON.parse(data) : data;
+            if (typeof payload.data === 'string') payload = JSON.parse(payload.data);
+            if (!payload || !payload.order_id || !trackedOrders.includes(parseInt(payload.order_id))) return;
+            if (payload.type === 'notify') {
+                triggerReadyAlert(payload.order_id);   // existing fn: vibrate + flash + tap-dismiss
+            } else if (payload.type === 'stop') {
+                dismissReadyAlert(payload.order_id);   // existing fn
             }
         });
     }
@@ -330,6 +418,13 @@ function refreshItemsBlock(orderId, itemsData) {
           <span>Total</span>
           <span>₱${total}</span>
         </div>`;
+    // REQ-055 #1: keep the always-visible tracker total in sync with the
+    // re-rendered items list (cashier add/remove/void, kitchen updates).
+    const totalEl = document.getElementById('trackerTotal-' + orderId);
+    if (totalEl) {
+        const strong = totalEl.querySelector('strong');
+        if (strong) strong.textContent = '₱' + total;
+    }
 }
 
 function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
@@ -396,6 +491,7 @@ function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
         const cardHtml = `
             <div class="tracker-card mb-4" id="trackerCard-${orderId}" data-order-id="${orderId}">
                 <div class="order-id-badge" id="trackRefNum-${orderId}">Order ID: #${ref}</div>
+                <div class="tracker-total" id="trackerTotal-${orderId}"><span>Total:</span> <strong>₱${totalAmount || '0.00'}</strong></div>
                 ${tableLabel ? '<div class="text-muted small mb-2">' + tableLabel + '</div>' : ''}
                 ${status === 'PENDING' && !paid ? '<div class="countdown-bar" id="countdown-' + orderId + '"><span class="countdown-label">Auto-cancels in:</span> <span class="countdown-timer" id="timer-' + orderId + '">15:00</span></div>' : ''}
                 ${status === 'PENDING' && paid ? '<div class="countdown-bar" style="background:rgba(40,167,69,0.12);border-color:#28a745;color:#28a745;" id="countdown-' + orderId + '"><span class="countdown-label">Payment received</span> — order queued for kitchen</div>' : ''}
@@ -468,10 +564,19 @@ function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
                     var rem = Math.max(0, Math.floor((expires - new Date()) / 1000));
                     var el = document.getElementById('timer-' + orderId);
                     if (el) el.textContent = formatCountdown(rem);
+                    // REQ-055 #2: warn state (red, pulsing) inside the last 2 minutes.
+                    var bar = document.getElementById('countdown-' + orderId);
+                    if (bar) {
+                        if (rem <= 120 && rem > 0) {
+                            bar.classList.add('countdown-warn');
+                        } else {
+                            bar.classList.remove('countdown-warn');
+                        }
+                    }
                     if (rem <= 0) {
                         clearInterval(window._countdownTimers[orderId]);
                         delete window._countdownTimers[orderId];
-                        handleOrderCancelled(orderId);
+                        handleOrderExpired(orderId);
                     }
                 }, 1000);
             }
@@ -525,6 +630,38 @@ function updateSingleCard(orderId, status) {
         paid = paid || (order ? order.paid : false);
     }
     updateTrackerUI(orderId, status, paid);
+}
+
+// ── Kitchen-ready alert (REQ-055 #5 / REQ-062 #12) ──
+// When the order transitions to READY/COMPLETED/SERVED, flash the card and
+// vibrate. One tap anywhere on the card dismisses the flash + stops the
+// looping sound. Re-flashes on each new transition (hasPlayedReadySound reset
+// in updateTrackerUI handles the sound side).
+function triggerReadyAlert(orderId) {
+    const card = document.getElementById('trackerCard-' + orderId);
+    if (!card) return;
+    card.classList.add('card-flash');
+    if (navigator.vibrate) {
+        try { navigator.vibrate([300, 150, 300]); } catch (e) {}
+    }
+    // One-tap dismiss (idempotent).
+    if (!card.dataset.readyAlertBound) {
+        card.dataset.readyAlertBound = '1';
+        card.addEventListener('click', function readyTap() {
+            dismissReadyAlert(orderId);
+        }, { once: true });
+    }
+}
+
+function dismissReadyAlert(orderId) {
+    const card = document.getElementById('trackerCard-' + orderId);
+    if (card) card.classList.remove('card-flash');
+    if (navigator.vibrate) {
+        try { navigator.vibrate(0); } catch (e) {}
+    }
+    // Stop the looping mixkit sound (kept global so it can be paused).
+    try { audioNotification.pause(); audioNotification.currentTime = 0; } catch (e) {}
+    if (card) delete card.dataset.readyAlertBound;
 }
 
 function updateTrackerUI(orderId, status, paid) {
@@ -593,19 +730,24 @@ function updateTrackerUI(orderId, status, paid) {
         if (!paid) {
                 actionsHtml = '<button class="btn-action-large btn-action-yellow" onclick="resumeGcashPayment(' + orderId + ')"><i class="fa-solid fa-qrcode"></i> Pay with GCash</button>';
         } else {
-            actionsHtml = '<button class="btn-action-large btn-action-outline" onclick="location.href=\'orderTracker.html\'"><i class="fa-solid fa-rotate"></i> Refresh</button>';
+            // REQ-055 #3: the old "Refresh" button re-opened orderTracker.html
+            // WITHOUT order_id → initTracker kicked the user to orderHistory.
+            // Replace it with Order Again (clear cart + last-order keys).
+            actionsHtml = '<button class="btn-action-large btn-action-yellow" onclick="localStorage.removeItem(\'cart\');localStorage.removeItem(\'lastOrderID\');localStorage.removeItem(\'lastRefNumber\');location.href=\'customer.html\';"><i class="fa-solid fa-plus"></i> Order Again</button>';
         }
     } else if (currentStatus === 'IN-PROGRESS' || currentStatus === 'PREPARING') {
         if (visualRing) { visualRing.className = 'status-visual status-preparing'; if (mainIcon) mainIcon.className = 'fa-solid fa-fire-burner fa-spin'; }
-        if (headline) { headline.textContent = 'In Progress'; headline.style.color = '#FFB800'; }
+        // REQ-055 #4: paid/preparing = BLUE (not yellow).
+        if (headline) { headline.textContent = 'In Progress'; headline.style.color = '#007AFF'; }
         if (message) message.textContent = 'Payment Confirmed! Your order is being prepared.';
         resetSteps();
         if (stepPending) { stepPending.className = 'step-row completed'; iconPending.className = 'fa-solid fa-circle-check'; }
         if (stepPreparing) { stepPreparing.className = 'step-row active'; iconPreparing.className = 'fa-solid fa-fire-burner fa-bounce'; }
         actionsHtml = '<div style="display:flex;flex-direction:column;gap:8px;"><button class="btn-action-large btn-action-outline" disabled style="opacity:0.6;"><i class="fa-solid fa-lock"></i> Locked — cannot edit</button><button class="btn-action-large btn-action-yellow" onclick="localStorage.removeItem(\'cart\');localStorage.removeItem(\'lastOrderID\');localStorage.removeItem(\'lastRefNumber\');location.href=\'customer.html\';"><i class="fa-solid fa-plus"></i> Order Again</button><button class="btn-action-large btn-action-outline" onclick="window.viewReceipt(' + orderId + ')"><i class="fa-solid fa-receipt"></i> View Receipt</button></div>';
     } else if (currentStatus === 'COOKING') {
-        if (visualRing) { visualRing.className = 'status-visual'; if (mainIcon) mainIcon.className = 'fa-solid fa-utensils fa-spin'; visualRing.style.background = 'rgba(255,184,0,0.15)'; }
-        if (headline) { headline.textContent = 'Cooking'; headline.style.color = '#FFB800'; }
+        // REQ-055 #4: cooking = ORANGE tint ring + headline (not yellow).
+        if (visualRing) { visualRing.className = 'status-visual status-cooking'; if (mainIcon) mainIcon.className = 'fa-solid fa-utensils fa-spin'; }
+        if (headline) { headline.textContent = 'Cooking'; headline.style.color = '#FF9500'; }
         if (message) message.textContent = 'The kitchen is actively preparing your order!';
         resetSteps();
         if (stepPending) { stepPending.className = 'step-row completed'; iconPending.className = 'fa-solid fa-circle-check'; }
@@ -632,10 +774,95 @@ function updateTrackerUI(orderId, status, paid) {
             audioNotification.play().catch(() => {});
             hasPlayedReadySound = true;
         }
+        // REQ-055 #5 / REQ-062 #12: kitchen-ready alert — vibrate + bright
+        // pulse on the card, tap anywhere to dismiss.
+        triggerReadyAlert(orderId);
+        // REQ-062 #1: offer a guest the optional "link this order to an
+        // account" prompt once per order (never after a login).
+        if (window.HOFCustomer && !window.HOFCustomer.isLoggedIn() && !sessionStorage.getItem('hof_link_prompt_' + orderId)) {
+            offerGuestLinkPrompt(orderId);
+        }
         actionsHtml = '<button class="btn-action-large btn-action-yellow" onclick="localStorage.removeItem(\'cart\');localStorage.removeItem(\'lastOrderID\');localStorage.removeItem(\'lastRefNumber\');location.href=\'customer.html\';"><i class="fa-solid fa-plus"></i> Order Again</button><button class="btn-action-large btn-action-outline" onclick="window.viewReceipt(' + orderId + ')"><i class="fa-solid fa-receipt"></i> View Receipt</button>';
     }
 
     if (actionsContainer) actionsContainer.innerHTML = actionsHtml;
+}
+
+// ── Guest → login link prompt (REQ-062 #1) ──
+// Shown once per completed order for guests. Optional: entering a phone
+// links the order to an existing account (never auto-creates one). Always
+// sets the session flag so it never re-prompts for the same order.
+async function obtainLinkSig(orderId) {
+    let ref = null;
+    if (window.HOFDevice) {
+        const order = HOFDevice.orders().find(o => String(o.order_id) === String(orderId));
+        if (order && order.ref) ref = order.ref;
+    }
+    // Without a real reference_number the signed link will 403 (Reference
+    // mismatch) — fail explicitly instead of sending a numeric order_id.
+    if (!ref) return null;
+    const resp = await fetch(`${APP_ROOT}/backend/payments/get-payment-link.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'link' })
+    });
+    const data = await resp.json();
+    return data.success && data.sig ? data.sig : null;
+}
+
+function offerGuestLinkPrompt(orderId) {
+    const promptKey = 'hof_link_prompt_' + orderId;
+    // Defensive: guard is already checked by the caller, but keep idempotence.
+    if (sessionStorage.getItem(promptKey)) return;
+
+    let ref = orderId;
+    if (window.HOFDevice) {
+        const order = HOFDevice.orders().find(o => o.order_id == orderId);
+        if (order && order.ref) ref = order.ref;
+    }
+
+    Swal.fire({
+        title: 'Save this order to an account?',
+        text: 'Enter your phone number to link this order (optional).',
+        input: 'tel',
+        inputPlaceholder: '09171234567',
+        inputValidator: (value) => {
+            if (!value || value.trim() === '') {
+                return 'Enter your phone number or press "Not now".';
+            }
+        },
+        showCancelButton: true,
+        cancelButtonText: 'Not now',
+        confirmButtonText: 'Link Order',
+        confirmButtonColor: '#FFB800',
+        allowOutsideClick: false
+    }).then(async (result) => {
+        // Always record that we prompted for this order (confirm or cancel),
+        // so it never reappears.
+        sessionStorage.setItem('hof_link_prompt_' + orderId, '1');
+
+        if (!result.isConfirmed || !result.value) return;
+
+        const phone = result.value.trim();
+        try {
+            const sig = await obtainLinkSig(orderId);
+            if (!sig) throw new Error('Could not generate a link signature.');
+            const resp = await fetch(`${APP_ROOT}/customer/link_order_by_phone.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: orderId, ref: String(ref), phone: phone, sig: sig })
+            });
+            const data = await resp.json();
+            Swal.fire({
+                icon: data && data.success ? 'success' : 'info',
+                title: 'Link Order',
+                text: (data && data.message) || 'Done.',
+                confirmButtonColor: '#FFB800'
+            });
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Connection Error', text: 'Please try again.', confirmButtonColor: '#FFB800' });
+        }
+    });
 }
 
 // ── Multi-order dropdown selector ──

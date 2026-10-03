@@ -10,6 +10,7 @@
  */
 require_once __DIR__ . '/../../db.php';
 require_once __DIR__ . '/../../auth_middleware.php';
+require_once __DIR__ . '/../../log_activity_helper.php';
 header('Content-Type: application/json');
 
 $auth = authenticate(['Admin', 'Supervisor']);
@@ -24,6 +25,19 @@ if ($name === '' || $phone === '') {
     exit;
 }
 
+// Normalize + validate PH phone (mirror update_customer.php + register.php):
+// strip non-digits; 12-char '63' prefix → '0'+last10; require 09XXXXXXXXX.
+$digits = preg_replace('/[^0-9]/', '', $phone);
+if (strlen($digits) === 12 && substr($digits, 0, 2) === '63') {
+    $digits = '0' . substr($digits, -10);
+}
+if (!preg_match('/^09\d{9}$/', $digits)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Enter a valid PH phone number (09XXXXXXXXX).']);
+    exit;
+}
+$phone = $digits;
+
 try {
     $chk = $pdo->prepare('SELECT 1 FROM customers WHERE phone_number = ? LIMIT 1');
     $chk->execute([$phone]);
@@ -36,6 +50,8 @@ try {
     $ins = $pdo->prepare('INSERT INTO customers (phone_number, name, password_hash, is_active, created_at, updated_at) VALUES (?, ?, ?, 1, NOW(), NOW())');
     $ins->execute([$phone, $name, '']);
     $customerId = (int)$pdo->lastInsertId();
+
+    logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'], 'CUSTOMER_CREATE', "Created customer {$name} ({$phone})", 'customer', $customerId, $phone, 'ACTIVE');
 
     echo json_encode([
         'success' => true,

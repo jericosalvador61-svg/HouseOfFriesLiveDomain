@@ -27,6 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const API = {
         list: "../../backend/admin/customer_manage/list_customers.php",
         create: "../../backend/admin/customer_manage/create_customer.php",
+        edit: "../../backend/admin/customer_manage/update_customer.php",
         toggle: "../../backend/admin/customer_manage/toggle_customer.php",
         reset: "../../backend/admin/customer_reset/generate_reset_code.php"
     };
@@ -34,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let customers = [];
     let currentPage = 1;
     const ITEMS_PER_PAGE = 10;
+    let editingCustomerId = null;
 
     const tableBody = document.getElementById("customersTableBody");
     const searchInput = document.getElementById("searchCustomer");
@@ -56,14 +58,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!tableBody) return;
         try {
             const res = await authFetch(API.list);
-            const data = await res.json();
-            if (!data.success) throw new Error(data.message || 'Failed to load customers');
+            let data = null;
+            try { data = await res.json(); } catch (_) {}
+            if (!res.ok) throw new Error((data && data.message) || 'Failed to load customers');
+            if (!data || !data.success) throw new Error((data && data.message) || 'Failed to load customers');
             customers = data.customers || [];
             currentPage = 1;
             applyFiltersAndRender();
         } catch (err) {
             console.error("Failed to fetch customers:", err);
-            if (tableBody) tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Failed to load customers.</td></tr>';
+            if (tableBody) tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">' + escapeHtml(err.message || 'Failed to load customers.') + '</td></tr>';
         }
     }
 
@@ -93,6 +97,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${escapeHtml(created)}</td>
                 <td>${statusBadge}</td>
                 <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary btn-edit me-1" data-id="${escapeHtml(c.customer_id)}" data-name="${escapeHtml(c.name)}" data-phone="${escapeHtml(c.phone_number)}" title="Edit customer">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
                     <button class="btn btn-sm btn-outline-warning btn-reset me-1" data-id="${escapeHtml(c.customer_id)}" data-phone="${escapeHtml(c.phone_number)}" title="Generate reset code">
                         <i class="bi bi-key"></i> Reset Code
                     </button>
@@ -263,10 +270,55 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    async function openEditCustomer(customer) {
+        editingCustomerId = customer ? Number(customer.customer_id) : null;
+        const titleEl = document.getElementById("addCustomerModalLabel");
+        if (titleEl) titleEl.textContent = customer ? 'Edit Customer' : 'Add Customer';
+        if (customerName) customerName.value = customer ? customer.name : '';
+        if (customerPhone) customerPhone.value = customer ? customer.phone_number : '';
+        if (addCustomerModal) addCustomerModal.show();
+    }
+
+    async function updateCustomer(name, phone) {
+        const btn = document.getElementById("btnSaveCustomer");
+        const originalHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving...';
+        }
+        try {
+            const res = await authFetch(API.edit, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ customer_id: editingCustomerId, name, phone_number: phone })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                Swal.fire('Error', data.message || 'Could not update the customer.', 'error');
+                return false;
+            }
+            if (addCustomerModal) addCustomerModal.hide();
+            if (addCustomerForm) addCustomerForm.reset();
+            editingCustomerId = null;
+            fetchCustomers();
+            Swal.fire('Success', data.message || 'Customer updated.', 'success');
+            return true;
+        } catch (err) {
+            console.error("Failed to update customer:", err);
+            Swal.fire('Error', 'Something went wrong.', 'error');
+            return false;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+    }
+
     if (btnAddCustomer && addCustomerModal) {
         btnAddCustomer.addEventListener("click", () => {
             if (addCustomerForm) addCustomerForm.reset();
-            addCustomerModal.show();
+            openEditCustomer(null);
         });
     }
     if (addCustomerForm) {
@@ -278,16 +330,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 Swal.fire('Error', 'Name and phone number are required.', 'error');
                 return;
             }
-            await createCustomer(name, phone);
+            if (editingCustomerId) {
+                await updateCustomer(name, phone);
+            } else {
+                await createCustomer(name, phone);
+            }
         });
     }
 
     // Event delegation
     if (tableBody) {
         tableBody.addEventListener("click", (e) => {
+            const editBtn = e.target.closest(".btn-edit");
             const resetBtn = e.target.closest(".btn-reset");
             const toggleBtn = e.target.closest(".btn-toggle");
-            if (resetBtn) {
+            if (editBtn) {
+                openEditCustomer({ customer_id: editBtn.dataset.id, name: editBtn.dataset.name, phone_number: editBtn.dataset.phone });
+            } else if (resetBtn) {
                 generateResetCode(resetBtn.dataset.id, resetBtn.dataset.phone);
             } else if (toggleBtn) {
                 toggleCustomer(toggleBtn.dataset.id, toggleBtn.dataset.active === '1');

@@ -19,7 +19,7 @@ if (!$order_id || !$ref) {
     exit;
 }
 
-if (!in_array($purpose, ['pay', 'track', 'check', 'items', 'dining', 'cancel', 'receipt', 'edit'], true)) {
+if (!in_array($purpose, ['pay', 'track', 'check', 'items', 'dining', 'cancel', 'receipt', 'edit', 'link'], true)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Invalid purpose']);
     exit;

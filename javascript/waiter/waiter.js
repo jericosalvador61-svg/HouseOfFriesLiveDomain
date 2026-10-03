@@ -263,6 +263,9 @@ async function loadActiveOrders() {
             const tableLabel = (o.order_type === 'TAKE_OUT')
                 ? 'Take Out'
                 : ('Table ' + escapeHtml(o.table_number || 'N/A'));
+            const notify = notifyStatusEligible(o.status)
+                ? `<span class="notify-host" id="notifyHost-${o.order_id}">${renderNotifyCell(o.order_id, o.reference_number || o.order_id)}</span>`
+                : '';
 
             return `
                 <div class="order-card">
@@ -283,6 +286,7 @@ async function loadActiveOrders() {
                         <button class="btn-hof btn-sm success" onclick="deliverOrder(${o.order_id})">
                             <i class="bi bi-bicycle"></i> Deliver
                         </button>` : ''}
+                        ${notify}
                     </div>
                 </div>
             `;
@@ -605,6 +609,10 @@ function renderOrderCards(orders, isUnclaimed) {
             actionBtn = `<span class="pill served"><i class="bi bi-check2-circle"></i> Delivered</span>`;
         }
 
+        const notifyCell = (isUnclaimed || !notifyStatusEligible(o.status))
+            ? ''
+            : `<span class="notify-host" id="notifyHost-${o.order_id}">${renderNotifyCell(o.order_id, o.reference_number || o.order_id)}</span>`;
+
         return `
             <div class="order-card" data-order-id="${o.order_id}">
                 <div class="order-header">
@@ -622,13 +630,127 @@ function renderOrderCards(orders, isUnclaimed) {
                 </div>
                 <div class="order-footer">
                     ${actionBtn}
+                    ${notifyCell}
                 </div>
             </div>
         `;
     }).join('');
 }
 
-// â”€â”€ Update Order Status â”€â”€
+// ── Waiter "Notify Customer" (REQ-055 #6 / REQ-062 #5) ──
+// Shared timer store across waiter.js + orderHistory.js. Broadcasts a
+// `customer-notify` Pusher alert to the order so the customer's tracker can
+// beep. Auto-stops after 30s; the waiter can Stop early. Never touches payment.
+window._notifyTimers = window._notifyTimers || {};
+
+function notifyStatusEligible(status) {
+    const s = String(status || '').toUpperCase();
+    return s === 'IN-PROGRESS' || s === 'COOKING' || s === 'COMPLETED';
+}
+
+function isNotifyActive(orderId) {
+    return !!(window._notifyTimers && window._notifyTimers[orderId]);
+}
+
+function notifyCountdownHtml(orderId) {
+    const rec = window._notifyTimers[orderId];
+    const secs = (rec && typeof rec.remaining === 'number') ? rec.remaining : 30;
+    return `<span class="pill preparing" id="notifyCountdown-${Number(orderId)}">Notify&hellip; ${secs}s</span>`;
+}
+
+// Stop button uses no ref lookup — the active timer record stores it.
+function notifyStopBtnHtml(orderId) {
+    return `<button class="btn-hof btn-sm danger" onclick="stopCustomerNotify(${Number(orderId)}); return false;" title="Stop the customer alert">
+        <i class="bi bi-stop-fill"></i> Stop
+    </button>`;
+}
+
+function renderNotifyCell(orderId, ref) {
+    if (isNotifyActive(orderId)) {
+        return notifyCountdownHtml(orderId) + ' ' + notifyStopBtnHtml(orderId);
+    }
+    return `<button class="btn-hof btn-sm" onclick="startCustomerNotify(${Number(orderId)}, '${escapeHtml(String(ref))}'); return false;" title="Ping the customer's phone">
+        <i class="bi bi-bell"></i> Notify Customer
+    </button>`;
+}
+
+function refreshNotifyCell(orderId) {
+    const host = document.getElementById('notifyHost-' + orderId);
+    if (!host) return;
+    const rec = window._notifyTimers[orderId];
+    if (rec) {
+        const cd = document.getElementById('notifyCountdown-' + orderId);
+        if (cd) cd.innerHTML = 'Notify&hellip; ' + rec.remaining + 's';
+    }
+}
+
+function stopNotifyRecord(orderId) {
+    const rec = window._notifyTimers[orderId];
+    if (rec && rec._timer) clearInterval(rec._timer);
+    delete window._notifyTimers[orderId];
+}
+
+async function postNotify(orderId, ref, type) {
+    const res = await fetch(`${API_BASE}/notify_customer.php`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (localStorage.getItem('hof_token') || '')
+        },
+        body: JSON.stringify({ order_id: Number(orderId), ref: String(ref), type: type })
+    });
+    return res.json();
+}
+
+window.startCustomerNotify = async function (orderId, ref) {
+    if (isNotifyActive(orderId)) return;
+    const refValue = String(ref || orderId);
+
+    // Optimistically render countdown + Stop.
+    const rec = { remaining: 30, _ref: refValue };
+    rec._timer = setInterval(() => {
+        const r = window._notifyTimers[orderId];
+        if (!r) return;
+        r.remaining -= 1;
+        refreshNotifyCell(orderId);
+        if (r.remaining <= 0) {
+            clearInterval(r._timer);
+            stopNotifyRecord(orderId);
+            postNotify(orderId, refValue, 'stop').catch(() => {});
+            const host = document.getElementById('notifyHost-' + orderId);
+            if (host) host.innerHTML = renderNotifyCell(orderId, refValue);
+        }
+    }, 1000);
+    window._notifyTimers[orderId] = rec;
+    refreshNotifyCell(orderId);
+
+    try {
+        const data = await postNotify(orderId, refValue, 'notify');
+        if (!data.success) {
+            stopNotifyRecord(orderId);
+            refreshNotifyCell(orderId);
+            Swal.fire({ icon: 'error', title: 'Notify failed', text: data.message || 'Could not notify customer.' });
+        }
+    } catch (e) {
+        stopNotifyRecord(orderId);
+        refreshNotifyCell(orderId);
+        Swal.fire({ icon: 'error', title: 'Network error', text: 'Please try again.' });
+    }
+};
+
+window.stopCustomerNotify = async function (orderId) {
+    const rec = window._notifyTimers[orderId];
+    const refValue = rec ? rec._ref : '';
+    if (rec && rec._timer) clearInterval(rec._timer);
+    delete window._notifyTimers[orderId];
+    try {
+        if (refValue) await postNotify(orderId, refValue, 'stop');
+    } catch (e) { /* stop is best-effort */ }
+    const host = document.getElementById('notifyHost-' + orderId);
+    if (host) host.innerHTML = renderNotifyCell(orderId, refValue || orderId);
+};
+
+// ── Update Order Status ──
 async function updateOrderStatus(orderId, status) {
     Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     try {

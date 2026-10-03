@@ -2,6 +2,16 @@
     let pusherChannel = null;
     let filter = sessionStorage.getItem('hof_history_filter') || 'active';
 
+    // APP_ROOT: resolve /backend/... against the app root so these calls work
+    // on localhost subfolder AND the live domain root (REQ-055/060/062 review).
+    const APP_ROOT = (() => {
+        try {
+            const m = window.location.pathname.match(/^(.*?)(?:\/public|\/customer|\/backend|\/admin|\/cashier|\/inventoryStaff|\/kitchenStaff|\/waiter|\/supervisor)(?:\/|$)/i);
+            return (m && m[1]) ? m[1].replace(/\/$/, '') : '';
+        } catch (_) { return ''; }
+    })();
+    const PAY_LINK_API = APP_ROOT + '/backend/payments/get-payment-link.php';
+
     document.addEventListener('DOMContentLoaded', () => {
         updateBadges();
         loadHistory();
@@ -36,6 +46,7 @@
     window.loadHistory = function () {
         if (window.HOFCustomer && window.HOFCustomer.isLoggedIn()) {
             renderFilters();
+            seedDeviceFromServer();
             loadServerOrders();
         } else {
             var orders = window.HOFDevice ? HOFDevice.orders() : [];
@@ -43,6 +54,35 @@
             renderOrders(orders);
         }
     };
+
+    // REQ-062 #14: logged-in customers seed the device registry from server
+    // history (only what's missing — never merge guest orders, never remove).
+    function seedDeviceFromServer() {
+        if (!window.HOFDevice) return;
+        fetch('get_my_orders.php', {
+            headers: { 'Authorization': 'Bearer ' + (window.HOFCustomer.getToken() || '') }
+        })
+            .then(function (r) {
+                if (r.status === 401) return null;
+                return r.json();
+            })
+            .then(function (data) {
+                if (!data || !data.success || !Array.isArray(data.orders)) return;
+                data.orders.forEach(function (o) {
+                    var exists = HOFDevice.orders().some(function (x) { return String(x.order_id) === String(o.order_id); });
+                    if (exists) return;
+                    HOFDevice.addOrder({
+                        order_id: o.order_id,
+                        ref: o.reference_number || o.ref,
+                        status: o.status,
+                        paid: o.payment_status === 'COMPLETED',
+                        table_number: o.table_number || null,
+                        created_at: o.ordered_at || o.created_at
+                    });
+                });
+            })
+            .catch(function () {});
+    }
 
     // REQ-052 B3: logged-in customers fetch their server-side order history
     // (get_my_orders.php — scoped by the validated token only). On failure we
@@ -221,7 +261,7 @@
     window.resumeGcashPayment = async function (orderId, ref) {
         try {
             var deviceId = window.HOFDevice ? HOFDevice.id() : '';
-            var resp = await fetch('/backend/payments/get-payment-link.php', {
+            var resp = await fetch(PAY_LINK_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'pay', device_id: deviceId })
@@ -238,13 +278,14 @@
     };
 
     window.obtainCancelSig = async function (orderId) {
-        var ref = orderId;
+        let ref = null;
         if (window.HOFDevice) {
-            var order = HOFDevice.orders().find(function (o) { return o.order_id == orderId; });
+            const order = HOFDevice.orders().find(function (o) { return String(o.order_id) === String(orderId); });
             if (order && order.ref) ref = order.ref;
         }
+        if (!ref) return null;
         try {
-            var resp = await fetch('/backend/payments/get-payment-link.php', {
+            var resp = await fetch(PAY_LINK_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'cancel' })
@@ -257,13 +298,14 @@
     };
 
     window.obtainReceiptSig = async function (orderId) {
-        var ref = orderId;
+        let ref = null;
         if (window.HOFDevice) {
-            var order = HOFDevice.orders().find(function (o) { return o.order_id == orderId; });
+            const order = HOFDevice.orders().find(function (o) { return String(o.order_id) === String(orderId); });
             if (order && order.ref) ref = order.ref;
         }
+        if (!ref) return null;
         try {
-            var resp = await fetch('/backend/payments/get-payment-link.php', {
+            var resp = await fetch(PAY_LINK_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: orderId, ref: String(ref), purpose: 'receipt' })
