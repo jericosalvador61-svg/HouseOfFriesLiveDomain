@@ -435,16 +435,30 @@ class Kitchen
      */
     public function checkAllItems(int $orderId): array
     {
+        // REQ-063 #9: idempotent — if the order is already zeroed (all items
+        // already checked), that is NOT an error; return success so the
+        // kitchen never sees a confusing "error" on a second Check All.
+        $exists = $this->db->prepare("SELECT COUNT(*) FROM orders WHERE order_id = :id");
+        $exists->execute([':id' => $orderId]);
+        if ((int)$exists->fetchColumn() === 0) {
+            return ['success' => false, 'message' => 'Order not found.'];
+        }
+
+        $already = $this->db->prepare("SELECT total_estimated_prep_time FROM orders WHERE order_id = :id");
+        $already->execute([':id' => $orderId]);
+        $current = (int)$already->fetchColumn();
+
+        if ($current === 0) {
+            // Second+ press on an already-checked order — treat as success.
+            return ['success' => true, 'message' => 'All items already checked.', 'prep_remaining' => 0];
+        }
+
         $stmt = $this->db->prepare("
             UPDATE orders
             SET total_estimated_prep_time = 0
             WHERE order_id = :id
         ");
         $stmt->execute([':id' => $orderId]);
-
-        if ($stmt->rowCount() === 0) {
-            return ['success' => false, 'message' => 'Order not found.'];
-        }
 
         return ['success' => true, 'message' => 'All items checked.', 'prep_remaining' => 0];
     }

@@ -21,7 +21,7 @@ if ($sig && $ref) {
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT reference_number, ordered_at, status, cooking_started_at FROM orders WHERE order_id = ?");
+    $stmt = $pdo->prepare("SELECT reference_number, ordered_at, created_at, status, cooking_started_at FROM orders WHERE order_id = ?");
     $stmt->execute([$order_id]);
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -116,6 +116,7 @@ try {
         'success' => true,
         'items' => $cartItems,
         'ordered_at' => $order['ordered_at'] ?? null,
+        'created_at' => $order['created_at'] ?? null,
         'total_prep_minutes' => $totalPrepMinutes,
         'minutes_done' => $minutesDone
     ]);

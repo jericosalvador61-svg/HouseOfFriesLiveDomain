@@ -50,8 +50,8 @@ try {
 
     $pdo->beginTransaction();
 
-    // 1. Fetch order with status + payment_status + table_id + reference_number + ordered_at
-    $stmt = $pdo->prepare("SELECT status, payment_status, table_id, order_type, reference_number, ordered_at FROM orders WHERE order_id = ?");
+    // 1. Fetch order with status + payment_status + table_id + reference_number + ordered_at + created_at
+    $stmt = $pdo->prepare("SELECT status, payment_status, table_id, order_type, reference_number, ordered_at, created_at FROM orders WHERE order_id = ?");
     $stmt->execute([$orderId]);
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -69,9 +69,14 @@ try {
         exit;
     }
 
-    // 2b. 15-minute edit window — server-side authoritative check (REQ-050 H5)
-    $orderedTs = $order['ordered_at'] ? strtotime($order['ordered_at']) : null;
-    if ($orderedTs && (time() - $orderedTs) > 900) {
+    // 2b. 15-minute edit window — server-side authoritative check (REQ-050 H5).
+    // REQ-063 #2: the window anchors to the ORDER CREATION time (created_at,
+    // falling back to ordered_at). It MUST NOT be anchored to ordered_at
+    // because edits no longer rewrite ordered_at — rewriting it extended the
+    // customer's window indefinitely with every edit.
+    $windowStart = $order['created_at'] ?: $order['ordered_at'];
+    $windowTs = $windowStart ? strtotime($windowStart) : null;
+    if ($windowTs && (time() - $windowTs) > 900) {
         $pdo->rollBack();
         http_response_code(409);
         echo json_encode(["success" => false, "message" => "This order has expired and can no longer be edited. Please place a new order instead."]);
@@ -246,11 +251,14 @@ try {
     // PENDING unpaid orders; if a discount is already on the order, keep it and
     // recompute the net total from the fresh gross subtotal, exactly like the
     // cashier recalc sites do. discount columns stay untouched.
+    // REQ-063 #2: ordered_at is NEVER rewritten on edit. The 15-min edit/cancel
+    // window anchors to created_at (order creation); bumping ordered_at on every
+    // edit used to keep re-opening the window indefinitely. The order stays
+    // PENDING-unpaid so the customer can re-checkout after a successful edit.
     $updateOrder = $pdo->prepare("
         UPDATE orders
         SET subtotal_amount = ?,
             total_amount = ? - COALESCE(discount_amount, 0),
-            ordered_at = NOW(),
             updated_at = NOW()
         WHERE order_id = ?
     ");

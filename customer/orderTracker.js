@@ -230,7 +230,7 @@ function initTracker() {
                         status: o.status,
                         paid: o.payment_status === 'COMPLETED',
                         table_number: o.table_number || null,
-                        created_at: o.ordered_at || o.created_at
+                        created_at: o.created_at || o.ordered_at
                     });
                 });
             })
@@ -353,7 +353,8 @@ async function fetchAndRenderOrder(orderId) {
                     total: data.prep_estimate_total,
                     startedEpoch: data.cooking_started_epoch,
                     started: !!data.prep_started,
-                    orderedAt: data.ordered_at || null
+                    orderedAt: data.ordered_at || null,
+                    createdAt: data.created_at || null
                 };
             }
         }
@@ -363,9 +364,12 @@ async function fetchAndRenderOrder(orderId) {
             if (itemsData && itemsData.total_prep_minutes) {
                 prepMinutes = itemsData.total_prep_minutes;
             }
-            // L2: prefer the server's authoritative ordered_at for the 15-min
-            // auto-cancel countdown anchor over any localStorage value.
-            if (itemsData && itemsData.ordered_at) {
+            // L2: prefer the server's authoritative creation timestamp for the
+            // 15-min auto-cancel countdown anchor over any localStorage value.
+            // REQ-063 #2: created_at is the window anchor the server uses now.
+            if (itemsData && itemsData.created_at) {
+                window._orderedAtAnchor = itemsData.created_at;
+            } else if (itemsData && itemsData.ordered_at) {
                 window._orderedAtAnchor = itemsData.ordered_at;
             }
         }
@@ -547,10 +551,17 @@ function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
         // Start countdown for PENDING unpaid orders
         if (status === 'PENDING' && !paid) {
             var created = new Date();
-            // Use ordered_at if available (L2): anchor to the server's
-            // authoritative order timestamp, not local device time.
-            if (prep && prep.orderedAt) {
+            // REQ-063 #2: anchor to the order CREATION time (created_at,
+            // falling back to ordered_at) — exactly the timestamp the server
+            // uses for the 15-minute edit/cancel window. ordered_at used to be
+            // rewritten on every edit, which kept resetting the window; the
+            // server no longer does that, so the client must match.
+            if (prep && prep.createdAt) {
+                created = new Date(prep.createdAt);
+            } else if (prep && prep.orderedAt) {
                 created = new Date(prep.orderedAt);
+            } else if (itemsData && itemsData.created_at) {
+                created = new Date(itemsData.created_at);
             } else if (itemsData && itemsData.ordered_at) {
                 created = new Date(itemsData.ordered_at);
             }
@@ -685,6 +696,14 @@ function updateTrackerUI(orderId, status, paid) {
     if (headline) headline.style.color = '';
 
     const currentStatus = status.toUpperCase();
+
+    // REQ-063 #5: the cart is spent the moment the payment is confirmed.
+    // Any paid state (PENDING+paid, IN-PROGRESS, PREPARING, COOKING, READY,
+    // COMPLETED, SERVED) clears the cart + badge immediately — not only at
+    // COMPLETED. lastOrderID/lastRefNumber stay for the receipt/tracker.
+    if (paid || ['IN-PROGRESS','PREPARING','COOKING','READY','COMPLETED','SERVED'].includes(currentStatus)) {
+        clearCartAndBadge();
+    }
 
     // Clear countdown timer if order is no longer PENDING unpaid
     if (currentStatus !== 'PENDING' || paid) {

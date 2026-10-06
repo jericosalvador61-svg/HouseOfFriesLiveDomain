@@ -707,7 +707,14 @@ class KitchenUI {
             this.refreshCheckAllButton(orderId);
         } catch (err) {
             Swal.close();
-            Swal.fire({ icon: 'error', title: 'Error', text: err.message, confirmButtonColor: '#dc3545' });
+            // REQ-063 #9: friendly handling — the backend rate-limits Check All
+            // to 60/60s; show a soft "please wait" instead of a raw error.
+            const msg = String(err.message || '');
+            if (/rate.?limit|too many requests|429/i.test(msg)) {
+                Swal.fire({ icon: 'info', title: 'Please wait a moment', text: 'Check All was used very recently. Try again in a few seconds.', confirmButtonColor: '#FFB800' });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: msg, confirmButtonColor: '#dc3545' });
+            }
         }
     }
 

@@ -17,7 +17,7 @@ let pageSig = null;
 let checkSig = null;
 let paymentAmount = 0;
 const EXPIRY_SECONDS = 15 * 60;
-const POLL_INTERVAL_MS = 3000;
+const POLL_INTERVAL_MS = 30000; // REQ-063 #6: parity with the other customer pages (30s fallback; the QR page also has Pusher).
 const MAX_POLL_ATTEMPTS = 100;
 
 // REQ-054 B1: clear the cart + cart badge once payment succeeds. Keeps

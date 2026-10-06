@@ -13,6 +13,10 @@ try {
     // Base query components
     // NOTE: customer_name is included so the cashier sees WHO the order is for
     // directly on the card, without having to open the order.
+    // REQ-063 #3: payment_method + payment_status are returned so the cashier
+    // UI can distinguish GCASH-unpaid rows (view-only) from CASH rows (full
+    // actions). They are NOT filtered out server-side — the unified list must
+    // contain both.
     $query = "SELECT 
                 o.order_id, 
                 o.reference_number, 
@@ -21,6 +25,8 @@ try {
                 o.order_type,
                 o.created_at,
                 o.customer_name,
+                o.payment_method,
+                o.payment_status,
                 t.table_number
               FROM orders o
               LEFT JOIN restaurant_table t ON o.table_id = t.table_id
