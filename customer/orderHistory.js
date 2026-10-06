@@ -209,7 +209,7 @@
 
     function initPusher() {
         if (typeof Pusher === 'undefined') { setTimeout(initPusher, 500); return; }
-        var pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+        var pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1', forceTLS: (window.location.protocol === 'https:') });
         pusherChannel = pusher.subscribe('hof-orders');
         pusherChannel.bind('new-order', function () { setTimeout(loadHistory, 500); });
         pusherChannel.bind('order-status-changed', function (data) {

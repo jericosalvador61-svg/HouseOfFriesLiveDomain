@@ -273,7 +273,7 @@ function initTracker() {
 
     // Pusher bind for any tracked order
     if (typeof Pusher !== 'undefined') {
-        const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+        const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1', forceTLS: (window.location.protocol === 'https:') });
         pusherChannel = pusher.subscribe('hof-orders');
 
         pusherChannel.bind('new-order', function (data) {

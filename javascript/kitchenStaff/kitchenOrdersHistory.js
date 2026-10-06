@@ -379,7 +379,7 @@ const kitchenHistoryUI = {
             setTimeout(() => this.initPusher(), 500);
             return;
         }
-        const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+        const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1', forceTLS: (window.location.protocol === 'https:') });
         const channel = pusher.subscribe('hof-orders');
         channel.bind('new-order', (data) => {
             console.log('[Pusher] New order:', data);

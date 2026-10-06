@@ -919,7 +919,7 @@ function setupEventListeners() {
 
     // ── Pusher: listen for menu availability changes ──
     if (typeof Pusher !== 'undefined') {
-        const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+        const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1', forceTLS: (window.location.protocol === 'https:') });
         const menuChannel = pusher.subscribe('hof-menu');
         menuChannel.bind('menu-availability-changed', function (data) {
             let payload = typeof data === 'string' ? JSON.parse(data) : data;

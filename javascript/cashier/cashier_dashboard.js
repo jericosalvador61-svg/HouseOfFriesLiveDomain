@@ -18,7 +18,9 @@ function escapeAttr(value) {
 
 // Initialize Pusher
 const pusher = new Pusher('a8860aca373dcc3400ce', {
-    cluster: 'ap1'
+    cluster: 'ap1',
+    // REQ-064: protocol-matched transport (kitchenUI.js pattern).
+    forceTLS: (window.location.protocol === 'https:')
 });
 
 // Subscribe to the order channel

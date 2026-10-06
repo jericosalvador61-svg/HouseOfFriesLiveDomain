@@ -93,7 +93,9 @@ function initPusher() {
     }
     const pusher = new Pusher('a8860aca373dcc3400ce', {
         cluster: 'ap1',
-        forceTLS: false
+        // REQ-064: protocol-matched transport (kitchenUI.js pattern) — hardcoded
+        // forceTLS breaks either local http or the live https site.
+        forceTLS: (window.location.protocol === 'https:')
     });
     const channel = pusher.subscribe('hof-orders');
 

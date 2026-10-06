@@ -106,9 +106,11 @@ function playNotificationSound() {
 // Kitchen sends message = status ("COMPLETED" = ready to deliver). place_order sends "New Order #...".
 function initPusherNotifications() {
     if (typeof Pusher !== 'undefined') {
+        // REQ-064: match the transport to the page (kitchenUI.js pattern) —
+        // a hardcoded forceTLS breaks either local http or the live https site.
         const pusher = new Pusher('a8860aca373dcc3400ce', {
             cluster: 'ap1',
-            forceTLS: false
+            forceTLS: (window.location.protocol === 'https:')
         });
 
         const channel = pusher.subscribe('hof-orders');
