@@ -463,29 +463,9 @@
 
         if (overlay) overlay.classList.remove('open', 'active');
 
-        // REQ-052 B2-1: hover-expand flyout for the COLLAPSED mini rail.
-        // Transient only (never persisted). Only set up on pages that use the
-        // unified navbar (scope = #unifiedNavbar present); a dataset flag on the
-        // sidebar guarantees we never double-inject listeners if init runs twice.
-        const navbarScope = document.getElementById('unifiedNavbar');
-        if (navbarScope && !sidebar.dataset.hofFlyoutBound) {
-            sidebar.dataset.hofFlyoutBound = '1';
-            let flyoutTimer = null;
-            function expandFlyout() {
-                clearTimeout(flyoutTimer);
-                if (sidebar.classList.contains('collapsed') || sidebar.classList.contains('active')) {
-                    sidebar.classList.add('expanded-on-hover');
-                }
-            }
-            function collapseFlyout() {
-                clearTimeout(flyoutTimer);
-                sidebar.classList.remove('expanded-on-hover');
-            }
-            sidebar.addEventListener('mouseenter', expandFlyout);
-            sidebar.addEventListener('mouseleave', collapseFlyout);
-            sidebar.addEventListener('focusin', expandFlyout);
-            sidebar.addEventListener('focusout', collapseFlyout);
-        }
+        // REQ-063: hover-expansion of the collapsed sidebar was REMOVED by
+        // Jerico's request — the rail now only collapses/expands via the
+        // #sidebarCollapse button (and stays an off-canvas drawer on mobile).
 
         if (toggle) {
             toggle.addEventListener('click', () => {

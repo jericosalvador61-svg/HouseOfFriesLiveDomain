@@ -166,7 +166,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 applyFiltersAndRender();
             });
             li.appendChild(a);
-            controls.insertBefore(li, prevPage.nextSibling);
+            // FIX (REQ-063): insert before the last <li> (Next). The old code
+            // passed prevPage.nextSibling — prevPage is the <a> INSIDE the first
+            // <li>, so its nextSibling is a text node outside the <ul>, which
+            // made insertBefore throw and the page numbers never render.
+            controls.insertBefore(li, controls.querySelector("li:last-child"));
         }
     }
 

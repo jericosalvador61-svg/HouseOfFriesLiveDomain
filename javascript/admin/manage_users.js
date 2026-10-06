@@ -213,7 +213,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
             li.appendChild(a);
-            paginationControls.insertBefore(li, prevLi.nextSibling);
+            // FIX (REQ-063): insert each page number BEFORE the last <li> (Next).
+            // The old code used prevLi.nextSibling which re-inserted in front of
+            // the previously inserted number, rendering the pager REVERSED
+            // (e.g. "Previous 2 1 Next").
+            paginationControls.insertBefore(li, paginationControls.querySelector("li:last-child"));
         }
     }
 

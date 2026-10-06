@@ -298,6 +298,20 @@ const LoadingManager = {
 
     show(buttonOrForm, options = {}) {
         const key = this.getKey(buttonOrForm);
+
+        // FIX (REQ-063): if this exact element is already in loading state,
+        // don't re-capture — otherwise a second show() would save the SPINNER
+        // markup as the "original" and hide() could never restore the label.
+        if (this.activeLoaders.has(key)) return;
+
+        // FIX (REQ-063): capture the original markup BEFORE showButtonLoading()
+        // swaps innerHTML for the spinner. Previously originalText was read
+        // AFTER the swap, so hide() restored the spinner HTML and the button
+        // stayed stuck on "Creating…"/"Processing…" forever (still clickable —
+        // the reported QR-Tables "Creating..." bug, and every other module
+        // that used LoadingManager.show/hide).
+        const originalText = buttonOrForm.tagName === 'BUTTON' ? buttonOrForm.innerHTML : null;
+
         if (buttonOrForm.tagName === 'BUTTON') {
             this.showButtonLoading(buttonOrForm, options);
         } else if (buttonOrForm.tagName === 'FORM') {
@@ -306,7 +320,7 @@ const LoadingManager = {
         this.activeLoaders.set(key, {
             element: buttonOrForm,
             startTime: Date.now(),
-            originalText: buttonOrForm.tagName === 'BUTTON' ? buttonOrForm.innerHTML : null
+            originalText: originalText
         });
     },
 
