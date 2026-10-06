@@ -24,11 +24,23 @@ require_once __DIR__ . '/../backend/customer_auth.php';
 
 $auth = require_customer();
 $customerId = (int)$auth['customer_id'];
+$customerPhone = (string)($auth['phone'] ?? $auth['phone_number'] ?? '');
 
 try {
     // 1) Orders explicitly linked to this customer account.
     $linked = [];
     if ($customerId > 0) {
+        // REQ-065 #2: if the live DB lacks orders.customer_account_id (not yet migrated),
+        // do NOT 500 — fall back to the customer_name/phone match path so My Orders still loads.
+        $hasCustCol = false;
+        try {
+        $hasCustCol = (bool)$pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'customer_account_id'"
+        )->fetchColumn();
+        } catch (Throwable $e) { $hasCustCol = false; }
+
+        if ($hasCustCol) {
         $stmt = $pdo->prepare("
             SELECT
                 o.order_id,
@@ -47,6 +59,28 @@ try {
         ");
         $stmt->execute([':cid' => $customerId]);
         $linked = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+        // Legacy fallback: match orders whose customer_name equals the account phone.
+        $linked = [];
+        $stmt2 = $pdo->prepare("
+            SELECT
+                o.order_id,
+                o.reference_number,
+                o.order_type,
+                o.status,
+                o.total_amount,
+                o.ordered_at,
+                o.payment_status,
+                o.customer_name,
+                rt.table_number
+            FROM orders o
+            LEFT JOIN restaurant_table rt ON o.table_id = rt.table_id
+            WHERE o.customer_name = :nm
+            ORDER BY o.ordered_at DESC
+        ");
+        $stmt2->execute([':nm' => $customerPhone]);
+        $linked = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+        }
     }
 
     // 2) NO guest-order merge. Per Jerico (2026-10-01): once a guest

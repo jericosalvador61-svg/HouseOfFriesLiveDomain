@@ -257,10 +257,17 @@ $stmt->execute($queryParams);
 $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch items for each order
-foreach ($orders as &$order) {
-    $order['items'] = $kitchen->getOrderItems($order['order_id']);
+try {
+    foreach ($orders as &$order) {
+        $order['items'] = $kitchen->getOrderItems($order['order_id']);
+    }
+    unset($order);
+} catch (Throwable $e) {
+    // REQ-065 #3: missing live column (order_items.subtotal etc) must not 500 before JSON.
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Could not load order items: ' . $e->getMessage()]);
+    exit;
 }
-unset($order);
 
 // ---- CSV Export ----------------------------------------------------------------
 if ($isExport) {

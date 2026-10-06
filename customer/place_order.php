@@ -388,32 +388,25 @@ try {
     $computedTotal = round($computedTotal, 2);
 
     // 5. Insert Main Order with server-computed total
-    $sqlOrder = "INSERT INTO orders (
-                        table_id, 
-                        user_id, 
-                        customer_name,
-                        customer_account_id,
-                        status, 
-                        reference_number, 
-                        order_type, 
-                        subtotal_amount,
-                        total_amount, 
-                        created_at,
-                        ordered_at
-                    ) VALUES (?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, NOW(), NOW())";
+    // REQ-065: build the INSERT column list schema-agnostically — if the live DB
+    // hasn't been migrated with customer_account_id / subtotal_amount yet, omit
+    // them so place_order never dies with "unknown column".
+    $hasCustCol = false; $hasSubtotal = false;
+    try {
+        $cols = $pdo->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders'")->fetchAll(PDO::FETCH_COLUMN);
+        $hasCustCol = in_array('customer_account_id', $cols, true);
+        $hasSubtotal = in_array('subtotal_amount', $cols, true);
+    } catch (Throwable $e) { /* treat as un-migrated */ }
 
-        try {
+    $orderCols = ["table_id","user_id","customer_name","status","reference_number","order_type","total_amount","created_at","ordered_at"];
+    $orderVals = [$table_id, $user_id, $customer_name, 'PENDING', $reference_number, $order_type, $computedTotal];
+    if ($hasCustCol) { $orderCols[] = "customer_account_id"; $orderVals[] = $customerAccountId; }
+    if ($hasSubtotal) { $orderCols[] = "subtotal_amount"; $orderVals[] = $computedTotal; }
+    $sqlOrder = "INSERT INTO orders (" . implode(', ', $orderCols) . ") VALUES (" . implode(', ', array_fill(0, count($orderVals), '?')) . ", NOW(), NOW())";
+
+    try {
         $stmtOrder = $pdo->prepare($sqlOrder);
-        $stmtOrder->execute([
-            $table_id,
-            $user_id,
-            $customer_name,
-            $customerAccountId,
-            $reference_number,
-            $order_type,
-            $computedTotal,
-            $computedTotal
-        ]);
+        $stmtOrder->execute($orderVals);
         $orderId = $pdo->lastInsertId();
     } catch (PDOException $e) {
         if ($e->getCode() == 23000) {

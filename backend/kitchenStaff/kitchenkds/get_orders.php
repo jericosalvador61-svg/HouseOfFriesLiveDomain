@@ -18,11 +18,23 @@ require_once __DIR__ . '/Kitchen.php';
 // Authenticate kitchen staff
 $user = authenticate(['Kitchen Staff', 'Admin', 'Supervisor']);
 
-$kitchen = new Kitchen();
-$orders = $kitchen->getActiveOrders();
+try {
+    $kitchen = new Kitchen();
+    $orders = $kitchen->getActiveOrders();
 
-echo json_encode([
-    'status' => 'success',
-    'message' => 'Orders retrieved',
-    'data' => $orders
-]);
+    echo json_encode([
+        'status' => 'success',
+        'message' => 'Orders retrieved',
+        'data' => $orders
+    ]);
+} catch (Throwable $e) {
+    // REQ-065 #3: a missing live column (e.g. order_items.subtotal or
+    // menu_items.image_url) used to fatal BEFORE json_encode → the KDS saw
+    // "unreadable response". Always emit valid JSON so the board can show a
+    // readable error instead of dying.
+    http_response_code(500);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Could not load orders: ' . $e->getMessage()
+    ]);
+}
