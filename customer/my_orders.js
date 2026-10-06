@@ -21,6 +21,9 @@ const APP_ROOT = (() => {
     const btn = document.getElementById('myOrdersBtn');
     if (btn) btn.addEventListener('click', handleMyOrdersClick);
     window.addEventListener('storage', updateBadge);
+    // REQ-064: real-time status pushes for the badge + device registry.
+    startPolling();
+    if (typeof window.initStatusSocket === 'function') window.initStatusSocket();
   });
 
   window.handleMyOrdersClick = function () {
@@ -116,27 +119,49 @@ const APP_ROOT = (() => {
     return map[status] || '#8E8E93';
   }
 
+  function syncAllOrderStatuses() {
+    const orders = window.HOFDevice ? HOFDevice.orders() : [];
+    orders.forEach(o => {
+      fetch('get_order_status.php?order_id=' + o.order_id)
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.status && data.status !== o.status) {
+            HOFDevice.updateStatus(o.order_id, data.status, o.paid);
+            updateBadge();
+          }
+        })
+        .catch(() => {});
+    });
+  }
+
   function startPolling() {
     if (pollInterval) clearInterval(pollInterval);
-    pollInterval = setInterval(() => {
-      const orders = window.HOFDevice ? HOFDevice.orders() : [];
-      orders.forEach(o => {
-        fetch('get_order_status.php?order_id=' + o.order_id)
-          .then(r => r.json())
-          .then(data => {
-            if (data && data.status && data.status !== o.status) {
-              HOFDevice.updateStatus(o.order_id, data.status, o.paid);
-              updateBadge();
-            }
-          })
-          .catch(() => {});
-      });
-    }, 15000);
+    pollInterval = setInterval(syncAllOrderStatuses, 15000);
   }
 
   function stopPolling() {
     if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
   }
+
+  // REQ-064: real-time status pushes — kitchen/cashier/waiter updates land here
+  // instantly; the 15s poll above stays as the fallback for missed events.
+  window.initStatusSocket = function () {
+    if (typeof Pusher === 'undefined') { setTimeout(window.initStatusSocket, 1000); return; }
+    try {
+      const pusher = new Pusher('a8860aca373dcc3400ce', {
+        cluster: 'ap1',
+        forceTLS: (window.location.protocol === 'https:')
+      });
+      const channel = pusher.subscribe('hof-orders');
+      const onOrderEvent = function () {
+        syncAllOrderStatuses();
+        updateBadge();
+      };
+      channel.bind('new-order', onOrderEvent);
+      channel.bind('order-status-changed', onOrderEvent);
+    } catch (e) { console.warn('Pusher init error:', e); }
+  };
+
 
   window.editFromMyOrders = function (orderId) {
     const orders = window.HOFDevice ? HOFDevice.orders() : [];

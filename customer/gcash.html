@@ -341,7 +341,35 @@
             document.getElementById('totalAmount').textContent = parseFloat(totalAmount).toFixed(2);
             
             startTimer();
+            initPaymentSocket();
         });
+
+        // REQ-064: live payment confirmation — if the GCash webhook fires while
+        // this page is still open (paid on another device / fast sandbox), stop
+        // the countdown and jump straight to the tracker instead of waiting for
+        // the PayMongo return redirect.
+        function initPaymentSocket() {
+            if (typeof Pusher === 'undefined') { setTimeout(initPaymentSocket, 1000); return; }
+            try {
+                const pusher = new Pusher('a8860aca373dcc3400ce', {
+                    cluster: 'ap1',
+                    forceTLS: (window.location.protocol === 'https:')
+                });
+                const channel = pusher.subscribe('hof-orders');
+                const onPaidEvent = function (data) {
+                    if (String(data.order_id) !== String(orderId)) return;
+                    clearInterval(timerInterval);
+                    localStorage.removeItem('gcash_order_start_' + orderId);
+                    window.location.href = 'orderTracker.html?order_id=' + orderId;
+                };
+                channel.bind('new-order', onPaidEvent);
+                channel.bind('order-status-changed', function (data) {
+                    let payload = typeof data === 'string' ? JSON.parse(data) : data;
+                    if (typeof payload.data === 'string') payload = JSON.parse(payload.data);
+                    if (payload.status === 'IN-PROGRESS') onPaidEvent(payload);
+                });
+            } catch (e) { console.warn('Pusher init error:', e); }
+        }
 
         // Timer function
         function startTimer() {
