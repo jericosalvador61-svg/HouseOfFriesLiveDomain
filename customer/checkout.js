@@ -36,12 +36,14 @@ function initCheckoutPaymentSection() {
     const bannerText = document.getElementById('methodBannerText');
     const cashCard = document.getElementById('cashInstructionCard');
     const gcashSection = document.getElementById('gcashSection');
+    const swapBtn = document.getElementById('swapMethodBtn');
 
     if (method === 'GCASH') {
         if (banner) banner.style.display = 'flex';
         if (bannerText) bannerText.textContent = 'Paying with GCash';
         if (cashCard) cashCard.style.display = 'none';
         if (gcashSection) gcashSection.style.display = 'flex';
+        if (swapBtn) swapBtn.textContent = 'Pay with Cash instead';
     } else {
         // Cash is the default when nothing (or an unknown value) was persisted.
         if (banner) banner.style.display = 'flex';
@@ -50,6 +52,15 @@ function initCheckoutPaymentSection() {
         if (gcashSection) gcashSection.style.display = 'none';
     }
 }
+
+// One-tap method swap: GCash <-> Cash. Updates cart choice + re-renders.
+// Open GCash App lives ONLY in qr_payment.html (not here).
+window.switchPayMethod = function () {
+    const cur = (localStorage.getItem('payment_method') || 'CASH').toUpperCase();
+    const next = (cur === 'GCASH') ? 'CASH' : 'GCASH';
+    localStorage.setItem('payment_method', next);
+    initCheckoutPaymentSection();
+};
 
 async function verifyGcashPayment(orderId, returnSig) {
     let attempt = 0;

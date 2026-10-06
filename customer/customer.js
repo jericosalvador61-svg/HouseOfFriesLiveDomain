@@ -206,11 +206,11 @@ function showGeofenceBlocked(info) {
         GPS_TIMEOUT:
             'Getting your location took too long.<br><small>The first GPS fix indoors can be slow. Move near a window or step outside, then tap <b>Try Again</b>.</small>',
         NO_GEO_SUPPORT:
-            'This browser doesn’t support location services.<br><small>Please order at the counter instead.</small>',
+            'This browser doesn’t support location services.<br><small>Tap <b>Locate Restaurant & Directions</b> below to find us.</small>',
         UNRELIABLE_GPS:
             'Your location is not accurate enough yet.<br><small>Please move to a location with a clearer GPS signal and try again.</small>',
         RATE_LIMITED:
-            'Too many location checks.<br><small>Please wait a few minutes and try again, or order at the counter.</small>',
+            'Too many location checks.<br><small>Please wait a few minutes and try again, or tap <b>Locate Restaurant & Directions</b>.</small>',
         CHECK_FAILED:
             'We couldn’t verify your location right now.<br><small>Check your internet connection and tap <b>Try Again</b>.</small>'
     };

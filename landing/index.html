@@ -631,18 +631,31 @@ function counters(){
       center: pos,
       zoom: 16,
       styles: [
-        { featureType: "landscape", stylers: [{ color: "#f0e6d2" }] },
-        { featureType: "water", stylers: [{ color: "#a08c6b" }] },
-        { featureType: "road", stylers: [{ color: "#6b4f2e" }] },
-        { featureType: "poi", stylers: [{ color: "#8B5A2B" }] },
-        { elementType: "labels.text.fill", stylers: [{ color: "#4a2f16" }] },
-        { elementType: "labels.text.stroke", stylers: [{ color: "#f0e6d2" }] }
+        { elementType: "geometry", stylers: [{ color: "#2b1a10" }] },
+        { elementType: "labels.text.fill", stylers: [{ color: "#f5e0b8" }] },
+        { elementType: "labels.text.stroke", stylers: [{ color: "#2b1a10" }] },
+        { featureType: "administrative", elementType: "geometry.stroke", stylers: [{ color: "#6b4a2a" }] },
+        { featureType: "landscape", stylers: [{ color: "#3a2313" }] },
+        { featureType: "landscape.natural", stylers: [{ color: "#4a2e16" }] },
+        { featureType: "poi", stylers: [{ color: "#5a3a1c" }] },
+        { featureType: "poi.park", stylers: [{ color: "#3f5a2a" }] },
+        { featureType: "road", stylers: [{ color: "#6b4a26" }] },
+        { featureType: "road.arterial", stylers: [{ color: "#8a5f30" }] },
+        { featureType: "road.highway", stylers: [{ color: "#c98f2e" }] },
+        { featureType: "road.highway.controlled_access", stylers: [{ color: "#e0a83c" }] },
+        { featureType: "transit", stylers: [{ color: "#5a3a1c" }] },
+        { featureType: "water", stylers: [{ color: "#1e3a4a" }] }
       ],
       mapTypeId: google.maps.MapTypeId.ROADMAP,
-      zoomControl: false,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false
+      // World-hover: no bounds restriction, full gesture + controls
+      restriction: undefined,
+      minZoom: 2,
+      maxZoom: 20,
+      gestureHandling: "greedy",
+      zoomControl: true,
+      mapTypeControl: true,
+      streetViewControl: true,
+      fullscreenControl: true
     });
     var marker = new google.maps.Marker({
       position: pos,

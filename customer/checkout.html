@@ -355,6 +355,9 @@
             <button class="btn-home" id="payCashBtn" onclick="confirmPayAtCounter()" style="width:100%;margin:0;background-color:var(--primary-yellow);color:#331A11;font-weight:700;height:50px;border-radius:12px;font-size:16px;border:none;cursor:pointer;">
                 <i class="fa-solid fa-cash-register"></i> Proceed to Cashier / Pay at Counter
             </button>
+            <button onclick="switchPayMethod()" style="background:transparent;color:#331A11;border:2px solid #331A11;border-radius:12px;padding:12px 24px;font-weight:700;font-size:14px;cursor:pointer;width:100%;">
+                Pay with GCash instead
+            </button>
         </div>
 
         <!-- GCash payment option — shown when cart selected GCash -->
@@ -370,8 +373,8 @@
                 <button onclick="payWithGCashQR()" style="background:#0056E3;color:white;border:none;border-radius:12px;padding:12px 24px;font-weight:700;font-size:15px;cursor:pointer;width:100%;">
                     <i class="fa-solid fa-qrcode"></i> Pay with GCash
                 </button>
-                <button onclick="openGcashApp()" style="background:transparent;color:#00bfff;border:2px solid #00bfff;border-radius:12px;padding:12px 24px;font-weight:700;font-size:15px;cursor:pointer;width:100%;">
-                    <i class="fa-solid fa-mobile-screen-button"></i> Open GCash App
+                <button onclick="switchPayMethod()" id="swapMethodBtn" style="background:transparent;color:#0056E3;border:2px solid #0056E3;border-radius:12px;padding:12px 24px;font-weight:700;font-size:14px;cursor:pointer;width:100%;">
+                    Pay with Cash instead
                 </button>
             </div>
         </div>

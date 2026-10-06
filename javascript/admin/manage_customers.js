@@ -152,6 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!controls || !prevPage) return;
         const items = controls.querySelectorAll("li:not(:first-child):not(:last-child)");
         items.forEach(li => li.remove());
+        const nextLi = controls.querySelector("li:last-child");
         for (let i = 1; i <= totalPages; i++) {
             const li = document.createElement("li");
             li.className = `page-item${i === currentPage ? " active" : ""}`;
@@ -166,7 +167,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 applyFiltersAndRender();
             });
             li.appendChild(a);
-            controls.insertBefore(li, prevPage.nextSibling);
+            if (nextLi) controls.insertBefore(li, nextLi);
+            else controls.insertBefore(li, prevPage.nextSibling);
         }
     }
 

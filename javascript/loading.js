@@ -298,6 +298,8 @@ const LoadingManager = {
 
     show(buttonOrForm, options = {}) {
         const key = this.getKey(buttonOrForm);
+        // Capture original content BEFORE replacing it (fix stuck "Creating..." bug)
+        const preHtml = (buttonOrForm.tagName === 'BUTTON') ? buttonOrForm.innerHTML : null;
         if (buttonOrForm.tagName === 'BUTTON') {
             this.showButtonLoading(buttonOrForm, options);
         } else if (buttonOrForm.tagName === 'FORM') {
@@ -306,7 +308,7 @@ const LoadingManager = {
         this.activeLoaders.set(key, {
             element: buttonOrForm,
             startTime: Date.now(),
-            originalText: buttonOrForm.tagName === 'BUTTON' ? buttonOrForm.innerHTML : null
+            originalText: preHtml
         });
     },
 

@@ -163,12 +163,37 @@ $totalOrders = (int)$statsRow['total_orders'];
 $paidOrders = (int)$statsRow['paid_orders'];
 $paidRevenue = (float)$statsRow['paid_revenue'];
 
+// Total Profit (gross): paid revenue - COGS (APPROVED stock-out value in range, schema-agnostic)
+$grossProfit = $paidRevenue;
+try {
+    $hasUnitCost = false;
+    try {
+        $colChk = $db->prepare("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'stock_out_items' AND column_name = 'unit_cost'");
+        $colChk->execute();
+        $hasUnitCost = ((int)$colChk->fetchColumn() > 0);
+    } catch (Throwable $t) { $hasUnitCost = false; }
+    $costExpr = $hasUnitCost ? "COALESCE(soi.unit_cost, rm.cost_per_unit, 0)" : "COALESCE(rm.cost_per_unit, 0)";
+    $cogsSql = "SELECT COALESCE(SUM(soi.quantity * $costExpr),0) AS cogs
+        FROM stock_out so
+        JOIN stock_out_items soi ON so.stock_out_id = soi.stock_out_id
+        JOIN raw_materials rm ON soi.raw_material_id = rm.raw_material_id
+        WHERE so.status = 'APPROVED'";
+    $cogsParams = [];
+    if ($dateFrom) { $cogsSql .= " AND DATE(so.stock_out_date) >= :cogs_from"; $cogsParams[':cogs_from'] = $dateFrom; }
+    if ($dateTo) { $cogsSql .= " AND DATE(so.stock_out_date) <= :cogs_to"; $cogsParams[':cogs_to'] = $dateTo; }
+    $cogsStmt = $db->prepare($cogsSql);
+    $cogsStmt->execute($cogsParams);
+    $cogs = (float)$cogsStmt->fetchColumn();
+    $grossProfit = $paidRevenue - $cogs;
+} catch (Throwable $t) { $grossProfit = $paidRevenue; }
+
 $stats = [
     'total_orders' => $totalOrders,
     'paid_orders' => $paidOrders,
     'unpaid_orders' => $totalOrders - $paidOrders,
     'paid_revenue' => number_format($paidRevenue, 2, '.', ''),
-    'avg_order_value' => number_format($paidOrders > 0 ? $paidRevenue / $paidOrders : 0, 2, '.', '')
+    'avg_order_value' => number_format($paidOrders > 0 ? $paidRevenue / $paidOrders : 0, 2, '.', ''),
+    'gross_profit' => number_format($grossProfit, 2, '.', '')
 ];
 
 // ---- Cashier dropdown options ----------------------------------------------

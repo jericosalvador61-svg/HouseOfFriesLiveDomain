@@ -231,7 +231,6 @@ async function loadRecentTables() {
                         <h3>Table ${escapeHtml(t.table_number)}</h3>
                         <span class="pill ${pillClass}">${statusLabel}</span>
                     </div>
-                    <div class="meta">${t.updated_at ? 'Updated: ' + timeAgo(Math.floor(new Date(String(t.updated_at).replace(' ', 'T')).getTime() / 1000)) : ''}</div>
                 </div>
             `;
         }).join('');

@@ -497,11 +497,12 @@ const AdminOrderHistoryUI = (function () {
 
         const totalOrders = parseInt(serverStats.total_orders) || 0;
         const paidRevenue = parseFloat(serverStats.paid_revenue) || 0;
-        const avgOrder = parseFloat(serverStats.avg_order_value) || 0;
+        // Total Profit = paid revenue - COGS (backend supplies gross_profit when available)
+        const totalProfit = parseFloat(serverStats.gross_profit ?? serverStats.avg_order_value) || 0;
 
         if (elements.statTotalOrders) elements.statTotalOrders.textContent = totalOrders;
         if (elements.statRevenue) elements.statRevenue.textContent = `₱${formatNumber(paidRevenue)}`;
-        if (elements.statAvgOrder) elements.statAvgOrder.textContent = `₱${formatNumber(avgOrder)}`;
+        if (elements.statAvgOrder) elements.statAvgOrder.textContent = `₱${formatNumber(totalProfit)}`;
         if (elements.statCompletedToday) {
             const paid = parseInt(serverStats.paid_orders) || 0;
             elements.statCompletedToday.textContent = `${paid} / ${totalOrders}`;

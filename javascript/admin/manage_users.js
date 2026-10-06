@@ -195,6 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
         items.forEach(li => li.remove());
 
         const prevLi = paginationControls.querySelector("li:first-child");
+        const nextLi = paginationControls.querySelector("li:last-child");
         if (!prevLi) return;
 
         for (let i = 1; i <= totalPages; i++) {
@@ -213,7 +214,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
             li.appendChild(a);
-            paginationControls.insertBefore(li, prevLi.nextSibling);
+            // Insert in order 1,2,3... before the Next button (fix reversed 2,1 bug)
+            if (nextLi) paginationControls.insertBefore(li, nextLi);
+            else paginationControls.insertBefore(li, prevLi.nextSibling);
         }
     }
 
