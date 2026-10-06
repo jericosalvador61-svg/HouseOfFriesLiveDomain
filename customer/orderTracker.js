@@ -230,7 +230,7 @@ function initTracker() {
                         status: o.status,
                         paid: o.payment_status === 'COMPLETED',
                         table_number: o.table_number || null,
-                        created_at: o.ordered_at || o.created_at
+                        created_at: o.created_at || o.ordered_at
                     });
                 });
             })

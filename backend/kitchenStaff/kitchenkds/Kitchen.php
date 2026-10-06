@@ -448,17 +448,17 @@ class Kitchen
         $already->execute([':id' => $orderId]);
         $current = (int)$already->fetchColumn();
 
+        if ($current === 0) {
+            // Second+ press on an already-checked order — treat as success.
+            return ['success' => true, 'message' => 'All items already checked.', 'prep_remaining' => 0];
+        }
+
         $stmt = $this->db->prepare("
             UPDATE orders
             SET total_estimated_prep_time = 0
             WHERE order_id = :id
         ");
         $stmt->execute([':id' => $orderId]);
-
-        if ($current === 0) {
-            // Second+ press on an already-checked order — treat as success.
-            return ['success' => true, 'message' => 'All items already checked.', 'prep_remaining' => 0];
-        }
 
         return ['success' => true, 'message' => 'All items checked.', 'prep_remaining' => 0];
     }
