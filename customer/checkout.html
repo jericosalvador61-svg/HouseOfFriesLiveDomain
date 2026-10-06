@@ -370,9 +370,9 @@
                 <button onclick="payWithGCashQR()" style="background:#0056E3;color:white;border:none;border-radius:12px;padding:12px 24px;font-weight:700;font-size:15px;cursor:pointer;width:100%;">
                     <i class="fa-solid fa-qrcode"></i> Pay with GCash
                 </button>
-                <button onclick="openGcashApp()" style="background:transparent;color:#00bfff;border:2px solid #00bfff;border-radius:12px;padding:12px 24px;font-weight:700;font-size:15px;cursor:pointer;width:100%;">
-                    <i class="fa-solid fa-mobile-screen-button"></i> Open GCash App
-                </button>
+                <!-- REQ-063: "Open GCash App" removed here on purpose — the GCash
+                     app deep-link lives ONLY on qr_payment.html (btnPayApp), which
+                     is where the customer lands after tapping Pay with GCash. -->
             </div>
         </div>
 

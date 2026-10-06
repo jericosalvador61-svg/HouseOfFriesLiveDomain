@@ -639,10 +639,15 @@ function counters(){
         { elementType: "labels.text.stroke", stylers: [{ color: "#f0e6d2" }] }
       ],
       mapTypeId: google.maps.MapTypeId.ROADMAP,
-      zoomControl: false,
+      // REQ-063: free, unrestricted browsing anywhere in the world —
+      // visible zoom + fullscreen controls, greedy gesture handling so
+      // one-finger pan / pinch-zoom never gets locked to cooperative mode.
+      zoomControl: true,
+      fullscreenControl: true,
+      scrollwheel: true,
+      gestureHandling: 'greedy',
       mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false
+      streetViewControl: false
     });
     var marker = new google.maps.Marker({
       position: pos,
