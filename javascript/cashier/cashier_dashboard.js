@@ -60,40 +60,16 @@ let selectedVoidItemIds = new Set();
 // REQ-049: tracks whether the active order currently has a discount applied.
 let activeOrderHasDiscount = false;
 
-/**
- * GCASH AUTO-VERIFY
- * While the cashier dashboard is open, poll for QR/web orders whose GCash
- * payment is awaiting confirmation and verify them WITH this cashier's
- * token — so the sale is recorded under whoever is logged in at that time.
- */
-function verifyPendingGcashOrders() {
-    const token = localStorage.getItem('hof_token');
-    if (!token) return;
-
-    fetch('/backend/cashier/get_pending_gcash_orders.php')
-        .then(r => r.json())
-        .then(data => {
-            if (!data.success || !data.orders || data.orders.length === 0) return;
-            data.orders.forEach(order => {
-                fetch(`/backend/payments/check-payment-status.php?order_id=${order.order_id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
-                    .then(r => r.json())
-                    .then(res => {
-                        if (res.success && res.paid) {
-                            loadPendingOrders();
-                            if (typeof HOFNavbar !== 'undefined' && HOFNavbar.refreshNotifications) {
-                                HOFNavbar.refreshNotifications();
-                            }
-                        }
-                    })
-                    .catch(() => { /* network hiccup - retry next cycle */ });
-            });
-        })
-        .catch(() => { /* silent */ });
-}
-setInterval(verifyPendingGcashOrders, 15000);
-setTimeout(verifyPendingGcashOrders, 3000);
+// ── GCASH IS LOCKED AT THE CASHIER (REQ-063 #3) ──
+// The cashier NEVER transacts GCash. GCash is paid directly by the customer
+// on the QR page; when the server flips payment_status=COMPLETED the order
+// proceeds to the kitchen automatically (backend broadcasts IN-PROGRESS on
+// hof-orders). There is NO cashier-side GCash verification/QR flow here —
+// that path (get_pending_gcash_orders.php) is no longer used as a cashier
+// transaction tool. The unified PENDING list still SHOWS GCASH-unpaid rows
+// (greyed, "Paying via GCash", view-only) so the cashier knows an order is
+// waiting on customer payment; once payment completes the row disappears
+// naturally via the 10s reload / Pusher.
 
 // Polling fallback for pending orders every 10s
 setInterval(() => {
@@ -207,7 +183,7 @@ function loadPendingOrders() {
                 }
 
                 orders.forEach(order => {
-                    // --- TIMEZONE FIX APPLIED HERE ---
+                    // ── TIMEZONE FIX APPLIED HERE ──
                     const formattedString = order.created_at.replace(' ', 'T');
                     const orderTime = new Date(formattedString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     
@@ -216,6 +192,14 @@ function loadPendingOrders() {
                         ? `Dine-In | Table ${order.table_number || '?'}`
                         : `Take-Out${order.table_number ? ' / ' + order.table_number : ''}`;
 
+                    // REQ-063 #3: GCASH-unpaid rows are LOCKED at the cashier.
+                    // Show them in the same list (greyed, "Paying via GCash",
+                    // view-only) — the cashier can look but not transact. The
+                    // moment the server flips payment_status=COMPLETED the
+                    // order flows to the kitchen on its own.
+                    const isGcashUnpaid = String(order.payment_method || '').toUpperCase() === 'GCASH'
+                        && String(order.payment_status || '').toUpperCase() !== 'COMPLETED';
+
                     // Customer name is shown on the card so the cashier does not
                     // have to open the order to identify it.
                     const customerName = (order.customer_name || '').trim();
@@ -223,11 +207,16 @@ function loadPendingOrders() {
                         ? `<small class="d-block order-card-customer" title="${escapeAttr(customerName)}">${escapeHtml(customerName)}</small>`
                         : '';
 
+                    const gcashBadge = isGcashUnpaid
+                        ? '<small class="d-block text-primary fw-bold" style="font-size:11px;margin-top:2px;"><i class="fa-solid fa-mobile-screen-button"></i> Paying via GCash</small>'
+                        : '';
+
                     const cardHtml = `
-                        <div class="order-card ${activeOrderId == order.order_id ? 'active' : 'inactive'}" data-id="${order.order_id}" data-status="${order.status}">
+                        <div class="order-card ${activeOrderId == order.order_id ? 'active' : 'inactive'} ${isGcashUnpaid ? 'gcash-locked' : ''}" data-id="${order.order_id}" data-status="${order.status}" data-gcash-locked="${isGcashUnpaid ? '1' : '0'}">
                             <div class="mb-1">
                                 <h3 class="mb-0 fw-bold text-truncate" title="#${escapeAttr(order.reference_number || order.order_id)}">#${escapeHtml(order.reference_number || order.order_id)}</h3>
                                 ${customerHtml}
+                                ${gcashBadge}
                                 <small class="text-muted d-block order-card-meta">
                                     ${typeLabel}
                                 </small>
@@ -260,6 +249,31 @@ function updateActiveCardUI() {
             c.classList.add('inactive');
         }
     });
+}
+
+// REQ-063 #3: is the currently selected order a GCASH-unpaid (locked) order?
+// The cashier may VIEW these rows but must never transact them — no pay,
+// no edit, no void, no discount, no item changes. Once the customer's GCash
+// completes (server flips payment_status=COMPLETED) the order leaves the
+// PENDING list on its own; a CASH switch makes the row actionable again.
+function isActiveOrderGcashLocked() {
+    if (!activeOrderId) return false;
+    const card = document.querySelector(`.order-card[data-id="${activeOrderId}"]`);
+    if (!card) return false;
+    return card.getAttribute('data-gcash-locked') === '1';
+}
+
+// REQ-063 #3: block the cashier's transaction entry points on a locked order.
+// Returns true when the action must be stopped (and a Swal was already shown).
+function blockGcashLocked(message) {
+    if (!isActiveOrderGcashLocked()) return false;
+    Swal.fire({
+        icon: 'info',
+        title: 'Waiting on GCash',
+        text: message || 'This customer is paying via GCash on their phone. The order moves to the kitchen automatically once payment is confirmed — no cashier action needed.',
+        confirmButtonColor: '#0056E3'
+    });
+    return true;
 }
 
 function fetchOrderDetails(id) {
@@ -335,6 +349,9 @@ function fetchOrderDetails(id) {
 }
 
 function updateQty(e, orderId, orderItemId, action) {
+    // REQ-063 #3: no qty changes on a GCASH-unpaid order.
+    if (blockGcashLocked('This order is locked while the customer pays via GCash. Item quantities cannot be changed.')) return;
+
     const btn = e.target;
     const row = btn.closest('tr');
     if (!row) return;
@@ -384,6 +401,9 @@ function addItemToCurrentOrder(item, line) {
         return;
     }
 
+    // REQ-063 #3: no item changes on a GCASH-unpaid order.
+    if (blockGcashLocked('This order is locked while the customer pays via GCash. No items can be added.')) return;
+
     const payload = {
         order_id: activeOrderId,
         menu_item_id: item.menu_item_id,
@@ -412,6 +432,8 @@ function addItemToCurrentOrder(item, line) {
 }
 
 function toggleVoidMode() {
+    // REQ-063 #3: void mode is meaningless on a GCASH-unpaid order.
+    if (blockGcashLocked('This order is locked while the customer pays via GCash. Voiding is unavailable.')) return;
     isVoidMode = !isVoidMode;
     selectedVoidItemIds.clear(); // Reset selections when toggling
 
@@ -460,6 +482,8 @@ function toggleItemSelection(orderItemId) {
 }
 
 function confirmSingleVoid(orderId, orderItemId, itemName) {
+    // REQ-063 #3: no voiding on a GCASH-unpaid order.
+    if (blockGcashLocked('This order is locked while the customer pays via GCash. No items can be voided.')) return;
     selectedVoidItemIds.clear();
     selectedVoidItemIds.add(orderItemId);
 
@@ -472,6 +496,8 @@ function confirmBulkVoid(orderId) {
         Swal.fire('Error', 'Please select an active order first.', 'error');
         return;
     }
+    // REQ-063 #3: no bulk voiding on a GCASH-unpaid order.
+    if (blockGcashLocked('This order is locked while the customer pays via GCash. No items can be voided.')) return;
     if (selectedVoidItemIds.size === 0) {
         toggleVoidMode();
         return;
@@ -585,6 +611,9 @@ function handleDiscountClick() {
         Swal.fire('Error', 'Please select an order first.', 'error');
         return;
     }
+
+    // REQ-063 #3: no discount actions on a GCASH-unpaid order.
+    if (blockGcashLocked()) return;
 
     if (activeOrderHasDiscount) {
         showDiscountAuthModal(activeOrderId, 'Remove the discount from this order?', 'remove');
@@ -792,6 +821,9 @@ function handleEnter() {
         return;
     }
 
+    // REQ-063 #3: the cashier may not enter/settle a GCASH-unpaid order.
+    if (blockGcashLocked()) return;
+
     const inputDisplayEl = document.querySelector('.input-display');
     if (!inputDisplayEl) return;
 
@@ -828,6 +860,9 @@ function handleEnter() {
 
 async function handlePay() {
     if (!activeOrderId) return;
+
+    // REQ-063 #3: the cashier may not settle a GCASH-unpaid order.
+    if (blockGcashLocked()) return;
 
     if (!isAmountConfirmed) {
         Swal.fire('Wait!', 'Please enter the cash amount and press ENTER first.', 'warning');
@@ -1237,13 +1272,33 @@ document.addEventListener('DOMContentLoaded', function () {
         if (card) {
             activeOrderId = card.getAttribute('data-id');
             const status = card.getAttribute('data-status');
+            const locked = card.getAttribute('data-gcash-locked') === '1';
             updateActiveCardUI();
             fetchOrderDetails(activeOrderId);
 
-            // Show QRPh button only when PENDING order selected
+            // REQ-063 #3: a GCASH-unpaid (locked) row is VIEW-ONLY. The
+            // cashier can inspect it but there is no PAY / GCash QR path —
+            // GCash is settled by the customer, not the cashier. When the
+            // customer switches to CASH (server flips payment_method), the
+            // row becomes actionable again on the next reload.
+            const payBtn = document.querySelector('.btn-pay');
+            const voidBtn = document.getElementById('void-toggle-btn');
+            const discountBtn = document.getElementById('discount-toggle-btn');
             const qrBtn = document.getElementById('cashierQRPhBtn');
-            if (qrBtn) {
-                qrBtn.style.display = (status === 'PENDING') ? 'block' : 'none';
+
+            if (locked) {
+                if (qrBtn) qrBtn.style.display = 'none';
+                if (payBtn) payBtn.style.display = 'none';
+                if (voidBtn) voidBtn.style.display = 'none';
+                if (discountBtn) discountBtn.style.display = 'none';
+            } else {
+                if (payBtn) payBtn.style.display = '';
+                if (voidBtn) voidBtn.style.display = '';
+                if (discountBtn) discountBtn.style.display = '';
+                // Show QRPh button only when PENDING order selected
+                if (qrBtn) {
+                    qrBtn.style.display = (status === 'PENDING') ? 'block' : 'none';
+                }
             }
         }
     });

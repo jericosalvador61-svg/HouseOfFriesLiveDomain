@@ -159,8 +159,6 @@
                 var start = (page - 1) * perPage;
                 var pageItems = filtered.slice(start, start + perPage);
 
-                var hasPendingUnpaid = filtered.some(function (o) { return o.status === 'PENDING' && !o.paid; });
-
                 var html = '';
                 pageItems.forEach(function (o) {
                     var color = statusColor(o.status);
@@ -174,9 +172,11 @@
                     if (isEditable(o.status, o.paid) && inDevice) {
                         actions += '<button class="btn-edit" onclick="window.editFromMyOrders(' + o.order_id + ')"><i class="fa-solid fa-pen"></i> Edit</button>';
                         actions += '<button class="btn-again" onclick="window.resumeGcashPayment(' + o.order_id + ',\'' + escapeHtml(o.ref || o.order_id) + '\')" style="background:#0056E3;color:white;"><i class="fa-solid fa-qrcode"></i> Pay</button>';
-                    } else if (!hasPendingUnpaid) {
-                        // Order Again is now in the top bar only — no per-card button
                     }
+                    // REQ-063 #1: every card gets its own Order Again footer
+                    // button (moved out of the header; no refresh button — the
+                    // module is websocket-driven).
+                    actions += '<button class="btn-again" onclick="window.orderAgainFromCard(' + o.order_id + ')"><i class="fa-solid fa-plus"></i> Order Again</button>';
 
                     var tableLabel = o.table_number ? 'Table ' + o.table_number : 'Takeout';
                     var dateStr = (o.created_at || o.ordered_at) ? new Date(o.created_at || o.ordered_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : '';
@@ -322,15 +322,18 @@
         loadHistory();
     };
 
-    window.handleOrderAgain = function() {
+    // REQ-063 #1: per-card "Order Again" (replaces the old header button).
+    // If the card's order is a PENDING unpaid order, resume payment; otherwise
+    // start a fresh order (cart is cleared).
+    window.orderAgainFromCard = function(orderId) {
         var orders = JSON.parse(localStorage.getItem('hof_orders') || '[]');
-        var pendingUnpaid = orders.find(function(o) {
-            return o.status === 'PENDING' && (!o.paid || o.payment_status !== 'COMPLETED');
-        });
-        if (pendingUnpaid) {
-            window.location.href = '../customer/checkout.html?order_id=' + pendingUnpaid.order_id;
+        var target = orders.find(function(o) { return String(o.order_id) === String(orderId); });
+        if (target && target.status === 'PENDING' && (!target.paid || target.payment_status !== 'COMPLETED')) {
+            window.location.href = '../customer/checkout.html?order_id=' + target.order_id;
         } else {
             localStorage.removeItem('cart');
+            localStorage.removeItem('lastOrderID');
+            localStorage.removeItem('lastRefNumber');
             window.location.href = '../customer/customer.html';
         }
     };
