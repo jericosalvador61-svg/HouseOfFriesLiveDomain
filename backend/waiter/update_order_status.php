@@ -107,9 +107,9 @@ try {
         }
     }
 
-    // Broadcast update via Pusher
+    // Broadcast update via Pusher (both events so tracker lights instantly)
     $message = "Order status updated to $status";
-    broadcastOrderUpdate($orderId, $message);
+    broadcastOrderUpdate($orderId, $message, $status);
 
     echo json_encode(['success' => true, 'message' => 'Order updated']);
 } catch (PDOException $e) {

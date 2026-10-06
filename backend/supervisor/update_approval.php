@@ -17,6 +17,12 @@ $data = json_decode(file_get_contents('php://input'), true);
 $type = $data['type'] ?? '';
 $requestId = (int)($data['request_id'] ?? 0);
 $newStatus = $data['status'] ?? '';
+// Option A: approver may correct qty/cost before Approve
+$correctedQty = isset($data['quantity']) ? (float)$data['quantity'] : null;
+$costUpdates = (isset($data['cost_updates']) && is_array($data['cost_updates'])) ? $data['cost_updates'] : [];
+// Reject reason is shown to staff via activity log (never silent)
+$rejectReason = trim((string)($data['reject_reason'] ?? ''));
+$rejectSuffix = ($rejectReason !== '') ? (" — Reason: " . mb_substr($rejectReason, 0, 200)) : '';
 
 if (!$type || !$requestId || !in_array($newStatus, ['APPROVED', 'REJECTED'])) {
     echo json_encode(['success' => false, 'message' => 'Invalid parameters.']);
@@ -53,8 +59,14 @@ try {
                 $items = $adjStmt->fetchAll(); // fetchAll, not fetch
 
                 foreach ($items as $adj) {
+                    // Option A: approver-corrected qty applies to single-line adjustments
+                    $useQty = ($correctedQty !== null && count($items) === 1 && $correctedQty > 0) ? $correctedQty : (float)$adj['quantity'];
+                    if ($correctedQty !== null && count($items) === 1 && $correctedQty > 0) {
+                        $fixStmt = $pdo->prepare("UPDATE adjustment_items SET quantity = ? WHERE adjustment_id = ?");
+                        $fixStmt->execute([$useQty, $requestId]);
+                    }
                     // Update raw material stock
-                    $change = ($adj['adjustment_type'] === 'ADD' ? 1 : -1) * (float)$adj['quantity'];
+                    $change = ($adj['adjustment_type'] === 'ADD' ? 1 : -1) * $useQty;
                     $updStmt = $pdo->prepare("
                         UPDATE raw_materials 
                         SET current_quantity = GREATEST(current_quantity + ?, 0),
@@ -84,7 +96,7 @@ try {
                 // REQ-050 / Cline N1: only log when the UPDATE actually matched a PENDING row
                 if ($stmt->rowCount() > 0) {
                     logActivity($pdo, $userId, $userName, $userRole,
-                        'ADJUSTMENT_REJECTED', "Inventory adjustment #{$requestId} rejected by {$userName}",
+                        'ADJUSTMENT_REJECTED', "Inventory adjustment #{$requestId} rejected by {$userName}{$rejectSuffix}",
                         'adjustment', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
                 }
             }
@@ -114,7 +126,7 @@ try {
                 $stmt->execute([$newStatus, $requestId]);
                 if ($stmt->rowCount() > 0) {
                     logActivity($pdo, $userId, $userName, $userRole,
-                        'RETURN_REJECTED', "Return request #{$requestId} rejected by {$userName}",
+                        'RETURN_REJECTED', "Return request #{$requestId} rejected by {$userName}{$rejectSuffix}",
                         'return', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
                 }
             }
@@ -150,7 +162,7 @@ try {
                 $stmt->execute([$newStatus, $requestId]);
                 if ($stmt->rowCount() > 0) {
                     logActivity($pdo, $userId, $userName, $userRole,
-                        'VOID_REJECTED', "Void request #{$requestId} rejected by {$userName}",
+                        'VOID_REJECTED', "Void request #{$requestId} rejected by {$userName}{$rejectSuffix}",
                         'void', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
                 }
             }
@@ -187,6 +199,15 @@ try {
                 $siStmt->execute([$requestId]);
                 $items = $siStmt->fetchAll();
 
+                // Option A: approver cost corrections persist as new cost_per_unit
+                foreach ($costUpdates as $mid => $newCost) {
+                    $mid = (int)$mid; $newCost = (float)$newCost;
+                    if ($mid > 0 && $newCost >= 0) {
+                        $cStmt = $pdo->prepare("UPDATE raw_materials SET cost_per_unit = ?, updated_at = NOW() WHERE raw_material_id = ?");
+                        $cStmt->execute([$newCost, $mid]);
+                    }
+                }
+
                 foreach ($items as $item) {
                     $updStmt = $pdo->prepare("
                         UPDATE raw_materials 
@@ -216,7 +237,7 @@ try {
                 $stmt->execute([$newStatus, $requestId]);
                 if ($stmt->rowCount() > 0) {
                     logActivity($pdo, $userId, $userName, $userRole,
-                        'STOCK_IN_REJECTED', "Stock-in #{$requestId} rejected by {$userName}",
+                        'STOCK_IN_REJECTED', "Stock-in #{$requestId} rejected by {$userName}{$rejectSuffix}",
                         'stock_in', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
                 }
             }
@@ -275,7 +296,7 @@ try {
                 $stmt->execute([$newStatus, $requestId]);
                 if ($stmt->rowCount() > 0) {
                     logActivity($pdo, $userId, $userName, $userRole,
-                        'STOCK_OUT_REJECTED', "Stock-out #{$requestId} rejected by {$userName}",
+                        'STOCK_OUT_REJECTED', "Stock-out #{$requestId} rejected by {$userName}{$rejectSuffix}",
                         'stock_out', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
                 }
             }
@@ -300,6 +321,13 @@ try {
                     exit;
                 }
 
+                // Option A: approver-corrected qty
+                $useQty = ($correctedQty !== null && $correctedQty > 0) ? $correctedQty : (float)$spItem['quantity_lost'];
+                if ($correctedQty !== null && $correctedQty > 0) {
+                    $fixStmt = $pdo->prepare("UPDATE spoilage SET quantity_lost = ? WHERE spoilage_id = ? AND status = 'PENDING'");
+                    $fixStmt->execute([$useQty, $requestId]);
+                }
+
                 // Deduct spoilage from raw material stock
                 $updStmt = $pdo->prepare("
                     UPDATE raw_materials 
@@ -307,7 +335,7 @@ try {
                         updated_at = NOW()
                     WHERE raw_material_id = ?
                 ");
-                $updStmt->execute([$spItem['quantity_lost'], $spItem['raw_material_id']]);
+                $updStmt->execute([$useQty, $spItem['raw_material_id']]);
 
                 $stmt = $pdo->prepare("
                     UPDATE spoilage 
@@ -333,7 +361,7 @@ try {
                     'spoilage', $requestId, null, 'APPROVED', 'PENDING', 'APPROVED');
             } else if ($spoilApplied) {
                 logActivity($pdo, $userId, $userName, $userRole,
-                    'SPOILAGE_REJECTED', "Spoilage report #{$requestId} rejected by {$userName}",
+                    'SPOILAGE_REJECTED', "Spoilage report #{$requestId} rejected by {$userName}{$rejectSuffix}",
                     'spoilage', $requestId, null, 'REJECTED', 'PENDING', 'REJECTED');
             }
             break;
@@ -358,7 +386,7 @@ try {
                     'purchase_plan', $requestId, null, 'Approved', 'Pending', 'Approved');
             } else {
                 logActivity($pdo, $userId, $userName, $userRole,
-                    'PURCHASE_PLAN_REJECTED', "Purchase plan #{$requestId} rejected by {$userName}",
+                    'PURCHASE_PLAN_REJECTED', "Purchase plan #{$requestId} rejected by {$userName}{$rejectSuffix}",
                     'purchase_plan', $requestId, null, 'Rejected', 'Pending', 'Rejected');
             }
             break;

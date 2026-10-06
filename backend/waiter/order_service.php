@@ -355,7 +355,7 @@ if (!function_exists('hof_waiter_create_order')) {    /**
         }
 
         if (function_exists('broadcastOrderUpdate')) {
-            broadcastOrderUpdate($orderId, "New Order #$referenceNumber from waiter");
+            broadcastOrderUpdate($orderId, "New Order #$referenceNumber from waiter", 'PENDING');
         }
 
         if (function_exists('hof_notify_roles')) {

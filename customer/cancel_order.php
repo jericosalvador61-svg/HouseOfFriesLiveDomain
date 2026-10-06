@@ -67,7 +67,7 @@ try {
     logActivity($pdo, null, 'GUEST', 'Customer', 'ORDER_CANCELLED', "Customer cancelled order #{$ref}", 'order', $order_id, $ref);
 
     require_once __DIR__ . '/../backend/pusher_helper.php';
-    broadcastOrderUpdate($order_id, 'Order Cancelled: ' . $ref);
+    broadcastOrderUpdate($order_id, 'Order Cancelled: ' . $ref, 'CANCELLED');
 
     echo json_encode(["success" => true, "message" => "Order successfully cancelled and table status updated."]);
 

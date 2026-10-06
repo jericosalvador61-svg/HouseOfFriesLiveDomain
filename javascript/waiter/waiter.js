@@ -598,11 +598,8 @@ function renderOrderCards(orders, isUnclaimed) {
             : ('Table ' + escapeHtml(o.table_number || 'N/A'));
 
         let actionBtn = '';
-        if (isUnclaimed) {
-            actionBtn = `<button class="btn-hof btn-sm primary" onclick="claimOrder(${o.order_id})">
-                <i class="bi bi-hand-index-thumb"></i> Assist
-            </button>`;
-        } else if (o.status === 'COMPLETED') {
+        // Claim/Assist flow removed per owner — waiters act directly (Deliver on COMPLETED).
+        if (o.status === 'COMPLETED') {
             actionBtn = `<button class="btn-hof btn-sm success" onclick="deliverOrder(${o.order_id})">
                 <i class="bi bi-bicycle"></i> Deliver to Customer
             </button>`;

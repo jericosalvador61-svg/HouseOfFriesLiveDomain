@@ -193,6 +193,77 @@ async function loadApprovals(type = 'all') {
 
 async function handleApproval(type, requestId, status) {
     try {
+        // Unified review modal: qty correction is OPTIONAL and applies on Approve only.
+        // Reject stays fully visible with its own button + reason — never hidden behind Approve.
+        if (status === 'APPROVED' && (type === 'spoilage' || type === 'inv')) {
+            const review = await Swal.fire({
+                title: 'Review request',
+                html: '<label style="display:block;text-align:left;font-size:.85rem;margin-bottom:4px;">Correct quantity <small class="text-muted">(optional — leave blank to keep recorded)</small></label>' +
+                      '<input type="number" id="hofQtyFix" class="swal2-input" min="0" step="any" placeholder="e.g. 2.5" style="margin:0;width:100%;">' +
+                      '<label style="display:block;text-align:left;font-size:.85rem;margin:12px 0 4px;">Reject reason <small class="text-muted">(only needed if you Reject)</small></label>' +
+                      '<input type="text" id="hofRejectReason" class="swal2-input" placeholder="e.g. wrong item" style="margin:0;width:100%;">',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonColor: '#198754',
+                denyButtonColor: '#dc3545',
+                confirmButtonText: 'Approve',
+                denyButtonText: 'Reject',
+                cancelButtonText: 'Close',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const q = parseFloat(document.getElementById('hofQtyFix').value);
+                    return { qty: (!isNaN(q) && q > 0) ? q : null };
+                }
+            });
+            if (review.isDismissed) return;
+            let body;
+            if (review.isConfirmed) {
+                body = { type, request_id: requestId, status: 'APPROVED' };
+                if (review.value && review.value.qty) body.quantity = review.value.qty;
+            } else if (review.isDenied) {
+                const reason = (document.getElementById('hofRejectReason').value || '').trim();
+                if (!reason) { Swal.fire('Reason needed', 'Please type a reject reason so staff knows what to fix.', 'warning'); return; }
+                body = { type, request_id: requestId, status: 'REJECTED', reject_reason: reason };
+            } else return;
+            const data = await apiFetch(`update_approval.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body
+            });
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: body.status === 'APPROVED' ? 'Approved' : 'Rejected', timer: 1500, showConfirmButton: false });
+                loadApprovals();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to update' });
+            }
+            return;
+        }
+        // Reject path (all types): reason required so staff sees what to fix.
+        if (status === 'REJECTED') {
+            const r = await Swal.fire({
+                title: 'Reject request?',
+                input: 'text',
+                inputLabel: 'Reject reason (staff will see this)',
+                inputPlaceholder: 'e.g. wrong quantity, duplicate entry',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                confirmButtonText: 'Reject'
+            });
+            if (!r.isConfirmed) return;
+            if (!(r.value || '').trim()) { Swal.fire('Reason needed', 'Please type a reject reason.', 'warning'); return; }
+            const data = await apiFetch(`update_approval.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: { type, request_id: requestId, status: 'REJECTED', reject_reason: (r.value || '').trim() }
+            });
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Rejected', timer: 1500, showConfirmButton: false });
+                loadApprovals();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to update' });
+            }
+            return;
+        }
         const data = await apiFetch(`update_approval.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

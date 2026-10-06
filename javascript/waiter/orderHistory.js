@@ -213,62 +213,13 @@ function setupOrderHistoryEvents() {
     }
 }
 
-/** Thin "Needs Assist" banner fed by get_orders_today.php unclaimed_orders.
- *  Reuses window.claimOrder (waiter.js) for the Assist action. */
+/** Needs Assist banner REMOVED per owner — claim flow is gone, waiters act directly. */
 let needsAssistInFlight = false;
 async function loadNeedsAssistBanner() {
     const banner = document.getElementById('needsAssistBanner');
-    if (!banner || needsAssistInFlight) return;
-    needsAssistInFlight = true;
-    try {
-        const token = localStorage.getItem('hof_token') || '';
-        const res = await fetch(ORDER_TODAY_API + '?scope=mine', {
-            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-        });
-        const data = await res.json();
-        if (!data.success) {
-            banner.innerHTML = '';
-            return;
-        }
-        const unclaimed = data.unclaimed_orders || [];
-        if (unclaimed.length === 0) {
-            banner.innerHTML = '';
-            needsAssistInFlight = false;
-            return;
-        }
-
-        banner.innerHTML = `
-            <div class="card-hof" style="margin-bottom:18px;border:1px solid #ffc107;">
-                <div class="flex-between" style="margin-bottom:8px;">
-                    <div>
-                        <h2 class="section-title"><span class="pill pending">Needs Assist</span></h2>
-                        <p class="section-sub">Unclaimed customer orders awaiting a waiter. Assign one to get started.</p>
-                    </div>
-                </div>
-                <div style="display:grid;gap:10px;">
-                    ${unclaimed.map(o => `
-                        <div class="flex-between" style="flex-wrap:wrap;gap:8px;padding:10px;border:1px solid #eee;border-radius:10px;">
-                            <div>
-                                <div class="fw-semibold">${orderHistoryEscape(o.reference_number || '#' + o.order_id)}</div>
-                                <div class="small text-muted">
-                                    ${orderHistoryEscape(String(o.order_type || '').replace('_', ' '))}
-                                    · ${o.table_number ? 'Table ' + orderHistoryEscape(o.table_number) : 'Take Out'}
-                                    · ${orderHistoryFormatPeso(o.total_amount)}
-                                </div>
-                            </div>
-                            <button class="btn-hof btn-sm primary" onclick="claimOrder(${Number(o.order_id)}); return false;">
-                                <i class="bi bi-hand-index-thumb"></i> Assist
-                            </button>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>`;
-        needsAssistInFlight = false;
-    } catch (e) {
-        console.error('Failed to load Needs Assist banner:', e);
-        banner.innerHTML = '';
-        needsAssistInFlight = false;
-    }
+    if (banner) banner.innerHTML = '';
+    needsAssistInFlight = false;
+    return;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
