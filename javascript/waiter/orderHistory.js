@@ -213,15 +213,7 @@ function setupOrderHistoryEvents() {
     }
 }
 
-/** Needs Assist banner REMOVED per owner — claim flow is gone, waiters act directly. */
-let needsAssistInFlight = false;
-async function loadNeedsAssistBanner() {
-    const banner = document.getElementById('needsAssistBanner');
-    if (banner) banner.innerHTML = '';
-    needsAssistInFlight = false;
-    return;
-}
-
+/** Needs Assist banner removed per owner — claim flow is gone, waiters act directly. */
 document.addEventListener('DOMContentLoaded', () => {
     // Initialise on both the order-history page AND the unified Orders page
     // (B2-5: the table + filters live on orders.html now).
@@ -229,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
     applyRoleRestrictions();
     setupOrderHistoryEvents();
     loadOrderHistory();
-    loadNeedsAssistBanner();
 });
 
 // Only Admin/Supervisor may view all staff orders (the server also hard-blocks

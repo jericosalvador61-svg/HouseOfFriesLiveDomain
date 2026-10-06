@@ -302,7 +302,6 @@ function loadOrders() {
     if (document.getElementById('activeOrdersList')) loadActiveOrders();
     if (document.getElementById('recentTables')) loadRecentTables();
     if (document.getElementById('tablesGrid')) loadAllTables();
-    if (document.getElementById('needsAssistBanner')) loadNeedsAssistBanner();
 }
 
 // â”€â”€ Load All Tables (Tables page) â”€â”€
@@ -534,21 +533,13 @@ async function loadTodaysOrders() {
         if (!container) return;
 
         const orders = data.orders || [];
-        const unclaimed = data.unclaimed_orders || [];
 
-        if (orders.length === 0 && unclaimed.length === 0) {
+        if (orders.length === 0) {
             container.innerHTML = '<div class="empty-state"><i class="bi bi-inbox"></i><p>No orders today</p></div>';
             return;
         }
 
         let html = '';
-
-        // Needs Assist (unclaimed customer orders)
-        if (unclaimed.length > 0) {
-            html += `<div class="mb-4"><h5 class="section-title"><span class="pill pending">Needs Assist</span> ${unclaimed.length}</h5>`;
-            html += renderOrderCards(unclaimed, true);
-            html += '</div>';
-        }
 
         // Group orders by status
         const pending = orders.filter(o => o.status === 'PENDING');
@@ -588,7 +579,7 @@ async function loadTodaysOrders() {
     } catch (e) { console.error('Failed to load today\'s orders:', e); }
 }
 
-function renderOrderCards(orders, isUnclaimed) {
+function renderOrderCards(orders) {
     return orders.map(o => {
         const itemNames = (o.items || []).map(i => `${i.quantity}x ${escapeHtml(i.item_name)}`).join(', ');
         const pillClass = getStatusPillClass(o.status);
@@ -607,7 +598,7 @@ function renderOrderCards(orders, isUnclaimed) {
             actionBtn = `<span class="pill served"><i class="bi bi-check2-circle"></i> Delivered</span>`;
         }
 
-        const notifyCell = (isUnclaimed || !notifyStatusEligible(o.status))
+        const notifyCell = !notifyStatusEligible(o.status)
             ? ''
             : `<span class="notify-host" id="notifyHost-${o.order_id}">${renderNotifyCell(o.order_id, o.reference_number || o.order_id)}</span>`;
 
@@ -763,29 +754,6 @@ async function updateOrderStatus(orderId, status) {
             loadDashboardStats();
         } else {
             Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to update order' });
-        }
-    } catch (e) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error' });
-    }
-}
-
-// â”€â”€ â­ CLAIM ORDER (Assist â€” first-come-first-served) â”€â”€
-async function claimOrder(orderId) {
-    Swal.fire({ title: 'Claiming...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-    try {
-        const res = await fetch(`${API_BASE}/claim_order.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId })
-        });
-        const data = await res.json();
-        if (data.success && data.claimed) {
-            Swal.fire({ icon: 'success', title: 'Order Assigned!', text: data.message, timer: 1500, showConfirmButton: false });
-            loadTodaysOrders();
-            loadDashboardStats();
-        } else {
-            Swal.fire({ icon: 'info', title: data.claimed === false ? 'Already Taken' : 'Error', text: data.message || 'Could not claim order.' });
-            loadTodaysOrders();
         }
     } catch (e) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Network error' });

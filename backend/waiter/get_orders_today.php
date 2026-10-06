@@ -2,7 +2,7 @@
 /**
  * HOF Waiter API - Get Today's Orders
  * Returns orders for the current day only, grouped by status.
- * Supports scope=mine (default): returns waiter's assigned orders + all unclaimed.
+ * Supports scope=mine (default): returns waiter's assigned orders only.
  * Returns epoch timestamps for accurate client-side display.
  */
 require_once __DIR__ . '/../db.php';
@@ -19,7 +19,8 @@ try {
     $today = date('Y-m-d');
     $tomorrow = date('Y-m-d', strtotime('+1 day'));
 
-    // Main orders: scoped to waiter's assigned orders (exclude unclaimed)
+    // Main orders: scoped to waiter's assigned orders (unclaimed guest QR orders
+    // are intentionally excluded — the claim/assist flow was removed per owner)
     $whereExtra = '';
     $params = ['today_start' => $today . ' 00:00:00', 'tomorrow_start' => $tomorrow . ' 00:00:00'];
     if ($scope === 'mine') {
@@ -56,40 +57,9 @@ try {
     $stmt->execute($params);
     $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Unclaimed orders (user_id IS NULL) — always returned separately
-    $unclaimStmt = $pdo->prepare("
-        SELECT 
-            o.order_id,
-            o.reference_number,
-            o.order_type,
-            o.table_id,
-            o.status,
-            o.total_amount,
-            o.ordered_at,
-            UNIX_TIMESTAMP(o.ordered_at) AS ordered_at_epoch,
-            o.completed_at,
-            UNIX_TIMESTAMP(o.completed_at) AS completed_at_epoch,
-            o.customer_name,
-            o.user_id,
-            rt.table_number,
-            CONCAT(u.first_name, ' ', u.last_name) AS created_by_name
-        FROM orders o
-        LEFT JOIN restaurant_table rt ON o.table_id = rt.table_id
-        LEFT JOIN users u ON o.user_id = u.user_id
-        WHERE o.ordered_at >= :today_start
-          AND o.ordered_at < :tomorrow_start
-          AND o.status NOT IN ('CANCELLED')
-          AND o.user_id IS NULL
-        ORDER BY o.ordered_at DESC
-    ");
-    $unclaimStmt->execute(['today_start' => $today . ' 00:00:00', 'tomorrow_start' => $tomorrow . ' 00:00:00']);
-    $unclaimedOrders = $unclaimStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $allOrders = array_merge($orders, $unclaimedOrders);
-
     // Get items for all orders
-    if (!empty($allOrders)) {
-        $orderIds = array_column($allOrders, 'order_id');
+    if (!empty($orders)) {
+        $orderIds = array_column($orders, 'order_id');
         $placeholders = implode(',', array_fill(0, count($orderIds), '?'));
 
         $itemStmt = $pdo->prepare("
@@ -111,7 +81,7 @@ try {
             $itemsByOrder[$item['order_id']][] = $item;
         }
 
-        foreach ($allOrders as &$order) {
+        foreach ($orders as &$order) {
             $order['items'] = $itemsByOrder[$order['order_id']] ?? [];
         }
         unset($order);
@@ -119,8 +89,7 @@ try {
 
     echo json_encode([
         'success' => true,
-        'orders' => $orders,
-        'unclaimed_orders' => $unclaimedOrders
+        'orders' => $orders
     ]);
 } catch (Exception $e) {
     error_log('get_orders_today error: ' . $e->getMessage());
