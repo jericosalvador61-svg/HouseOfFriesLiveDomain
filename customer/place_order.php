@@ -400,7 +400,16 @@ try {
 
     $orderCols = ["table_id","user_id","customer_name","status","reference_number","order_type","total_amount","created_at","ordered_at"];
     $orderVals = [$table_id, $user_id, $customer_name, 'PENDING', $reference_number, $order_type, $computedTotal];
-    if ($hasCustCol) { $orderCols[] = "customer_account_id"; $orderVals[] = $customerAccountId; }
+    // REQ-052 B3 / guest-FK-safety: only reference customer_account_id when a VALID
+    // logged-in customer token supplied a real customer_id (a linkable order for
+    // My Orders). For a guest (no token), OMIT the column entirely — a NULL must
+    // never reach the live orders.customer_account_id FK column, which may be
+    // NOT NULL on the deployed DB even though sql/house_of_fries_db_clean.sql seeds
+    // it as nullable. Keeping it as (int) also avoids MySQL rejecting the insert.
+    if ($hasCustCol && $customerAccountId !== null) {
+        $orderCols[] = "customer_account_id";
+        $orderVals[] = $customerAccountId;
+    }
     if ($hasSubtotal) { $orderCols[] = "subtotal_amount"; $orderVals[] = $computedTotal; }
     $sqlOrder = "INSERT INTO orders (" . implode(', ', $orderCols) . ") VALUES (" . implode(', ', array_fill(0, count($orderVals), '?')) . ", NOW(), NOW())";
 
