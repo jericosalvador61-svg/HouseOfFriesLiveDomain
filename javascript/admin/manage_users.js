@@ -214,7 +214,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
             li.appendChild(a);
-            // Insert in order 1,2,3... before the Next button (fix reversed 2,1 bug)
+            // FIX (REQ-063): insert each page number BEFORE the last <li> (Next).
+            // The old code used prevLi.nextSibling which re-inserted in front of
+            // the previously inserted number, rendering the pager REVERSED
+            // (e.g. "Previous 2 1 Next"). Falls back to prevLi.nextSibling if
+            // the Next <li> cannot be found.
+            const nextLi = paginationControls.querySelector("li:last-child");
             if (nextLi) paginationControls.insertBefore(li, nextLi);
             else paginationControls.insertBefore(li, prevLi.nextSibling);
         }

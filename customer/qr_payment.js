@@ -242,24 +242,9 @@ function startPolling() {
     if (pollInterval) clearInterval(pollInterval);
     let attempts = 0;
 
-    // Also use Pusher for instant payment confirmation
-    try {
-        if (typeof Pusher !== 'undefined') {
-            const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
-            const channel = pusher.subscribe('hof-orders');
-            channel.bind('order-status-changed', function(data) {
-                if (data.order_id == orderId && data.status === 'IN-PROGRESS') {
-                    paymentConfirmed = true;
-                    clearInterval(pollInterval);
-                    clearInterval(timerInterval);
-                    setStatus('Payment Confirmed! ✓', 'paid');
-                    showSuccess();
-                }
-            });
-        }
-    } catch (e) { console.warn('Pusher init error:', e); }
-
-    pollInterval = setInterval(async () => {
+    // REQ-064: single poll body — used by BOTH the 30s interval and the
+    // instant Pusher 'new-order' trigger (webhook confirmation).
+    const pollOnce = async () => {
         if (paymentConfirmed || attempts >= MAX_POLL_ATTEMPTS) {
             clearInterval(pollInterval);
             if (attempts >= MAX_POLL_ATTEMPTS) {
@@ -326,7 +311,37 @@ function startPolling() {
         } catch (err) {
             console.warn('Poll error:', err);
         }
-    }, POLL_INTERVAL_MS);
+    };
+
+    // Also use Pusher for instant payment confirmation
+    try {
+        if (typeof Pusher !== 'undefined') {
+            const pusher = new Pusher('a8860aca373dcc3400ce', {
+                cluster: 'ap1',
+                forceTLS: (window.location.protocol === 'https:')
+            });
+            const channel = pusher.subscribe('hof-orders');
+            // REQ-064: the GCash webhook (paymongo-webhook.php) broadcasts only
+            // 'new-order' (2-arg, no status) — without this binding the customer
+            // waits up to 30s (poll) even though the socket already told us.
+            channel.bind('new-order', function(data) {
+                if (String(data.order_id) === String(orderId)) {
+                    pollOnce();
+                }
+            });
+            channel.bind('order-status-changed', function(data) {
+                if (data.order_id == orderId && data.status === 'IN-PROGRESS') {
+                    paymentConfirmed = true;
+                    clearInterval(pollInterval);
+                    clearInterval(timerInterval);
+                    setStatus('Payment Confirmed! ✓', 'paid');
+                    showSuccess();
+                }
+            });
+        }
+    } catch (e) { console.warn('Pusher init error:', e); }
+
+    pollInterval = setInterval(pollOnce, POLL_INTERVAL_MS);
 }
 
 function startTimer(seconds) {

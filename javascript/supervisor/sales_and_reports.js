@@ -163,6 +163,32 @@ function init() {
     autoRefreshInterval = setInterval(() => {
         loadAllData();
     }, 30000);
+
+    // REQ-064: live sales via Pusher — the 30s poll above stays as the
+    // fallback, but a new/paid order now refreshes the cards + chart ASAP.
+    // Debounced because one order can emit several broadcasts in a row.
+    initSalesLive();
+}
+
+function initSalesLive() {
+    if (typeof Pusher === 'undefined') { setTimeout(initSalesLive, 1000); return; }
+    try {
+        const pusher = new Pusher('a8860aca373dcc3400ce', {
+            cluster: 'ap1',
+            forceTLS: (window.location.protocol === 'https:')
+        });
+        const channel = pusher.subscribe('hof-orders');
+        let salesRefreshTimer = null;
+        const queueRefresh = () => {
+            if (salesRefreshTimer) return;
+            salesRefreshTimer = setTimeout(() => {
+                salesRefreshTimer = null;
+                loadAllData();
+            }, 2000);
+        };
+        channel.bind('new-order', queueRefresh);
+        channel.bind('order-status-changed', queueRefresh);
+    } catch (e) { console.warn('Sales Pusher init error:', e); }
 }
 
 function formatDate(date) {

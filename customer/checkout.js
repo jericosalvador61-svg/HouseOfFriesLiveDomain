@@ -409,12 +409,23 @@ window.openGcashApp = function () {
 function initPusher() {
     if (typeof Pusher === 'undefined') { setTimeout(initPusher, 500); return; }
     try {
-        const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+        const pusher = new Pusher('a8860aca373dcc3400ce', {
+            cluster: 'ap1',
+            forceTLS: (window.location.protocol === 'https:')
+        });
         const channel = pusher.subscribe('hof-orders');
-        const lastOrderId = localStorage.getItem('lastOrderID');
+        channel.bind('new-order', function (data) {
+            // REQ-064: the 2-arg backend broadcast (cashier add/remove/void,
+            // discount, customer self-edit) fires ONLY 'new-order' — no status.
+            // Re-render the checkout view so live item/total changes show up.
+            const lastOrderId = localStorage.getItem('lastOrderID');
+            if (!lastOrderId || String(data.order_id) !== String(lastOrderId)) return;
+            if (typeof renderReceipt === 'function') renderReceipt();
+        });
         channel.bind('order-status-changed', function (data) {
             let payload = typeof data === 'string' ? JSON.parse(data) : data;
             if (typeof payload.data === 'string') payload = JSON.parse(payload.data);
+            const lastOrderId = localStorage.getItem('lastOrderID');
             if (!lastOrderId || String(payload.order_id) !== String(lastOrderId)) return;
             if (payload.status === 'IN-PROGRESS') {
                 markPaymentConfirmed({ pusher: true });

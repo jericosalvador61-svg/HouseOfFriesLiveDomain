@@ -344,6 +344,23 @@ function startOrderingFlow() {
                 window.location.href = 'cart.html';
             }
         }
+
+    // REQ-064: live order events — if any order tied to this device changes
+    // status (cashier/kitchen/waiter move it forward), refresh the cart badge
+    // immediately instead of waiting for a reload.
+    if (typeof window.initStatusSocket === 'function') window.initStatusSocket();
+    else if (typeof HOFDevice !== 'undefined') {
+        try {
+            const pusher = new Pusher('a8860aca373dcc3400ce', {
+                cluster: 'ap1',
+                forceTLS: (window.location.protocol === 'https:')
+            });
+            const channel = pusher.subscribe('hof-orders');
+            const onOrderEvent = () => { if (window.updateBadge) window.updateBadge(); };
+            channel.bind('new-order', onOrderEvent);
+            channel.bind('order-status-changed', onOrderEvent);
+        } catch (e) { console.warn('Pusher init error:', e); }
+    }
 }
 
 /* ============================================================
@@ -919,7 +936,7 @@ function setupEventListeners() {
 
     // ── Pusher: listen for menu availability changes ──
     if (typeof Pusher !== 'undefined') {
-        const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+        const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1', forceTLS: (window.location.protocol === 'https:') });
         const menuChannel = pusher.subscribe('hof-menu');
         menuChannel.bind('menu-availability-changed', function (data) {
             let payload = typeof data === 'string' ? JSON.parse(data) : data;

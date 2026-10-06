@@ -437,7 +437,7 @@ async function rebuildCartFromOrder(orderId) {
 // customer knows before checkout instead of discovering it at submit.
 function bindMenuAvailability() {
     if (typeof Pusher === 'undefined') return;
-    const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+    const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1', forceTLS: (window.location.protocol === 'https:') });
     const menuChannel = pusher.subscribe('hof-menu');
     menuChannel.bind('menu-availability-changed', function (data) {
         let payload = typeof data === 'string' ? JSON.parse(data) : data;
@@ -474,8 +474,19 @@ function bindOrderLiveUpdates() {
 
     if (typeof Pusher !== 'undefined') {
         try {
-            const pusher = new Pusher('a8860aca373dcc3400ce', { cluster: 'ap1' });
+            const pusher = new Pusher('a8860aca373dcc3400ce', {
+                cluster: 'ap1',
+                forceTLS: (window.location.protocol === 'https:')
+            });
             const orderChannel = pusher.subscribe('hof-orders');
+            orderChannel.bind('new-order', function (data) {
+                // REQ-064: 2-arg backend broadcast (cashier edits, discounts,
+                // customer self-edit) fires ONLY 'new-order' — re-render so the
+                // cart/checkout view reflects live item/total changes.
+                const oid = localStorage.getItem('lastOrderID');
+                if (!oid || String(data.order_id) !== String(oid)) return;
+                if (typeof renderCart === 'function') renderCart();
+            });
             orderChannel.bind('order-status-changed', function (data) {
                 let payload = typeof data === 'string' ? JSON.parse(data) : data;
                 if (typeof payload.data === 'string') payload = JSON.parse(payload.data);

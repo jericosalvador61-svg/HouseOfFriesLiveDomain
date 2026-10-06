@@ -198,9 +198,12 @@ try {
                 ");
                 $stmt->execute([$orderId, $orderId, $amount, $paymentMethod, $paymentId]);
 
-                // Broadcast real-time update
+                // Broadcast real-time update — REQ-064: include the status so
+                // order-status-changed handlers (orderHistory paid-marking,
+                // badge, cashier/kitchen/sales refresh) fire IMMEDIATELY on
+                // the GCash confirmation, not only when the kitchen accepts.
                 if (function_exists('broadcastOrderUpdate')) {
-                    broadcastOrderUpdate($orderId, "Order #$referenceNumber payment confirmed via GCash. Ready for kitchen.");
+                    broadcastOrderUpdate($orderId, "Order #$referenceNumber payment confirmed via GCash. Ready for kitchen.", 'IN-PROGRESS');
                 }
 
                 // Notify Kitchen Staff: paid order ready to prepare
