@@ -490,9 +490,9 @@
                     sidebar.classList.add('active');
                     if (overlay) overlay.classList.toggle('open', sidebar.classList.contains('open'));
                 } else {
-                    // Desktop: toggle mini-rail with .collapsed class, keep .active for backward compat
+                    // Desktop: toggle mini-rail with .collapsed class, keep .active in sync
                     sidebar.classList.toggle('collapsed');
-                    sidebar.classList.add('active');
+                    sidebar.classList.toggle('active', sidebar.classList.contains('collapsed'));
                     localStorage.setItem('hof_sidebar_collapsed', sidebar.classList.contains('collapsed'));
                 }
             });
