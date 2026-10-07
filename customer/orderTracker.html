@@ -215,6 +215,84 @@
             appearance: auto;
             -webkit-appearance: auto;
         }
+
+        .ref-lookup {
+            width: 100%;
+            background: #FFFFFF;
+            border-radius: 18px;
+            padding: 18px 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border-color);
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .ref-lookup-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        .ref-lookup-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+        .ref-input {
+            flex: 1;
+            min-height: 46px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: #FAFAFA;
+            font-family: 'Poppins', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+            letter-spacing: 0.5px;
+            box-sizing: border-box;
+        }
+        .ref-input:focus {
+            outline: none;
+            border-color: var(--brand-yellow-solid);
+            background: #fff;
+        }
+        .ref-go-btn {
+            width: 46px;
+            min-width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            border: none;
+            background-color: var(--brand-yellow-solid);
+            color: #1e1e1e;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(250, 193, 43, 0.25);
+            transition: transform 0.1s ease;
+        }
+        .ref-go-btn:active { transform: scale(0.95); }
+        .ref-go-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .ref-hint {
+            margin: 10px 0 0 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .ref-msg {
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            min-height: 0;
+            color: var(--text-muted);
+        }
+        .ref-msg.error { color: #dc3545; }
+        .ref-msg.success { color: var(--success-green); }
         @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 184, 0, 0.3); } 70% { transform: scale(1.04); box-shadow: 0 0 0 10px rgba(255, 184, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 184, 0, 0); } }
 
         header {
@@ -337,6 +415,17 @@
     </header>
 
     <div class="tracker-container" id="trackerContainer">
+        <div class="ref-lookup" id="refLookup">
+            <label class="ref-lookup-label" for="refInput">Track by Order Number</label>
+            <div class="ref-lookup-row">
+                <input type="text" id="refInput" class="ref-input" placeholder="e.g. HOF202600001" autocomplete="off" spellcheck="false">
+                <button type="button" id="refLookupBtn" class="ref-go-btn">
+                    <i class="fa-solid fa-location-dot"></i>
+                </button>
+            </div>
+            <p class="ref-hint">Enter the reference number from your receipt to track your order in real time.</p>
+            <div id="refLookupMsg" class="ref-msg"></div>
+        </div>
         <div id="orderCardsContainer"></div>
     </div>
 

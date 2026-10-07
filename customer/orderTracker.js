@@ -169,7 +169,100 @@ window.clearMyTable = function() {
 document.addEventListener('DOMContentLoaded', () => {
     initTracker();
     setupMobileAudioUnlock();
+    setupRefLookup();
 });
+
+function setupRefLookup() {
+    const btn = document.getElementById('refLookupBtn');
+    const input = document.getElementById('refInput');
+    if (btn) btn.addEventListener('click', trackByReference);
+    if (input) {
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                trackByReference();
+            }
+        });
+    }
+}
+
+// REQ-067 F5: a guest (not logged in, any device) lights the tracker by
+// typing the HOF reference number. Resolve ref → order_id → signed track +
+// items sigs → push into trackedOrders → fetchAndRenderOrder (the 30s poll +
+// Pusher bind already live once the card renders).
+async function trackByReference() {
+    const input = document.getElementById('refInput');
+    const btn = document.getElementById('refLookupBtn');
+    const msg = document.getElementById('refLookupMsg');
+    const ref = input ? input.value.trim() : '';
+
+    if (msg) { msg.className = 'ref-msg'; msg.textContent = ''; }
+
+    if (!/^HOF\d{9,}$/i.test(ref)) {
+        if (msg) { msg.className = 'ref-msg error'; msg.textContent = 'Enter a valid reference number (e.g. HOF202600001).'; }
+        if (input) input.focus();
+        return;
+    }
+
+    if (btn) btn.disabled = true;
+    try {
+        const resp = await fetch(`${APP_ROOT}/customer/lookup_order_by_ref.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ref: ref })
+        });
+        const data = await resp.json();
+
+        if (!data || !data.success) {
+            if (msg) { msg.className = 'ref-msg error'; msg.textContent = (data && data.message) || 'No order found for that number.'; }
+            return;
+        }
+
+        const orderId = parseInt(data.order_id);
+        if (!orderId || trackedOrders.includes(orderId)) {
+            if (msg) { msg.className = 'ref-msg success'; msg.textContent = 'Order #' + ref + ' is already being tracked.'; }
+            return;
+        }
+
+        // Register on this device FIRST so the sig helpers pick up the real
+        // reference_number (get-payment-link.php rejects a numeric ref).
+        if (window.HOFDevice) {
+            HOFDevice.addOrder({
+                order_id: orderId,
+                ref: ref,
+                status: data.status,
+                paid: false
+            });
+        }
+
+        const [track, items] = await Promise.all([
+            obtainTrackSig(orderId),
+            obtainItemsSig(orderId)
+        ]);
+        trackSigs[orderId] = track;
+        itemsSigs[orderId] = items;
+
+        trackedOrders.push(orderId);
+
+        const emptyEl = document.querySelector('#orderCardsContainer .tracker-empty');
+        if (emptyEl) emptyEl.remove();
+
+        fetchAndRenderOrder(orderId);
+
+        // Multi-order selector: refresh once the device holds more than one.
+        if (window.HOFDevice && !document.getElementById('orderSelector')) {
+            const deviceOrders = HOFDevice.orders();
+            if (deviceOrders.length > 1) renderOrderSelector(deviceOrders);
+        }
+
+        if (msg) { msg.className = 'ref-msg success'; msg.textContent = 'Now tracking order #' + ref + '.'; }
+    } catch (e) {
+        console.error('Ref lookup failed:', e);
+        if (msg) { msg.className = 'ref-msg error'; msg.textContent = 'Connection error. Please try again.'; }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
 
 function setupMobileAudioUnlock() {
     const unlockAudio = () => {
@@ -192,9 +285,6 @@ function initTracker() {
 
     if (singleOrderId) {
         trackedOrders = [parseInt(singleOrderId)];
-    } else {
-        window.location.href = 'orderHistory.html';
-        return;
     }
 
     // Also add from HOFDevice as backup
@@ -237,9 +327,14 @@ function initTracker() {
             .catch(function () {});
     }
 
+    // REQ-067 F5: live bindings (Pusher + 30s poll) are ALWAYS set up so a
+    // guest who types a reference number later still gets live updates — even
+    // when the tracker starts empty. No redirect away from the lookup box.
+    setupLiveTracking();
+
     if (trackedOrders.length === 0) {
-        const container = document.getElementById('trackerContainer');
-        container.innerHTML = '<div class="text-center py-5 text-muted"><p>No orders to track. Place an order first.</p><button id="emptyTrackerBtn" class="btn btn-warning mt-3">Start Ordering</button></div>';
+        const container = document.getElementById('orderCardsContainer');
+        container.innerHTML = '<div class="tracker-empty text-center py-5 text-muted"><p>No orders to track. Enter your receipt number above or place an order first.</p><button id="emptyTrackerBtn" class="btn btn-warning mt-3">Start Ordering</button></div>';
         setTimeout(() => {
           const btn = document.getElementById('emptyTrackerBtn');
           if (btn) btn.addEventListener('click', function () { location.href = 'customer.html'; });
@@ -270,6 +365,15 @@ function initTracker() {
     } else {
         trackedOrders.forEach(id => fetchAndRenderOrder(id));
     }
+}
+
+// REQ-067 F5: idempotent setup of the Pusher bind + 30s polling fallback.
+// Called once from initTracker (before we know if any order will be tracked)
+// so guest-added references light up live without a page reload.
+let liveTrackingSetup = false;
+function setupLiveTracking() {
+    if (liveTrackingSetup) return;
+    liveTrackingSetup = true;
 
     // Pusher bind for any tracked order
     if (typeof Pusher !== 'undefined') {
