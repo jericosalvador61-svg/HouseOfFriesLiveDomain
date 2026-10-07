@@ -6,9 +6,16 @@
 
 // REQ-067 F4: global copy helpers so the inline onclick works from any
 // context (http:// non-secure contexts, denied permissions, etc.).
-function copyTextToClipboard(text) {
+function copyTextToClipboard(text, btn) {
+    // Inline feedback on the SAME button instead of a second Swal (a second
+    // Swal.fire would REPLACE the open reset-code modal and hide the code).
     const done = () => {
-        Swal.fire({ icon: 'success', title: 'Copied!', text: 'Reset code copied to clipboard.', timer: 1200, showConfirmButton: false });
+        if (btn) {
+            const original = btn.innerHTML;
+            btn.innerHTML = 'Copied &#10003;';
+            btn.disabled = true;
+            setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 1500);
+        }
     };
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(done).catch(() => legacyCopy(text, done));
@@ -225,7 +232,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 html: (data.code
                     ? 'This is the temporary access code the customer enters at <b>reset_password.html</b>. It expires in <b>15 minutes</b> and is one-time use only.<br><br>' +
                       '<div style="font-family:monospace;font-size:1.8rem;font-weight:800;letter-spacing:6px;background:#FFF9E6;border:2px dashed #ffc107;border-radius:12px;padding:10px 16px;color:#331A11;">' + escapeHtml(data.code) + '</div>' +
-                      '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="copyTextToClipboard(' + JSON.stringify(String(data.code)) + ')">Copy Code</button>'
+                      '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="copyTextToClipboard(' + JSON.stringify(String(data.code)) + ', this)">Copy Code</button>'
                     : (data.message || 'No reset code was generated.')) +
                     (data.code ? '' : '<div style="font-size:12px;color:#666;margin-top:8px;">' + escapeHtml(data.message || '') + '</div>'),
                 confirmButtonColor: '#ffc107',
