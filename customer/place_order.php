@@ -409,9 +409,15 @@ try {
     if ($hasCustCol && $customerAccountId !== null) {
         $custCheck = $pdo->prepare("SELECT customer_id FROM customers WHERE customer_id = ? AND is_active = 1 LIMIT 1");
         $custCheck->execute([$customerAccountId]);
-        if (!$custCheck->fetchColumn()) { $customerAccountId = null; }
-        $orderCols[] = "customer_account_id";
-        $orderVals[] = $customerAccountId;
+        if (!$custCheck->fetchColumn()) {
+            // REQ-067 F1: stale/ghost customer_id (e.g. token from a restored
+            // DB) → degrade to guest: OMIT the column entirely (like a guest
+            // order) so the INSERT never sends a null into the FK column.
+            $customerAccountId = null;
+        } else {
+            $orderCols[] = "customer_account_id";
+            $orderVals[] = $customerAccountId;
+        }
     }
     if ($hasSubtotal) { $orderCols[] = "subtotal_amount"; $orderVals[] = $computedTotal; }
     $sqlOrder = "INSERT INTO orders (" . implode(', ', $orderCols) . ") VALUES (" . implode(', ', array_fill(0, count($orderVals), '?')) . ", NOW(), NOW())";
