@@ -13,10 +13,12 @@ try {
     // Base query components
     // NOTE: customer_name is included so the cashier sees WHO the order is for
     // directly on the card, without having to open the order.
-    // REQ-063 #3: payment_method + payment_status are returned so the cashier
-    // UI can distinguish GCASH-unpaid rows (view-only) from CASH rows (full
-    // actions). They are NOT filtered out server-side — the unified list must
-    // contain both.
+    // REQ-063 #3: payment_status is returned so the cashier UI can distinguish
+    // GCASH-unpaid rows (view-only) from CASH rows. The payment METHOD lives on
+    // the payments table, not on orders — orders have NO payment_method column
+    // (canonical schema + live DB). The unified PENDING list contains every
+    // pending order; a GCASH intent is detectable via payment_intent_id +
+    // payment_status (see isGcashUnpaid in cashier_dashboard.js).
     $query = "SELECT 
                 o.order_id, 
                 o.reference_number, 
@@ -25,8 +27,8 @@ try {
                 o.order_type,
                 o.created_at,
                 o.customer_name,
-                o.payment_method,
                 o.payment_status,
+                o.payment_intent_id,
                 t.table_number
               FROM orders o
               LEFT JOIN restaurant_table t ON o.table_id = t.table_id

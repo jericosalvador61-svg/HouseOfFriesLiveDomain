@@ -199,7 +199,10 @@ function loadPendingOrders() {
                     // view-only) — the cashier can look but not transact. The
                     // moment the server flips payment_status=COMPLETED the
                     // order flows to the kitchen on its own.
-                    const isGcashUnpaid = String(order.payment_method || '').toUpperCase() === 'GCASH'
+                    // A GCASH intent is detected via payment_intent_id + unpaid
+                    // payment_status (orders has no payment_method column; the
+                    // method lives on the payments table once paid).
+                    const isGcashUnpaid = !!(order.payment_intent_id)
                         && String(order.payment_status || '').toUpperCase() !== 'COMPLETED';
 
                     // Customer name is shown on the card so the cashier does not
