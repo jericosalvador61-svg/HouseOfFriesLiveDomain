@@ -48,7 +48,14 @@ try {
     // between our validation and our commit.
     // REQ-067 F2: fetch payment_intent_id + payment_method so a GCash-locked
     // order is refused server-side regardless of what the UI allows.
-    $checkStmt = $pdo->prepare("SELECT payment_status, total_amount, payment_intent_id, payment_method FROM orders WHERE order_id = ? FOR UPDATE");
+    // Schema-agnostic: payment_method column may not exist on an unmigrated DB —
+    // probe once; when absent, fall back to payment_intent_id-only guard below.
+    $hasPaymentMethodCol = false;
+    try {
+        $pmCols = $pdo->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders'")->fetchAll(PDO::FETCH_COLUMN);
+        $hasPaymentMethodCol = in_array('payment_method', $pmCols, true);
+    } catch (Throwable $e) { /* treat as un-migrated */ }
+    $checkStmt = $pdo->prepare("SELECT payment_status, total_amount, payment_intent_id" . ($hasPaymentMethodCol ? ", payment_method" : "") . " FROM orders WHERE order_id = ? FOR UPDATE");
     $checkStmt->execute([$orderId]);
     $orderRow = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -70,8 +77,10 @@ try {
     // Defense in depth: refuse cash settlement while a PayMongo intent exists
     // OR the order was placed as GCash. Additive — genuine CASH orders (no
     // intent, payment_method CASH/NULL) are unaffected.
-    if (!empty($orderRow['payment_intent_id'])
-        || strtoupper((string)($orderRow['payment_method'] ?? 'CASH')) === 'GCASH') {
+    $isGcashMethod = $hasPaymentMethodCol
+        ? strtoupper((string)($orderRow['payment_method'] ?? 'CASH')) === 'GCASH'
+        : false;
+    if (!empty($orderRow['payment_intent_id']) || $isGcashMethod) {
         $pdo->rollBack();
         http_response_code(409);
         echo json_encode(['success' => false, 'message' => 'This order is being paid via GCash. No cash payment can be accepted while the GCash session is active.']);
