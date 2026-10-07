@@ -54,15 +54,17 @@ function cardHTML(it, idx){
 function renderCats(){
   catBar.innerHTML = '';
   var all = document.createElement('button');
+  all.type = 'button';
   all.className = 'cat-btn' + (activeCat === null ? ' active' : '');
   all.textContent = 'All';
-  all.addEventListener('click', function(){ setCat(null); });
+  all.addEventListener('click', function(e){ e.stopPropagation(); setCat(null); });
   catBar.appendChild(all);
   data.cats.forEach(function(c){
     var b = document.createElement('button');
+    b.type = 'button';
     b.className = 'cat-btn' + (activeCat === c.category_id ? ' active' : '');
     b.textContent = c.category_name;
-    b.addEventListener('click', function(){ setCat(c.category_id); });
+    b.addEventListener('click', function(e){ e.stopPropagation(); setCat(c.category_id); });
     catBar.appendChild(b);
   });
 }
@@ -140,7 +142,10 @@ document.addEventListener('click', function(e){
 
 document.addEventListener('click', function(e){
   if (!isOpen()) return;
-  if (e.target && e.target.closest && e.target.closest('.mm-dialog')) return;
+  var t = e.target;
+  if (!t || !t.closest) return;
+  if (t.closest('.mm-dialog')) return;
+  if (t.closest('.cat-btn') || t.closest('.mm-cats')) return;
   closeModal();
 });
 
