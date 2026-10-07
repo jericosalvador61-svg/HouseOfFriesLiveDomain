@@ -407,6 +407,9 @@ try {
     // NOT NULL on the deployed DB even though sql/house_of_fries_db_clean.sql seeds
     // it as nullable. Keeping it as (int) also avoids MySQL rejecting the insert.
     if ($hasCustCol && $customerAccountId !== null) {
+        $custCheck = $pdo->prepare("SELECT customer_id FROM customers WHERE customer_id = ? AND is_active = 1 LIMIT 1");
+        $custCheck->execute([$customerAccountId]);
+        if (!$custCheck->fetchColumn()) { $customerAccountId = null; }
         $orderCols[] = "customer_account_id";
         $orderVals[] = $customerAccountId;
     }
@@ -421,7 +424,9 @@ try {
         if ($e->getCode() == 23000) {
             $pdo->rollBack();
             if ($attempt >= $maxRetries) {
-                throw $e;
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'We could not save your order right now. Please try again or ask staff for help.']);
+                exit;
             }
             continue;
         }
