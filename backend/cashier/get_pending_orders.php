@@ -19,6 +19,17 @@ try {
     // (canonical schema + live DB). The unified PENDING list contains every
     // pending order; a GCASH intent is detectable via payment_intent_id +
     // payment_status (see isGcashUnpaid in cashier_dashboard.js).
+    // REQ-067 F2: o.payment_method is added AFTER the migration so the cashier
+    // locks GCASH-pending orders from the moment they are placed (method-based),
+    // with the legacy payment_intent_id fallback for unmigrated DBs.
+    // Schema-agnostic: probe the column first — an unmigrated DB must NOT 500
+    // (Unknown column 'o.payment_method' would kill the whole pending list).
+    $hasPaymentMethod = false;
+    try {
+        $pmCols = $pdo->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders'")->fetchAll(PDO::FETCH_COLUMN);
+        $hasPaymentMethod = in_array('payment_method', $pmCols, true);
+    } catch (Throwable $e) { /* treat as un-migrated */ }
+
     $query = "SELECT 
                 o.order_id, 
                 o.reference_number, 
@@ -29,7 +40,7 @@ try {
                 o.customer_name,
                 o.payment_status,
                 o.payment_intent_id,
-                t.table_number
+                t.table_number" . ($hasPaymentMethod ? ", o.payment_method" : "") . "
               FROM orders o
               LEFT JOIN restaurant_table t ON o.table_id = t.table_id
               WHERE o.status = 'PENDING'";
