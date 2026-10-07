@@ -391,11 +391,12 @@ try {
     // REQ-065: build the INSERT column list schema-agnostically — if the live DB
     // hasn't been migrated with customer_account_id / subtotal_amount yet, omit
     // them so place_order never dies with "unknown column".
-    $hasCustCol = false; $hasSubtotal = false;
+    $hasCustCol = false; $hasSubtotal = false; $hasPaymentMethod = false;
     try {
         $cols = $pdo->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders'")->fetchAll(PDO::FETCH_COLUMN);
         $hasCustCol = in_array('customer_account_id', $cols, true);
         $hasSubtotal = in_array('subtotal_amount', $cols, true);
+        $hasPaymentMethod = in_array('payment_method', $cols, true);
     } catch (Throwable $e) { /* treat as un-migrated */ }
 
     $orderCols = ["table_id","user_id","customer_name","status","reference_number","order_type","total_amount","created_at","ordered_at"];
@@ -411,6 +412,11 @@ try {
         $orderVals[] = $customerAccountId;
     }
     if ($hasSubtotal) { $orderCols[] = "subtotal_amount"; $orderVals[] = $computedTotal; }
+    // REQ-067 F2: persist the chosen (server-validated CASH/GCASH) payment method
+    // on the order row. Schema-agnostic like the columns above — when the live DB
+    // hasn't been migrated yet, omit it so place_order never dies with
+    // "unknown column".
+    if ($hasPaymentMethod) { $orderCols[] = "payment_method"; $orderVals[] = $payment_method; }
     $sqlOrder = "INSERT INTO orders (" . implode(', ', $orderCols) . ") VALUES (" . implode(', ', array_fill(0, count($orderVals), '?')) . ", NOW(), NOW())";
 
     try {

@@ -19,6 +19,9 @@ try {
     // (canonical schema + live DB). The unified PENDING list contains every
     // pending order; a GCASH intent is detectable via payment_intent_id +
     // payment_status (see isGcashUnpaid in cashier_dashboard.js).
+    // REQ-067 F2: o.payment_method is added AFTER the migration so the cashier
+    // locks GCASH-pending orders from the moment they are placed (method-based),
+    // with the legacy payment_intent_id fallback for unmigrated DBs.
     $query = "SELECT 
                 o.order_id, 
                 o.reference_number, 
@@ -28,6 +31,7 @@ try {
                 o.created_at,
                 o.customer_name,
                 o.payment_status,
+                o.payment_method,
                 o.payment_intent_id,
                 t.table_number
               FROM orders o
