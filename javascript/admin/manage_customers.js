@@ -3,6 +3,29 @@
  * REQ-052 Batch 3 â€” Admin manage-customers page (list/search, toggle
  * is_active, generate password-reset code).
  */
+
+// REQ-067 F4: global copy helpers so the inline onclick works from any
+// context (http:// non-secure contexts, denied permissions, etc.).
+function copyTextToClipboard(text) {
+    const done = () => {
+        Swal.fire({ icon: 'success', title: 'Copied!', text: 'Reset code copied to clipboard.', timer: 1200, showConfirmButton: false });
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done).catch(() => legacyCopy(text, done));
+    } else {
+        legacyCopy(text, done);
+    }
+}
+function legacyCopy(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* ignore */ }
+    document.body.removeChild(ta);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     'use strict';
 
@@ -198,11 +221,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 return Swal.fire('Error', data.message || 'Could not generate a reset code.', 'error');
             }
             Swal.fire({
-                title: 'Reset Code',
+                title: 'Temporary Access Code',
                 html: (data.code
-                    ? 'Give this code to the customer. It expires in <b>15 minutes</b> and can be used once.<br><br>' +
+                    ? 'This is the temporary access code the customer enters at <b>reset_password.html</b>. It expires in <b>15 minutes</b> and is one-time use only.<br><br>' +
                       '<div style="font-family:monospace;font-size:1.8rem;font-weight:800;letter-spacing:6px;background:#FFF9E6;border:2px dashed #ffc107;border-radius:12px;padding:10px 16px;color:#331A11;">' + escapeHtml(data.code) + '</div>' +
-                      '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="navigator.clipboard.writeText(' + JSON.stringify(String(data.code)) + ')">Copy Code</button>'
+                      '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="copyTextToClipboard(' + JSON.stringify(String(data.code)) + ')">Copy Code</button>'
                     : (data.message || 'No reset code was generated.')) +
                     (data.code ? '' : '<div style="font-size:12px;color:#666;margin-top:8px;">' + escapeHtml(data.message || '') + '</div>'),
                 confirmButtonColor: '#ffc107',
