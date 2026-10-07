@@ -135,38 +135,16 @@
 /* --- SHARED TOPBAR (all roles) ---
    Some pages use .topbar, others use bootstrap nav.navbar. Apply the same
    sticky shell bar to both so the bar stays pinned while the page scrolls.
-   ~65px default; a "float" variant can be opted into on pages that want a
-   floating pill instead of a full-width strip. */
+   Uniform 73px bar (cashier parity — REQ-066 B/D). */
 .topbar,
 .content-wrapper > nav.navbar.navbar-expand-lg,
 .content-wrapper > .navbar.navbar-expand-lg {
     position: sticky;
     top: 0;
     z-index: 995;
-    min-height: 65px;
+    min-height: 73px;
     display: flex;
     align-items: center;
-}
-.topbar.float-topbar,
-.content-wrapper > nav.navbar.navbar-expand-lg.float-topbar,
-.content-wrapper > .navbar.navbar-expand-lg.float-topbar,
-nav.topbar.float-topbar {
-    position: sticky;
-    top: 10px;
-    z-index: 995;
-    margin: 10px 12px 0;
-    margin-left: auto;
-    width: fit-content;
-    max-width: calc(100% - 24px);
-    min-height: 56px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 18px;
-    background: #fff;
-    border: 1px solid rgba(0,0,0,.08);
-    border-radius: 50px;
-    box-shadow: 0 4px 14px rgba(0,0,0,.08);
 }
 
 /* Mobile: pin the topbar fixed so content can scroll under it; offset body
@@ -180,16 +158,9 @@ nav.topbar.float-topbar {
         left: 0;
         right: 0;
         z-index: 995;
+        min-height: 73px;
     }
-    .topbar.float-topbar,
-    .content-wrapper > nav.navbar.navbar-expand-lg.float-topbar,
-    .content-wrapper > .navbar.navbar-expand-lg.float-topbar,
-    nav.topbar.float-topbar {
-        position: fixed; top: 0; left: 0; right: 0;
-        width: auto; max-width: none;
-        margin: 0; border-radius: 0;
-    }
-    body { padding-top: 65px; }
+    body { padding-top: 73px; }
 }
 
 /* --- HOVER FLYOUT for the COLLAPSED mini rail (REQ-052 B2-1) ---

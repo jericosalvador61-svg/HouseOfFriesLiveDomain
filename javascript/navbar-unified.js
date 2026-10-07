@@ -135,6 +135,20 @@
         // Build navbar HTML
         buildNavbar(config);
 
+        // REQ-066 C: restore the persisted sidebar state (mini-rail). The toggle
+        // writes hof_sidebar_collapsed, but nothing ever READ it back, so every
+        // page load re-expanded the sidebar ("it expands on its own"). Apply the
+        // saved state once, before the user interacts, on desktop only.
+        try {
+            const savedCollapsed = localStorage.getItem('hof_sidebar_collapsed');
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar && !isMobileViewport() && savedCollapsed === 'true') {
+                sidebar.classList.add('collapsed', 'active');
+            }
+        } catch (e) {
+            /* localStorage unavailable — ignore */
+        }
+
         // Setup event listeners
         setupNotifications(config);
         setupSidebarToggle();
