@@ -473,6 +473,23 @@ async function loadRawMaterials() {
        renderTable(allRawMaterials.filter(m => (m.status || '') === (statusFilter.value || 'ACTIVE')));
        checkStockAlerts(allRawMaterials);
 
+       // REQ-071: KPI cards (total / low / out / damaged) come from the
+       // inventoryReports stats endpoint — the same source the other inventory
+       // pages use. Best-effort: never block the table render on it.
+       const hasKpis = ['totalItems','lowStock','outStock','damagedStock'].some(id => document.getElementById(id));
+       if (hasKpis) {
+           fetch('../../backend/admin/inventoryReports/get_stats.php', { method: 'GET', headers: { 'Authorization': 'Bearer ' + getAuthToken() } })
+               .then(r => r.json())
+               .then(s => {
+                   const d = (s && s.data) || {};
+                   setIf('totalItems', d.total ?? 0);
+                   setIf('lowStock', d.low ?? 0);
+                   setIf('outStock', d.out ?? 0);
+                   setIf('damagedStock', d.damaged ?? 0);
+               })
+               .catch(() => {});
+       }
+
    } catch (err) {
        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error loading data.</td></tr>`;
    }

@@ -136,12 +136,17 @@ async function loadAdjustmentHistory() {
 function populateDropdown(selectElement) {
     if (!selectElement) return;
     selectElement.innerHTML = '<option value="" disabled selected>Choose a material to adjust...</option>';
+    // REQ-071: adjustments must show ALL raw materials (active AND inactive)
+    // so any material can be corrected — except zero-quantity is still
+    // selectable (a REMOVE on 0 is rejected server-side). Inactive rows get
+    // an "(Inactive)" tag for transparency.
     inventoryMaterials.forEach(item => {
+        const inactiveTag = String(item.status || '').toUpperCase() === 'INACTIVE' ? ' (Inactive)' : '';
         const opt = document.createElement('option');
         opt.value = item.raw_material_id;
         opt.dataset.name = item.raw_material_name;
         opt.dataset.unit = item.unit;
-        opt.textContent = `${item.raw_material_name} (Stock: ${item.current_quantity} ${item.unit})`;
+        opt.textContent = `${item.raw_material_name} (Stock: ${item.current_quantity} ${item.unit})${inactiveTag}`;
         selectElement.appendChild(opt);
     });
 }

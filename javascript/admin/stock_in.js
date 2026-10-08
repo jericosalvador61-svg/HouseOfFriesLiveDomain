@@ -109,14 +109,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 checkStockAlerts(json.data);
 
                 // 3. Populate Material Select Input Field Options
+                // REQ-071: stock_in must show ALL raw materials (active AND
+                // inactive) so a zero-stock/inactive material can still be
+                // restocked. Inactive rows render with an "(Inactive)" tag.
                 let options = `<option value="" selected disabled>Choose Material...</option>`;
                 if (Array.isArray(json.data)) {
                     json.data.forEach(mat => {
+                        const inactiveTag = String(mat.status || '').toUpperCase() === 'INACTIVE' ? ' (Inactive)' : '';
                         options += `
                             <option value="${mat.raw_material_id}" 
                                     data-name="${mat.raw_material_name}" 
                                     data-perishable="${mat.is_perishable}">
-                                ${mat.raw_material_name} ${mat.unit ? '(' + mat.unit + ')' : ''}
+                                ${mat.raw_material_name} ${mat.unit ? '(' + mat.unit + ')' : ''}${inactiveTag}
                             </option>`;
                     });
                 }

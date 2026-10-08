@@ -70,12 +70,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     checkStockAlerts(result.data);
                     if (inputMaterial && Array.isArray(result.data)) {
                         inputMaterial.innerHTML = '<option value="" selected disabled>Select Material...</option>';
+                        // REQ-071: spoilage/waste/damage MUST pull from the real
+                        // raw_materials table (server list, not a hardcoded
+                        // dropdown). Active + inactive both show so a wasted
+                        // inactive stock can still be recorded; inactive gets
+                        // an "(Inactive)" tag.
                         result.data.forEach(m => {
+                            const inactiveTag = String(m.status || '').toUpperCase() === 'INACTIVE' ? ' (Inactive)' : '';
                             const opt = document.createElement('option');
                             opt.value = m.raw_material_id;
                             opt.dataset.name = m.raw_material_name;
                             opt.dataset.unit = m.unit;
-                            opt.textContent = `${m.raw_material_name} (${m.current_quantity} ${m.unit} available)`;
+                            opt.textContent = `${m.raw_material_name} (${m.current_quantity} ${m.unit} available)${inactiveTag}`;
                             inputMaterial.appendChild(opt);
                         });
                     }
