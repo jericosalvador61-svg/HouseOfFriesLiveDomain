@@ -91,10 +91,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (json.status === 'success' || json.success) {
                 // 1. Populate the 4 Stats Dashboard Cards
-                if (document.getElementById("totalItems")) document.getElementById("totalItems").textContent = json.stats?.total || 0;
-                if (document.getElementById("lowStock")) document.getElementById("lowStock").textContent = json.stats?.low || 0;
-                if (document.getElementById("outStock")) document.getElementById("outStock").textContent = json.stats?.out || 0;
-                if (document.getElementById("damagedStock")) document.getElementById("damagedStock").textContent = json.stats?.damaged || 0;
+                // REQ-068: KPI cards come from the inventoryReports stats endpoint (get_materials no longer returns stats)
+                if (document.getElementById("totalItems") || document.getElementById("lowStock") || document.getElementById("outStock") || document.getElementById("damagedStock")) {
+                    fetch("/backend/admin/inventoryReports/get_stats.php", { method: "GET", headers: getHeaders(null) })
+                        .then(r => r.json())
+                        .then(s => {
+                            const d = s.data || {};
+                            if (document.getElementById("totalItems")) document.getElementById("totalItems").textContent = d.total || 0;
+                            if (document.getElementById("lowStock")) document.getElementById("lowStock").textContent = d.low || 0;
+                            if (document.getElementById("outStock")) document.getElementById("outStock").textContent = d.out || 0;
+                            if (document.getElementById("damagedStock")) document.getElementById("damagedStock").textContent = d.damaged || 0;
+                        })
+                        .catch(() => {});
+                }
 
                 // 2. Fire live navbar notification alerts
                 checkStockAlerts(json.data);

@@ -55,10 +55,17 @@ function fetchInventoryStats() {
         .then(r => r.json())
         .then(result => {
             if (result.status === 'success') {
-                updateCount('totalItems', result.stats?.total);
-                updateCount('lowStock', result.stats?.low);
-                updateCount('outStock', result.stats?.out);
-                updateCount('damagedStock', result.stats?.damaged);
+                // REQ-068: KPI cards from inventoryReports stats endpoint
+                fetch("/backend/admin/inventoryReports/get_stats.php", { method: "GET", headers: getAuthHeaders(null) })
+                    .then(r => r.json())
+                    .then(s => {
+                        const d = s.data || {};
+                        updateCount('totalItems', d.total);
+                        updateCount('lowStock', d.low);
+                        updateCount('outStock', d.out);
+                        updateCount('damagedStock', d.damaged);
+                    })
+                    .catch(() => {});
                 checkStockAlerts(result.data);
             }
         })
@@ -79,8 +86,11 @@ function populateMaterialDropdown() {
                 if (!dd) return;
                 dd.innerHTML = '<option value="" selected disabled>Choose Material...</option>';
                 result.data.forEach(m => {
+                    // REQ-068: STOCK OUT dropdown shows ONLY ACTIVE materials that HAVE stock
+                    if ((m.status || '') !== 'ACTIVE') return;
                     const stock = parseFloat(m.current_quantity);
-                    const sd = stock <= 0 ? '(Out of Stock)' : `(${stock} ${m.unit} available)`;
+                    if (!(stock > 0)) return;
+                    const sd = `(${stock} ${m.unit} available)`;
                     dd.innerHTML += `<option value="${m.raw_material_id}" data-name="${m.raw_material_name}" data-unit="${m.unit}" data-stock="${stock}">${m.raw_material_name} ${sd}</option>`;
                 });
             }

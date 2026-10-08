@@ -55,8 +55,17 @@ async function loadInitialData() {
             inventoryMaterials = result.data;
             populateDropdown(document.getElementById('mainMaterialSelect'));
             checkStockAlerts(inventoryMaterials);
-            if (result.stats) updateQuickStatsFromBackend(result.stats);
-            else updateQuickStats(inventoryMaterials);
+            // REQ-068: KPI cards from inventoryReports stats endpoint
+            fetch("/backend/admin/inventoryReports/get_stats.php", { method: "GET", headers: getAuthHeaders(null) })
+                .then(r => r.json())
+                .then(s => {
+                    const d = (s && s.data) || {};
+                    setStatValue('totalItems', d.total ?? 0);
+                    setStatValue('lowStock', d.low ?? 0);
+                    setStatValue('outStock', d.out ?? 0);
+                    setStatValue('damagedStock', d.damaged ?? 0);
+                })
+                .catch(() => {});
         }
         loadAdjustmentHistory();
     } catch (err) { console.error("Load error:", err); }

@@ -469,7 +469,8 @@ async function loadRawMaterials() {
            expiredEl.textContent = stats.expired != null ? stats.expired : expiredCount;
        }
 
-       renderTable(allRawMaterials);
+       // REQ-068: default filter = Active (inactive hidden on first paint; filter select defaults ACTIVE)
+       renderTable(allRawMaterials.filter(m => (m.status || '') === (statusFilter.value || 'ACTIVE')));
        checkStockAlerts(allRawMaterials);
 
    } catch (err) {

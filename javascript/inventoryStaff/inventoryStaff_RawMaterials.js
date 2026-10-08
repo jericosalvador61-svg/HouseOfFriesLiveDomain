@@ -381,7 +381,8 @@ async function loadRawMaterials() {
         if (json.status !== 'success') throw new Error(json.message);
 
         allRawMaterials = json.data;
-        renderTable(allRawMaterials);
+        // REQ-068: default filter = Active (inactive hidden on first paint)
+        renderTable(allRawMaterials.filter(m => (m.status || '') === 'ACTIVE'));
         renderPager(json.pagination ? json.pagination.total : allRawMaterials.length, 10, document.getElementById('rawMaterialsPager'));
 
         // Process Notifications inside the same data response stream!
