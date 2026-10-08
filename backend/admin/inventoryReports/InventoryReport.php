@@ -57,13 +57,17 @@ class InventoryReport {
         $stockOutQty = (float)$soStmt->fetchColumn();
 
         return [
+            'total'             => (int)$totalMat,
+            'low'               => (int)$lowStock,
+            'out'               => (int)$outStock,
+            'damaged'           => $damagedCount,
+            // backward-compat keys
             'total_materials'   => (int)$totalMat,
             'low_stock'         => $lowStock,
             'out_stock'         => $outStock,
             'stock_in_value'    => $stockInValue,
             'spoilage_loss'     => $spoilageLoss,
             'pending_returns'   => $pendingReturns,
-            'damaged'           => $damagedCount,
             'stock_out_qty'     => $stockOutQty
         ];
     }
