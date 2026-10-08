@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -317,7 +317,7 @@
     <div class="status-container" style="position:relative;">
         <button onclick="history.length>1?history.back():location.href='customer.html'"
                 class="btn btn-light rounded-circle shadow-sm position-absolute"
-                style="top:16px;left:16px;z-index:1050;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:none;font-size:18px;font-weight:bold;" aria-label="Back">â†</button>
+                style="top:16px;left:16px;z-index:1050;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:none;font-size:18px;font-weight:bold;" aria-label="Back">←</button>
         <div class="success-icon-wrap">
             <i class="fa-solid fa-receipt"></i>
         </div>
@@ -328,10 +328,10 @@
         <div class="ticket-box">
             <div>Your Order ID</div>
             <h1 id="displayOrderID">#0000</h1>
-            <div class="total-amount-display" id="receiptTotalAmount">â‚± 0.00</div>
+            <div class="total-amount-display" id="receiptTotalAmount">₱ 0.00</div>
         </div>
 
-        <!-- Payment action â€” the method was chosen on the cart page (REQ-054 B4-B) -->
+        <!-- Payment action — the method was chosen on the cart page (REQ-054 B4-B) -->
         <div id="paymentChoiceSection" style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px;margin-top:12px;">
             <div id="methodBanner" style="display:none;background:#FFF9E6;border:2px solid var(--primary-yellow);border-radius:20px;padding:14px 20px;text-align:center;font-weight:800;font-size:14px;color:#331A11;align-items:center;justify-content:center;gap:8px;">
                 <i class="fa-solid fa-circle-check" style="color:#008444;"></i>
@@ -339,7 +339,7 @@
             </div>
         </div>
 
-        <!-- Cash instruction card â€” shown when cart selected Cash -->
+        <!-- Cash instruction card — shown when cart selected Cash -->
         <div id="cashInstructionCard" style="width:100%;max-width:420px;display:none;flex-direction:column;gap:12px;margin-top:12px;">
             <div class="instruction-card">
                 <i class="fa-solid fa-cash-register"></i>
@@ -348,7 +348,7 @@
                     <p id="paymentInstructionDesc">Kindly present your Order ID above to the counter to fulfill payment and
                         secure your kitchen priority line number.</p>
                     <small class="text-muted d-block mt-2" style="font-size:11px;color:rgba(255,255,255,0.5);">
-                        â³ Unpaid orders are auto-cancelled after 15 minutes. Please pay to lock in your order.
+                        ⏳ Unpaid orders are auto-cancelled after 15 minutes. Please pay to lock in your order.
                     </small>
                 </div>
             </div>
@@ -360,7 +360,7 @@
             </button>
         </div>
 
-        <!-- GCash payment option â€” shown when cart selected GCash -->
+        <!-- GCash payment option — shown when cart selected GCash -->
         <div id="gcashSection" style="width:100%;max-width:420px;display:none;flex-direction:column;gap:12px;margin-top:12px;">
             <div class="gcash-qr-card" style="width:100%;max-width:420px;background:#1E1E1E;border-radius:20px;padding:20px;border:2px solid #0056E3;display:flex;flex-direction:column;align-items:center;gap:10px;">
                 <div style="display:flex;align-items:center;gap:10px;">
@@ -373,7 +373,7 @@
                 <button onclick="payWithGCashQR()" style="background:#0056E3;color:white;border:none;border-radius:12px;padding:12px 24px;font-weight:700;font-size:15px;cursor:pointer;width:100%;">
                     <i class="fa-solid fa-qrcode"></i> Pay with GCash
                 </button>
-                <!-- REQ-063: "Open GCash App" removed here on purpose â€” the GCash
+                <!-- REQ-063: "Open GCash App" removed here on purpose — the GCash
                      app deep-link lives ONLY on qr_payment.html (btnPayApp), which
                      is where the customer lands after tapping Pay with GCash. -->
                 <button onclick="switchPayMethod()" id="swapMethodBtn" style="background:transparent;color:#0056E3;border:2px solid #0056E3;border-radius:12px;padding:12px 24px;font-weight:700;font-size:14px;cursor:pointer;width:100%;">
@@ -400,17 +400,17 @@
         <!-- Edit Order Button (visible for unpaid PENDING) -->
         <button class="btn-cancel" id="editOrderBtn" onclick="editOrder()"
             style="width: 100%; margin: 0; background-color: #ffe3e3; color: #dc3545; font-weight: 700; height: 50px; border-radius: 12px; font-size: 16px; border: 1px solid #f5c6cb; transition: background 0.2s;">
-            <i class="fa-solid fa-pen"></i> âœï¸ Edit Order
+            <i class="fa-solid fa-pen"></i> ✏️ Edit Order
         </button>
 
         <!-- Order Again Button (hidden by default, shown after payment) -->
         <button class="btn-home" id="orderAgainBtn" onclick="orderAgain()" style="display:none; width: 100%; margin: 0; background-color: #FFB800; color: #331A11; font-weight: 700; height: 50px; border-radius: 12px; font-size: 16px; transition: background 0.2s;">
-            <i class="fa-solid fa-plus"></i> âž• Order Again for a friend
+            <i class="fa-solid fa-plus"></i> ➕ Order Again for a friend
         </button>
 
-        <!-- Print Receipt Button (hidden by default, shown after payment â€” REQ-054 B4-E) -->
+        <!-- Print Receipt Button (hidden by default, shown after payment — REQ-054 B4-E) -->
         <button class="btn-home" id="printReceiptBtn" onclick="downloadReceipt()" style="display:none; width: 100%; margin: 0; background-color: #1E1E1E; color: #FFB800; font-weight: 700; height: 50px; border-radius: 12px; font-size: 16px; transition: background 0.2s; border: 1px solid rgba(255,184,0,0.4);">
-            <i class="fa-solid fa-print"></i> ðŸ§¾ Print Receipt
+            <i class="fa-solid fa-print"></i> 🧾 Print Receipt
         </button>
 
         <!-- Go to Tracker Button (hidden by default, shown after payment) -->

@@ -242,11 +242,13 @@ try {
             }
         }
 
-        // 1. Generate Reference Number (REQ-034: sequential COUNT+1, consistent pattern)
+        // 1. Generate Reference Number (REQ-068 M4-1: MAX+1 so refs never
+        //    repeat when cancelled rows are hard-deleted; COUNT+1 fallback when
+        //    MAX is NULL). The 23000 retry loop below is the collision backstop.
         $year = date("Y");
-        $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE YEAR(created_at) = ?");
+        $stmtCount = $pdo->prepare("SELECT COALESCE(MAX(CAST(SUBSTRING(reference_number, 8) AS UNSIGNED)), 0) FROM orders WHERE YEAR(created_at) = ?");
         $stmtCount->execute([$year]);
-        $count = $stmtCount->fetchColumn() + 1;
+        $count = (int)$stmtCount->fetchColumn() + 1;
         $reference_number = "HOF" . $year . str_pad($count, 5, '0', STR_PAD_LEFT);
 
     $user_id  = (!empty($data['user_id']))  ? (int)$data['user_id']  : null;

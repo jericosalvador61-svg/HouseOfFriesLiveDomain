@@ -1,4 +1,4 @@
-﻿/**
+/**
  * UNIFIED NAVBAR COMPONENT - House of Fries
  * Works across all roles with consistent design and role-specific features
  * 
@@ -192,7 +192,7 @@
             }
 
             // Remove any old sidebarCollapse button in the navbar (page-level)
-            // so we don't get duplicates â€” our unified version takes over
+            // so we don't get duplicates — our unified version takes over
             const oldBtn = navbar.querySelector('#sidebarCollapse');
             if (oldBtn && !oldBtn.closest('#unifiedNavbar')) {
                 oldBtn.remove();
@@ -485,9 +485,7 @@
                 const mobile = isMobileViewport();
 
                 if (mobile) {
-                    // Mobile: toggle off-canvas drawer with .open class, mirror .active 1:1
-                    // (REQ-068 M1-1) so the drawer closes on the 2nd tap — .active was sticky
-                    // and CSS aliases #sidebar.active to the open drawer on phones.
+                    // Mobile: toggle off-canvas drawer with .open class; .active mirrors .open so the 2nd tap closes (REQ-068 M1)
                     sidebar.classList.toggle('open');
                     sidebar.classList.toggle('active', sidebar.classList.contains('open'));
                     if (overlay) overlay.classList.toggle('open', sidebar.classList.contains('open'));
@@ -522,9 +520,9 @@
     // SESSION CHECK (from navbar.js)
     // ========================================
     async function setupSessionCheck() {
-        // Customers are anonymous (QR scan â†’ no hof_token by design).
+        // Customers are anonymous (QR scan → no hof_token by design).
         // Running the staff session check here used to kick every
-        // customer out to the login page â€” skip it for this role.
+        // customer out to the login page — skip it for this role.
         if (currentRole === 'customer') {
             return;
         }
@@ -553,7 +551,7 @@
                 const avatarEl = document.querySelector('.user-avatar');
                 if (nameEl) nameEl.textContent = `${data.first_name} ${data.last_name}`;
                 if (roleEl) roleEl.textContent = data.role;
-                // REQ-057: raw materials are READ-ONLY for Inventory Staff â€” hide manage controls.
+                // REQ-057: raw materials are READ-ONLY for Inventory Staff — hide manage controls.
                 if (String(data.role).toLowerCase() === 'inventory staff') {
                     document.querySelectorAll('.js-material-edit-btn, .js-material-delete-btn, #inventoryActionBtn, .js-raw-add-btn').forEach(el => { if (el) el.classList.add('d-none'); });
                 }
@@ -564,7 +562,7 @@
                 updateUserInfo();
             }
         } catch (err) {
-            // Navigation aborted fetch â€” do NOT clear token.
+            // Navigation aborted fetch — do NOT clear token.
             // The session check will run again on the next page load.
             console.warn('[Navbar] Session check aborted (likely navigation):', err);
         }

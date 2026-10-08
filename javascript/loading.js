@@ -1,16 +1,16 @@
-﻿// ====================================================================
-// GLOBAL LOADING STATE UTILITIES â€” House of Fries
+// ====================================================================
+// GLOBAL LOADING STATE UTILITIES — House of Fries
 // ADVISOR REQUIREMENT: Every form submission across the system (CRUD)
 // must display a loading feature indicating the request is processing.
 //
-// v2 â€” GLOBAL AUTO-COVERAGE:
-//   1. GlobalRequestLoader patches window.fetch â€” ANY POST/PUT/DELETE
+// v2 — GLOBAL AUTO-COVERAGE:
+//   1. GlobalRequestLoader patches window.fetch — ANY POST/PUT/DELETE
 //      request anywhere shows a top progress bar + status pill,
 //      with NO per-page wiring needed.
 //   2. Submit buttons inside <form> elements automatically show a
 //      spinner while their request is in flight (with safe fallback).
 //   3. Original opt-in API preserved (LoadingManager, Toast,
-//      submitWithLoading, ajaxWithLoading) â€” existing pages unaffected.
+//      submitWithLoading, ajaxWithLoading) — existing pages unaffected.
 // ====================================================================
 
 // --------------------------------------------------------------------
@@ -173,7 +173,7 @@ const GlobalRequestLoader = {
         pill.id = 'hof-global-pill';
         pill.innerHTML =
             '<span class="spinner-border" role="status" aria-hidden="true"></span>' +
-            '<span id="hof-global-pill-text">Processingâ€¦</span>';
+            '<span id="hof-global-pill-text">Processing…</span>';
         document.body.appendChild(pill);
 
         // REQ-054 B3-E: full-screen logo overlay with a circulating ring.
@@ -189,11 +189,11 @@ const GlobalRequestLoader = {
 
     label(method) {
         switch (method) {
-            case 'POST':   return 'Submittingâ€¦';
+            case 'POST':   return 'Submitting…';
             case 'PUT':
-            case 'PATCH':  return 'Updatingâ€¦';
-            case 'DELETE': return 'Deletingâ€¦';
-            default:       return 'Processingâ€¦';
+            case 'PATCH':  return 'Updating…';
+            case 'DELETE': return 'Deleting…';
+            default:       return 'Processing…';
         }
     },
 
@@ -270,10 +270,10 @@ const FormSubmitSpinner = {
         }
         btn.disabled = true;
         if (btn.tagName === 'INPUT') {
-            btn.value = 'Processingâ€¦';
+            btn.value = 'Processing…';
         } else {
             btn.innerHTML =
-                '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processingâ€¦';
+                '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing…';
         }
     },
 
@@ -291,7 +291,7 @@ const FormSubmitSpinner = {
 };
 
 // ====================================================================
-// GLOBAL LOADING STATE MANAGER (original API â€” unchanged)
+// GLOBAL LOADING STATE MANAGER (original API — unchanged)
 // ====================================================================
 const LoadingManager = {
     activeLoaders: new Map(),
@@ -417,7 +417,7 @@ const LoadingManager = {
 };
 
 // ====================================================================
-// FORM SUBMISSION HELPER WITH LOADING (original API â€” unchanged)
+// FORM SUBMISSION HELPER WITH LOADING (original API — unchanged)
 // ====================================================================
 async function submitWithLoading(form, submitHandler, options = {}) {
     const submitBtn = form.querySelector('button[type="submit"]') || form.querySelector('[data-submit-btn]');
@@ -437,7 +437,7 @@ async function submitWithLoading(form, submitHandler, options = {}) {
 }
 
 // ====================================================================
-// AJAX HELPER WITH LOADING (original API â€” unchanged)
+// AJAX HELPER WITH LOADING (original API — unchanged)
 // ====================================================================
 async function ajaxWithLoading(url, options = {}, loadingOptions = {}) {
     const { btn, form, loadingText = 'Processing...' } = loadingOptions;
@@ -459,7 +459,7 @@ async function ajaxWithLoading(url, options = {}, loadingOptions = {}) {
 }
 
 // ====================================================================
-// TOAST/NOTIFICATION HELPER (original API â€” unchanged)
+// TOAST/NOTIFICATION HELPER (original API — unchanged)
 // ====================================================================
 const Toast = {
     success(message, title = 'Success') {
@@ -494,12 +494,12 @@ const Toast = {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', boot);
     } else {
-        boot(); // script loaded late/deferred â€” DOM already there
+        boot(); // script loaded late/deferred — DOM already there
     }
 })();
 
 // ====================================================================
-// CSS FOR LOADING OVERLAY (injected dynamically â€” legacy opt-in forms)
+// CSS FOR LOADING OVERLAY (injected dynamically — legacy opt-in forms)
 // ====================================================================
 const loadingStyles = `
     <style id="loading-styles">
