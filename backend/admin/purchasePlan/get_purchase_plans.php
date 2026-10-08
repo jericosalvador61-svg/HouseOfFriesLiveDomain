@@ -18,7 +18,7 @@ try {
             FROM purchase_plans p 
             INNER JOIN users u ON p.created_by = u.user_id 
             LEFT JOIN purchase_plan_items i ON p.plan_id = i.plan_id 
-            GROUP BY p.plan_id 
+            GROUP BY p.plan_id, p.created_at, u.first_name, u.last_name 
             ORDER BY p.created_at DESC
             LIMIT :limit OFFSET :offset";
 
