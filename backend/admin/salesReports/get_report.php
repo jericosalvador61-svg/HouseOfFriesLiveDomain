@@ -9,10 +9,11 @@ try {
     $controller = new SalesReportController($user);
     $controller->getReport();
 } catch (Throwable $e) {
+    error_log('[salesReports/get_report.php] ' . $e->getMessage());
     http_response_code(200);
     header('Content-Type: application/json');
     echo json_encode([
         'status' => 'error',
-        'message' => 'no completed payments in range...'
+        'message' => 'Sales data is temporarily unavailable. Check the database connection or schema migrations.'
     ]);
 }

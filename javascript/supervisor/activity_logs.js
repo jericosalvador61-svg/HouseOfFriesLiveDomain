@@ -83,6 +83,12 @@ document.addEventListener('DOMContentLoaded', function() {
     dateFrom.value = sevenDaysAgo.toISOString().split('T')[0];
     dateTo.value = today.toISOString().split('T')[0];
 
+    // REQ-068 M1-2: keep currentFilters in sync with the pre-filled date inputs —
+    // otherwise the initial load sends date_from=/date_to= (empty) and the backend
+    // treats empty strings as dates, matching zero rows until Reset is pressed.
+    currentFilters.date_from = dateFrom.value;
+    currentFilters.date_to = dateTo.value;
+
     // REQ-050: escapeHtml — XSS-safe escaping for EVERY rendered data field
     function escapeHtml(value) {
         if (value === null || value === undefined) return '';

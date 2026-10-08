@@ -22,8 +22,8 @@ $page     = max(1, intval($_GET['page'] ?? 1));
 $limit    = $export ? 50000 : min(100, max(1, intval($_GET['limit'] ?? 50)));
 $offset   = ($page - 1) * $limit;
 
-$date_from    = $_GET['date_from'] ?? date('Y-m-01');
-$date_to      = $_GET['date_to'] ?? date('Y-m-d');
+$date_from    = ($_GET['date_from'] ?? '') ?: date('Y-m-01');
+$date_to      = ($_GET['date_to']   ?? '') ?: date('Y-m-d');
 $action_type  = $_GET['action_type'] ?? '';
 $role_filter  = $_GET['role'] ?? '';
 $user_search  = $_GET['user_search'] ?? '';

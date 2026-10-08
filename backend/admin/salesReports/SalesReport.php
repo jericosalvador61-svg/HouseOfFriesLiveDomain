@@ -138,6 +138,8 @@ class SalesReport {
      * is the APPROVED stock-out cost value for that same day.
      */
     public function getReportByDay($startDate, $endDate) {
+        // REQ-068 M1-3: schema-agnostic guards — discount_amount/subtotal may be
+        // absent on live until the REQ-049 migration is applied.
         $discountExpr = $this->discountExpr();
 
         // 1. Per-day PAID revenue/orders/net-sales/discount
@@ -198,6 +200,8 @@ class SalesReport {
     }
 
     public function getStats($startDate, $endDate) {
+        // REQ-068 M1-3: schema-agnostic guards — discount_amount may be absent on
+        // live until the REQ-049 migration is applied.
         $discountExpr = $this->discountExpr();
 
         // Revenue from actual received payments (cash + GCash)

@@ -485,9 +485,11 @@
                 const mobile = isMobileViewport();
 
                 if (mobile) {
-                    // Mobile: toggle off-canvas drawer with .open class, keep .active for backward compat
+                    // Mobile: toggle off-canvas drawer with .open class, mirror .active 1:1
+                    // (REQ-068 M1-1) so the drawer closes on the 2nd tap — .active was sticky
+                    // and CSS aliases #sidebar.active to the open drawer on phones.
                     sidebar.classList.toggle('open');
-                    sidebar.classList.add('active');
+                    sidebar.classList.toggle('active', sidebar.classList.contains('open'));
                     if (overlay) overlay.classList.toggle('open', sidebar.classList.contains('open'));
                 } else {
                     // Desktop: toggle mini-rail with .collapsed class, keep .active in sync
