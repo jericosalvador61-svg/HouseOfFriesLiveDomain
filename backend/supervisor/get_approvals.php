@@ -94,6 +94,27 @@ try {
         $results['inventory'] = $stmt->fetchAll();
     }
 
+    // Returns — returns has NO is_deleted column (return_items has is_deleted)
+    if ($type === 'all' || $type === 'returns') {
+        $stmt = $pdo->query("
+            SELECT
+                r.return_id as request_id,
+                CONCAT(rm.raw_material_name, ' x', ri.quantity) as item_name,
+                ri.quantity as change_amount,
+                r.return_type, r.reason,
+                r.status,
+                CONCAT(u.first_name, ' ', u.last_name) as submitted_by,
+                r.created_at as submitted_at
+            FROM returns r
+            JOIN return_items ri ON r.return_id = ri.return_id AND ri.is_deleted = 0
+            JOIN raw_materials rm ON ri.raw_material_id = rm.raw_material_id
+            JOIN users u ON r.user_id = u.user_id
+            ORDER BY r.created_at DESC
+            LIMIT 50
+        ");
+        $results['returns'] = $stmt->fetchAll();
+    }
+
     // Purchase Plans — purchase_plans has NO is_deleted column
     if ($type === 'all' || $type === 'purchase_plan') {
         $stmt = $pdo->query("

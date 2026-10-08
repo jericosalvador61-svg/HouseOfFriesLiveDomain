@@ -103,12 +103,32 @@ try {
             break;
 
         case 'ret':
-            // Returns — wrap in transaction for safety
+            // Returns — returns has NO is_deleted column (return_items has is_deleted)
             $pdo->beginTransaction();
             if ($newStatus === 'APPROVED') {
+                // Fetch return items and add them back to raw material stock (mirrors batch_approve_returns.php)
+                $retStmt = $pdo->prepare("
+                    SELECT raw_material_id, quantity
+                    FROM return_items
+                    WHERE return_id = ? AND is_deleted = 0
+                ");
+                $retStmt->execute([$requestId]);
+                $retItems = $retStmt->fetchAll();
+
+                $updStmt = $pdo->prepare("
+                    UPDATE raw_materials
+                    SET current_quantity = current_quantity + ?,
+                        updated_at = NOW()
+                    WHERE raw_material_id = ?
+                ");
+
+                foreach ($retItems as $item) {
+                    $updStmt->execute([$item['quantity'], $item['raw_material_id']]);
+                }
+
                 $stmt = $pdo->prepare("
-                    UPDATE returns 
-                    SET status = ?, approved_at = NOW(), approved_by = ?, updated_at = NOW() 
+                    UPDATE returns
+                    SET status = ?, approved_at = NOW(), approved_by = ?, updated_at = NOW()
                     WHERE return_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $userId, $requestId]);
@@ -119,8 +139,8 @@ try {
                 }
             } else {
                 $stmt = $pdo->prepare("
-                    UPDATE returns 
-                    SET status = ?, updated_at = NOW() 
+                    UPDATE returns
+                    SET status = ?, updated_at = NOW()
                     WHERE return_id = ? AND status = 'PENDING'
                 ");
                 $stmt->execute([$newStatus, $requestId]);

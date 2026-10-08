@@ -165,6 +165,32 @@ async function loadApprovals(type = 'all') {
             }
         }
 
+        // Returns
+        const retTbody = document.getElementById('retTableBody');
+        if (retTbody && data.data.returns) {
+            if (data.data.returns.length === 0) {
+                retTbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No returns</td></tr>';
+            } else {
+                retTbody.innerHTML = data.data.returns.map(r => `
+                    <tr>
+                        <td class="fw-semibold">#RET-${r.request_id}</td>
+                        <td>${escapeHtml(r.item_name)}</td>
+                        <td><span class="badge ${(r.return_type || '').toUpperCase() === 'DAMAGED' ? 'bg-danger' : 'bg-secondary'}">${escapeHtml(r.return_type || 'OTHER')}</span></td>
+                        <td>${r.change_amount || 0}</td>
+                        <td>${escapeHtml(r.reason || '-')}</td>
+                        <td>${escapeHtml(r.submitted_by || 'System')}</td>
+                        <td>${statusPill(r.status)}</td>
+                        <td>
+                            ${r.status === 'PENDING' ? `
+                                <button class="btn btn-sm btn-success" onclick="handleApproval('ret', ${r.request_id}, 'APPROVED')"><i class="bi bi-check-lg"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="handleApproval('ret', ${r.request_id}, 'REJECTED')"><i class="bi bi-x-lg"></i></button>
+                            ` : '<span class="text-muted">&mdash;</span>'}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
         // Purchase Plans
         const ppTbody = document.getElementById('ppTableBody');
         if (ppTbody && data.data.purchase_plans) {

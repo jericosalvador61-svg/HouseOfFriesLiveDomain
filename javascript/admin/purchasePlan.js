@@ -41,7 +41,7 @@ async function fetchInitialData() {
         checkStockAlerts(rawMaterialsCache);
 
         // Render both layouts side-by-side using unified cache data
-        renderPurchasePlanTable(purchasePlansCache);
+        renderPurchasePlanTable(purchasePlansCache.plans || purchasePlansCache || []);
     } catch (error) {
         console.error("Error loading House of Fries data system:", error);
     }
@@ -525,7 +525,7 @@ function filterTableData() {
     const searchVal = document.getElementById('searchInventory').value.toLowerCase();
     const statusVal = document.getElementById('filterStatus').value;
 
-    const filtered = purchasePlansCache.filter(plan => {
+    const filtered = (purchasePlansCache.plans || purchasePlansCache).filter(plan => {
         const matchesStatus = statusVal === "" || plan.status === statusVal;
         const matchesSearch = searchVal === "" ||
             (plan.admin_remarks && plan.admin_remarks.toLowerCase().includes(searchVal)) ||
