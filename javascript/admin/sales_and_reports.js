@@ -512,6 +512,9 @@ function renderChart(chartData) {
         }
     };
 
+    // Reset axis orientation every render so switching away from Horizontal-Bar
+    // never leaves a stale indexAxis: 'y' on the options object.
+    options.indexAxis = 'x';
     let type = 'bar';
     if (chartType === 'line') {
         type = 'line';

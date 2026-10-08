@@ -60,11 +60,28 @@ try {
         $remainingSeconds = max(0, ($prepRemaining * 60) - $elapsed);
     }
 
+    // REQ-066 US-7: fresh-device tracking needs the server-known reference so
+    // signed flows (cancel / switch / pay) work on a device that never stored
+    // it. Security (Cline HIGH): ONLY expose reference_number when a VALID
+    // 'track' signature was presented — never on unsigned reads (otherwise an
+    // attacker who sees a numeric order_id could read the ref, mint a 'cancel'
+    // sig and cancel someone else's PENDING order).
+    $validatedRef = null;
+    if ($sig) {
+        // signed — safe to include the reference
+        $refStmt = $pdo->prepare("SELECT reference_number FROM orders WHERE order_id = ?");
+        $refStmt->execute([$order_id]);
+        $refRow = $refStmt->fetch(PDO::FETCH_ASSOC);
+        $validatedRef = $refRow['reference_number'] ?? null;
+    }
+
     echo json_encode([
         'status' => $result['status'] ?? 'PENDING',
         'paid' => (($result['payment_status'] ?? '') === 'COMPLETED'),
         'ordered_at' => $result['ordered_at'] ?? null,
         'created_at' => $result['created_at'] ?? null,
+        // only when signed (Cline HIGH fix)
+        'reference_number' => $validatedRef,
         'updated_epoch' => $result['updated_epoch'] ? (int)$result['updated_epoch'] : null,
         'prep_remaining' => $prepRemaining,
         'prep_estimate_total' => $prepTotal,

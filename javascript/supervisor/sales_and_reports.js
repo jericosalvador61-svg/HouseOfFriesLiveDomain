@@ -604,7 +604,10 @@ function renderChart(chartData) {
             ds.tension = 0.3;
             ds.backgroundColor = `rgba(${color.rgb}, 0.3)`;
         });
-    } else if (chartType === 'horizontalBar') {
+    // Reset axis orientation every render so switching away from Horizontal-Bar
+    // never leaves a stale indexAxis: 'y' on the options object.
+    options.indexAxis = 'x';
+    if (chartType === 'horizontalBar') {
         type = 'bar';
         options.indexAxis = 'y';
     }
