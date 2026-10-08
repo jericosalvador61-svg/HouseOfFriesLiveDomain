@@ -50,6 +50,15 @@ function apiFetch(endpoint, options = {}) {
 let salesChartInstance = null;
 let hourlyChartInstance = null;
 
+// Build the Error thrown for a failed API payload. The backend attaches the
+// real cause in `detail` (Admin/Supervisor only), so the browser console shows
+// the actual DB reason instead of just the generic message.
+function apiErrorMessage(data, fallback) {
+    const base = (data && data.message) || fallback;
+    const detail = data && data.detail ? ` Detail: ${data.detail}` : '';
+    return base + detail;
+}
+
 // State
 let currentFilters = {
     start_date: '',
@@ -402,7 +411,7 @@ function loadStats() {
                     document.getElementById('bestSellerRevenue').textContent = 'No data';
                 }
             } else {
-                throw new Error(data.message || 'Failed to load stats');
+                throw new Error(apiErrorMessage(data, 'Failed to load stats'));
             }
         })
         .catch(err => {
@@ -440,7 +449,7 @@ function loadChartData() {
             if (data.status === 'success') {
                 renderChart(data.data);
             } else {
-                throw new Error(data.message || 'Failed to load chart data');
+                throw new Error(apiErrorMessage(data, 'Failed to load chart data'));
             }
         })
         .catch(err => {
@@ -625,7 +634,7 @@ function loadTopSelling() {
             if (data.status === 'success') {
                 renderTopSelling(data.data);
             } else {
-                throw new Error(data.message || 'Failed to load top selling');
+                throw new Error(apiErrorMessage(data, 'Failed to load top selling'));
             }
         })
         .catch(err => {
@@ -692,7 +701,7 @@ function loadHourlyDistribution() {
             if (data.status === 'success') {
                 renderHourlyData(data.data);
             } else {
-                throw new Error(data.message || 'Failed to load hourly data');
+                throw new Error(apiErrorMessage(data, 'Failed to load hourly data'));
             }
         })
         .catch(err => {

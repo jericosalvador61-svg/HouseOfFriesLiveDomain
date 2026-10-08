@@ -14,6 +14,9 @@ try {
     header('Content-Type: application/json');
     echo json_encode([
         'status' => 'error',
-        'message' => 'Sales data is temporarily unavailable. Check the database connection or schema migrations.'
+        'message' => 'Sales data is temporarily unavailable. Check the database connection or schema migrations.',
+        // Authenticated Admin/Supervisor only (authenticate() above already
+        // gates this): expose the real cause so the browser console shows it.
+        'detail' => $e->getMessage()
     ]);
 }

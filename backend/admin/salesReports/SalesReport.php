@@ -270,15 +270,18 @@ class SalesReport {
     public function getChartData($startDate, $endDate, $groupBy = 'day', $metric = 'revenue') {
         $format = $this->getDateFormat($groupBy);
 
-        $sql = "SELECT 
+        // NOTE: GROUP BY period only (never period+date) so week/month/year
+        // ranges collapse into one point per period. MIN(DATE(...)) keeps the
+        // sort key deterministic under MySQL ONLY_FULL_GROUP_BY.
+        $sql = "SELECT
                     DATE_FORMAT(p.paid_at, '$format') AS period,
-                    DATE(p.paid_at) AS date,
+                    MIN(DATE(p.paid_at)) AS date,
                     COUNT(DISTINCT o.order_id) AS order_count,
                     COALESCE(SUM(p.amount_paid), 0) AS revenue
                 FROM orders o
                 {$this->paidJoin()}
                 WHERE DATE(p.paid_at) BETWEEN :start AND :end
-                GROUP BY period, date
+                GROUP BY period
                 ORDER BY date ASC";
 
         $stmt = $this->db->prepare($sql);
@@ -314,7 +317,7 @@ class SalesReport {
 
         $sql = "SELECT 
                     DATE_FORMAT(p.paid_at, '$format') AS period,
-                    DATE(p.paid_at) AS date,
+                    MIN(DATE(p.paid_at)) AS date,
                     COUNT(DISTINCT o.order_id) AS order_count,
                     COALESCE(SUM(oi.quantity * oi.price), 0) AS revenue
                 FROM orders o
@@ -322,7 +325,7 @@ class SalesReport {
                 {$this->paidJoin()}
                 WHERE DATE(p.paid_at) BETWEEN :start AND :end
                     AND oi.menu_item_id = :menu_item_id
-                GROUP BY period, date
+                GROUP BY period
                 ORDER BY date ASC";
 
         $stmt = $this->db->prepare($sql);
@@ -361,13 +364,22 @@ class SalesReport {
      */
     private function computePerPeriodGrossProfit($startDate, $endDate, $groupBy, $results, $labels) {
         $costExpr = $this->cogsCostExpression();
-        $periodExpr = match ($groupBy) {
-            'day' => "DATE(so.stock_out_date)",
-            'week' => "DATE_FORMAT(so.stock_out_date, '%Y-%u')",
-            'month' => "DATE_FORMAT(so.stock_out_date, '%Y-%m')",
-            'year' => "DATE_FORMAT(so.stock_out_date, '%Y')",
-            default => "DATE(so.stock_out_date)"
-        };
+        // switch (not match) so this file still parses on PHP 7.4 hosts.
+        switch ($groupBy) {
+            case 'week':
+                $periodExpr = "DATE_FORMAT(so.stock_out_date, '%Y-%u')";
+                break;
+            case 'month':
+                $periodExpr = "DATE_FORMAT(so.stock_out_date, '%Y-%m')";
+                break;
+            case 'year':
+                $periodExpr = "DATE_FORMAT(so.stock_out_date, '%Y')";
+                break;
+            case 'day':
+            default:
+                $periodExpr = "DATE(so.stock_out_date)";
+                break;
+        }
 
         $sql = "SELECT $periodExpr AS period, SUM(soi.quantity * $costExpr) AS cogs
                 FROM stock_out so
@@ -406,6 +418,9 @@ class SalesReport {
      * Get top selling products (among PAID orders)
      */
     public function getTopSelling($startDate, $endDate, $limit = 10) {
+        // Interpolate (int-cast + clamped): bound LIMIT params fail on some
+        // MySQL/MariaDB native-prepare configurations.
+        $limit = max(1, min(100, (int)$limit));
         $sql = "SELECT 
                     mi.menu_item_id,
                     mi.item_name,
@@ -420,12 +435,11 @@ class SalesReport {
                 WHERE DATE(p.paid_at) BETWEEN :start AND :end
                 GROUP BY mi.menu_item_id
                 ORDER BY total_revenue DESC
-                LIMIT :limit";
+                LIMIT $limit";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':start', $startDate);
         $stmt->bindValue(':end', $endDate);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
     }
@@ -540,12 +554,17 @@ class SalesReport {
      * Helper: Get date format based on groupBy
      */
     private function getDateFormat($groupBy) {
-        return match ($groupBy) {
-            'day' => '%Y-%m-%d',
-            'week' => '%Y-%u',
-            'month' => '%Y-%m',
-            'year' => '%Y',
-            default => '%Y-%m-%d'
-        };
+        // switch (not match) so this file still parses on PHP 7.4 hosts.
+        switch ($groupBy) {
+            case 'week':
+                return '%Y-%u';
+            case 'month':
+                return '%Y-%m';
+            case 'year':
+                return '%Y';
+            case 'day':
+            default:
+                return '%Y-%m-%d';
+        }
     }
 }
