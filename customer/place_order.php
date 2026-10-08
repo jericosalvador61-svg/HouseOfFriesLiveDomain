@@ -245,10 +245,20 @@ try {
         // 1. Generate Reference Number (REQ-068 M4-1: MAX+1 so refs never
         //    repeat when cancelled rows are hard-deleted; COUNT+1 fallback when
         //    MAX is NULL). The 23000 retry loop below is the collision backstop.
+        // REQ-070: on a retry the SAME MAX+1 ref would collide again (UNIQUE
+        // index) — regenerate with a random suffix so each attempt is a fresh,
+        // distinct ref. The UNIQUE index is the real guard; this just makes the
+        // retry actually able to succeed instead of looping on the same ref.
         $year = date("Y");
-        $stmtCount = $pdo->prepare("SELECT COALESCE(MAX(CAST(SUBSTRING(reference_number, 8) AS UNSIGNED)), 0) FROM orders WHERE YEAR(created_at) = ?");
-        $stmtCount->execute([$year]);
-        $count = (int)$stmtCount->fetchColumn() + 1;
+        if ($attempt > 1 && defined('REF_COLLISION')) {
+            // rare: bump the numeric segment by a small random offset so the
+            // retried ref differs from the collided one
+            $count = (int)$stmtCount->fetchColumn() + $attempt + random_int(1, 7);
+        } else {
+            $stmtCount = $pdo->prepare("SELECT COALESCE(MAX(CAST(SUBSTRING(reference_number, 8) AS UNSIGNED)), 0) FROM orders WHERE YEAR(created_at) = ?");
+            $stmtCount->execute([$year]);
+            $count = (int)$stmtCount->fetchColumn() + 1;
+        }
         $reference_number = "HOF" . $year . str_pad($count, 5, '0', STR_PAD_LEFT);
 
     $user_id  = (!empty($data['user_id']))  ? (int)$data['user_id']  : null;
@@ -442,6 +452,9 @@ try {
                 echo json_encode(['success' => false, 'message' => 'We could not save your order right now. Please try again or ask staff for help.']);
                 exit;
             }
+            // REQ-070: mark that the last ref collided so the next attempt
+            // regenerates a DISTINCT ref (see ref generator above).
+            define('REF_COLLISION', true);
             continue;
         }
         throw $e;
