@@ -59,27 +59,61 @@ try {
         }
 
         // Update parent table status, manager evaluation notes, AND total calculated budget constraints
-        $sql = "UPDATE purchase_plans 
-                SET status = :status, total_cost = :total_cost, admin_remarks = :admin_remarks 
-                WHERE plan_id = :plan_id";
+        // (admin_remarks column guarded for schema drift)
+        $hasAdminRemarks = (int)$pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'purchase_plans' AND COLUMN_NAME = 'admin_remarks'"
+        )->fetchColumn() > 0;
+
+        if ($hasAdminRemarks) {
+            $sql = "UPDATE purchase_plans 
+                    SET status = :status, total_cost = :total_cost, admin_remarks = :admin_remarks 
+                    WHERE plan_id = :plan_id";
+            $planParams = [
+                ':status'        => $status,
+                ':total_cost'    => $calculated_grand_total,
+                ':admin_remarks' => empty($admin_remarks) ? null : $admin_remarks,
+                ':plan_id'       => $plan_id
+            ];
+        } else {
+            $sql = "UPDATE purchase_plans 
+                    SET status = :status, total_cost = :total_cost 
+                    WHERE plan_id = :plan_id";
+            $planParams = [
+                ':status'     => $status,
+                ':total_cost' => $calculated_grand_total,
+                ':plan_id'    => $plan_id
+            ];
+        }
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            ':status'        => $status,
-            ':total_cost'    => $calculated_grand_total,
-            ':admin_remarks' => empty($admin_remarks) ? null : $admin_remarks,
-            ':plan_id'       => $plan_id
-        ]);
+        $stmt->execute($planParams);
     } else {
         // If Rejected, update state parameters and reasons cleanly without rewriting initial estimations
-        $sql = "UPDATE purchase_plans 
-                SET status = :status, admin_remarks = :admin_remarks 
-                WHERE plan_id = :plan_id";
+        $hasAdminRemarks = (int)$pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'purchase_plans' AND COLUMN_NAME = 'admin_remarks'"
+        )->fetchColumn() > 0;
+
+        if ($hasAdminRemarks) {
+            $sql = "UPDATE purchase_plans 
+                    SET status = :status, admin_remarks = :admin_remarks 
+                    WHERE plan_id = :plan_id";
+            $planParams = [
+                ':status'        => $status,
+                ':admin_remarks' => empty($admin_remarks) ? null : $admin_remarks,
+                ':plan_id'       => $plan_id
+            ];
+        } else {
+            $sql = "UPDATE purchase_plans 
+                    SET status = :status 
+                    WHERE plan_id = :plan_id";
+            $planParams = [
+                ':status'  => $status,
+                ':plan_id' => $plan_id
+            ];
+        }
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            ':status'        => $status,
-            ':admin_remarks' => empty($admin_remarks) ? null : $admin_remarks,
-            ':plan_id'       => $plan_id
-        ]);
+        $stmt->execute($planParams);
     }
 
     // If everything maps perfectly, write database modifications securely

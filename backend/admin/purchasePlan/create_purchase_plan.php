@@ -55,16 +55,32 @@ try {
         ];
     }
 
-    // 1. Insert parent plan record
-    $insertPlanSql = "INSERT INTO purchase_plans (created_by, remarks, total_cost, admin_remarks, status) 
-                      VALUES (:created_by, :remarks, :total_cost, :admin_remarks, 'Approved')";
+    // 1. Insert parent plan record (admin_remarks column guarded for schema drift)
+    $hasAdminRemarks = (int)$pdo->query(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'purchase_plans' AND COLUMN_NAME = 'admin_remarks'"
+    )->fetchColumn() > 0;
+
+    if ($hasAdminRemarks) {
+        $insertPlanSql = "INSERT INTO purchase_plans (created_by, remarks, total_cost, admin_remarks, status) 
+                          VALUES (:created_by, :remarks, :total_cost, :admin_remarks, 'Approved')";
+        $planParams = [
+            ':created_by'    => $created_by,
+            ':remarks'       => $remarks,
+            ':total_cost'    => $calculated_grand_total,
+            ':admin_remarks' => empty($remarks) ? null : $remarks
+        ];
+    } else {
+        $insertPlanSql = "INSERT INTO purchase_plans (created_by, remarks, total_cost, status) 
+                          VALUES (:created_by, :remarks, :total_cost, 'Approved')";
+        $planParams = [
+            ':created_by' => $created_by,
+            ':remarks'    => $remarks,
+            ':total_cost' => $calculated_grand_total
+        ];
+    }
     $stmt = $pdo->prepare($insertPlanSql);
-    $stmt->execute([
-        ':created_by'    => $created_by,
-        ':remarks'       => $remarks,
-        ':total_cost'    => $calculated_grand_total,
-        ':admin_remarks' => empty($remarks) ? null : $remarks
-    ]);
+    $stmt->execute($planParams);
 
     $plan_id = $pdo->lastInsertId();
 

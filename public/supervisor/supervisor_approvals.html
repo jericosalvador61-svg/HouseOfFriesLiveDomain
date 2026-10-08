@@ -107,6 +107,9 @@
                         <button class="nav-link" id="adj-tab" data-bs-toggle="tab" data-bs-target="#adj-section" type="button" role="tab">Adjustments</button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="ret-tab" data-bs-toggle="tab" data-bs-target="#ret-section" type="button" role="tab">Returns</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="pp-tab" data-bs-toggle="tab" data-bs-target="#pp-section" type="button" role="tab">Purchase Plans</button>
                     </li>
                 </ul>
@@ -207,6 +210,33 @@
                                             </tr>
                                         </thead>
                                         <tbody id="adjTableBody">
+                                            <tr><td colspan="8" class="text-center py-5 text-muted">Loading...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Returns -->
+                    <div class="tab-pane fade" id="ret-section" role="tabpanel">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-4">Reference</th>
+                                                <th>Item</th>
+                                                <th>Return Type</th>
+                                                <th>Qty</th>
+                                                <th>Reason</th>
+                                                <th>Submitted By</th>
+                                                <th>Status</th>
+                                                <th class="pe-4">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="retTableBody">
                                             <tr><td colspan="8" class="text-center py-5 text-muted">Loading...</td></tr>
                                         </tbody>
                                     </table>

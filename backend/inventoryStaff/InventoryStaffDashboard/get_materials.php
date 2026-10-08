@@ -15,24 +15,25 @@ try {
     $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // 2. Get Stats for the 4 Cards
-    $totalItems = count($materials);
+    $totalItems = count(array_filter($materials, fn($m) => ($m['status'] ?? '') === 'ACTIVE'));
 
-    // Low Stock
+    // Low Stock (ACTIVE only)
     $stmtLow = $pdo->query("
         SELECT COUNT(*) 
         FROM raw_materials 
-        WHERE current_quantity > 0 
+        WHERE status = 'ACTIVE'
+        AND current_quantity > 0 
         AND current_quantity <= reorder_level
     ");
     $lowStock = $stmtLow->fetchColumn();
 
-    // Out of Stock
-    $stmtOut = $pdo->query("SELECT COUNT(*) FROM raw_materials WHERE current_quantity <= 0");
+    // Out of Stock (ACTIVE only)
+    $stmtOut = $pdo->query("SELECT COUNT(*) FROM raw_materials WHERE status = 'ACTIVE' AND current_quantity <= 0");
     $outStock = $stmtOut->fetchColumn();
 
-    // Damaged/Spoilage Stat - Grabbing all approved or logged loss quantities
-    $stmtDamaged = $pdo->query("SELECT SUM(quantity_lost) FROM spoilage WHERE status = 'Approved' OR status IS NULL OR status = ''");
-    $damagedTotal = $stmtDamaged->fetchColumn() ?: 0;
+    // Damaged = COUNT of PENDING spoilage/waste/damage (shared KPI definition)
+    $stmtDamaged = $pdo->query("SELECT COUNT(*) FROM spoilage WHERE status = 'PENDING' AND spoilage_type IN ('SPOILAGE','WASTE','DAMAGE')");
+    $damagedTotal = (int)$stmtDamaged->fetchColumn();
 
     // 3. RECENT SPOILAGE FEED
     $stmtRecentSpoilage = $pdo->query("
@@ -80,7 +81,7 @@ try {
             'total' => $totalItems,
             'low' => (int)$lowStock,
             'out' => (int)$outStock,
-            'damaged' => (float)$damagedTotal
+            'damaged' => (int)$damagedTotal
         ]
     ]);
 } catch (PDOException $e) {
