@@ -136,10 +136,11 @@ class SalesReport {
      * Missing days in the range are zero-filled so the table shows a
      * continuous calendar. Gross profit per day = revenue − COGS where COGS
      * is the APPROVED stock-out cost value for that same day.
+     * REQ-072: optional $menuItemId filters revenue/orders/discounts to a
+     * single menu item (per-day COGS is kept global — stock-out cost cannot be
+     * attributed per menu item with the current schema).
      */
-    public function getReportByDay($startDate, $endDate) {
-        // REQ-068 M1-3: schema-agnostic guards — discount_amount/subtotal may be
-        // absent on live until the REQ-049 migration is applied.
+    public function getReportByDay($startDate, $endDate, $menuItemId = null) {
         $discountExpr = $this->discountExpr();
 
         // 1. Per-day PAID revenue/orders/net-sales/discount
@@ -151,12 +152,25 @@ class SalesReport {
                     COALESCE(SUM($discountExpr), 0) AS discount_amount
                 FROM orders o
                 {$this->paidJoin()}
-                WHERE DATE(p.paid_at) BETWEEN :start AND :end
+                WHERE DATE(p.paid_at) BETWEEN :start AND :end";
+
+        $params = [':start' => $startDate, ':end' => $endDate];
+
+        if ($menuItemId) {
+            $sql .= "
+                AND EXISTS (
+                    SELECT 1 FROM order_items oi
+                    WHERE oi.order_id = o.order_id AND oi.menu_item_id = :menu_item_id
+                )";
+            $params[':menu_item_id'] = $menuItemId;
+        }
+
+        $sql .= "
                 GROUP BY DATE(p.paid_at)
                 ORDER BY d ASC";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
         $byDay = [];
@@ -199,9 +213,7 @@ class SalesReport {
         return $result;
     }
 
-    public function getStats($startDate, $endDate) {
-        // REQ-068 M1-3: schema-agnostic guards — discount_amount may be absent on
-        // live until the REQ-049 migration is applied.
+    public function getStats($startDate, $endDate, $menuItemId = null) {
         $discountExpr = $this->discountExpr();
 
         // Revenue from actual received payments (cash + GCash)
@@ -217,8 +229,19 @@ class SalesReport {
                 {$this->paidJoin()}
                 WHERE DATE(p.paid_at) BETWEEN :start AND :end";
 
+        $params = [':start' => $startDate, ':end' => $endDate];
+
+        if ($menuItemId) {
+            $sql .= "
+                AND EXISTS (
+                    SELECT 1 FROM order_items oi
+                    WHERE oi.order_id = o.order_id AND oi.menu_item_id = :menu_item_id
+                )";
+            $params[':menu_item_id'] = $menuItemId;
+        }
+
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        $stmt->execute($params);
         $stats = $stmt->fetch();
 
         // Best seller item fetch (unchanged, below).
@@ -232,13 +255,22 @@ class SalesReport {
                     JOIN orders o ON oi.order_id = o.order_id
                     JOIN menu_items mi ON oi.menu_item_id = mi.menu_item_id
                     {$this->paidJoin()}
-                    WHERE DATE(p.paid_at) BETWEEN :start AND :end
+                    WHERE DATE(p.paid_at) BETWEEN :start AND :end";
+
+        $bestParams = [':start' => $startDate, ':end' => $endDate];
+
+        if ($menuItemId) {
+            $sqlBest .= " AND oi.menu_item_id = :menu_item_id";
+            $bestParams[':menu_item_id'] = $menuItemId;
+        }
+
+        $sqlBest .= "
                     GROUP BY oi.menu_item_id
                     ORDER BY total_revenue DESC
                     LIMIT 1";
 
         $stmt = $this->db->prepare($sqlBest);
-        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        $stmt->execute($bestParams);
         $bestSeller = $stmt->fetch();
 
         // COGS across the whole range (schema-agnostic) for Gross Profit
@@ -270,18 +302,15 @@ class SalesReport {
     public function getChartData($startDate, $endDate, $groupBy = 'day', $metric = 'revenue') {
         $format = $this->getDateFormat($groupBy);
 
-        // NOTE: GROUP BY period only (never period+date) so week/month/year
-        // ranges collapse into one point per period. MIN(DATE(...)) keeps the
-        // sort key deterministic under MySQL ONLY_FULL_GROUP_BY.
-        $sql = "SELECT
+        $sql = "SELECT 
                     DATE_FORMAT(p.paid_at, '$format') AS period,
-                    MIN(DATE(p.paid_at)) AS date,
+                    DATE(p.paid_at) AS date,
                     COUNT(DISTINCT o.order_id) AS order_count,
                     COALESCE(SUM(p.amount_paid), 0) AS revenue
                 FROM orders o
                 {$this->paidJoin()}
                 WHERE DATE(p.paid_at) BETWEEN :start AND :end
-                GROUP BY period
+                GROUP BY period, date
                 ORDER BY date ASC";
 
         $stmt = $this->db->prepare($sql);
@@ -317,7 +346,7 @@ class SalesReport {
 
         $sql = "SELECT 
                     DATE_FORMAT(p.paid_at, '$format') AS period,
-                    MIN(DATE(p.paid_at)) AS date,
+                    DATE(p.paid_at) AS date,
                     COUNT(DISTINCT o.order_id) AS order_count,
                     COALESCE(SUM(oi.quantity * oi.price), 0) AS revenue
                 FROM orders o
@@ -325,7 +354,7 @@ class SalesReport {
                 {$this->paidJoin()}
                 WHERE DATE(p.paid_at) BETWEEN :start AND :end
                     AND oi.menu_item_id = :menu_item_id
-                GROUP BY period
+                GROUP BY period, date
                 ORDER BY date ASC";
 
         $stmt = $this->db->prepare($sql);
@@ -364,22 +393,13 @@ class SalesReport {
      */
     private function computePerPeriodGrossProfit($startDate, $endDate, $groupBy, $results, $labels) {
         $costExpr = $this->cogsCostExpression();
-        // switch (not match) so this file still parses on PHP 7.4 hosts.
-        switch ($groupBy) {
-            case 'week':
-                $periodExpr = "DATE_FORMAT(so.stock_out_date, '%Y-%u')";
-                break;
-            case 'month':
-                $periodExpr = "DATE_FORMAT(so.stock_out_date, '%Y-%m')";
-                break;
-            case 'year':
-                $periodExpr = "DATE_FORMAT(so.stock_out_date, '%Y')";
-                break;
-            case 'day':
-            default:
-                $periodExpr = "DATE(so.stock_out_date)";
-                break;
-        }
+        $periodExpr = match ($groupBy) {
+            'day' => "DATE(so.stock_out_date)",
+            'week' => "DATE_FORMAT(so.stock_out_date, '%Y-%u')",
+            'month' => "DATE_FORMAT(so.stock_out_date, '%Y-%m')",
+            'year' => "DATE_FORMAT(so.stock_out_date, '%Y')",
+            default => "DATE(so.stock_out_date)"
+        };
 
         $sql = "SELECT $periodExpr AS period, SUM(soi.quantity * $costExpr) AS cogs
                 FROM stock_out so
@@ -417,10 +437,7 @@ class SalesReport {
     /**
      * Get top selling products (among PAID orders)
      */
-    public function getTopSelling($startDate, $endDate, $limit = 10) {
-        // Interpolate (int-cast + clamped): bound LIMIT params fail on some
-        // MySQL/MariaDB native-prepare configurations.
-        $limit = max(1, min(100, (int)$limit));
+    public function getTopSelling($startDate, $endDate, $limit = 10, $menuItemId = null) {
         $sql = "SELECT 
                     mi.menu_item_id,
                     mi.item_name,
@@ -432,14 +449,27 @@ class SalesReport {
                 JOIN orders o ON oi.order_id = o.order_id
                 JOIN menu_items mi ON oi.menu_item_id = mi.menu_item_id
                 {$this->paidJoin()}
-                WHERE DATE(p.paid_at) BETWEEN :start AND :end
+                WHERE DATE(p.paid_at) BETWEEN :start AND :end";
+
+        $params = [':start' => $startDate, ':end' => $endDate];
+
+        if ($menuItemId) {
+            $sql .= " AND oi.menu_item_id = :menu_item_id";
+            $params[':menu_item_id'] = $menuItemId;
+        }
+
+        $sql .= "
                 GROUP BY mi.menu_item_id
                 ORDER BY total_revenue DESC
-                LIMIT $limit";
+                LIMIT :limit";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':start', $startDate);
         $stmt->bindValue(':end', $endDate);
+        if ($menuItemId) {
+            $stmt->bindValue(':menu_item_id', $menuItemId, PDO::PARAM_INT);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
     }
@@ -447,19 +477,32 @@ class SalesReport {
     /**
      * Get hourly distribution (peak sales time, paid orders)
      */
-    public function getHourlyDistribution($startDate, $endDate) {
+    public function getHourlyDistribution($startDate, $endDate, $menuItemId = null) {
         $sql = "SELECT 
                     HOUR(p.paid_at) AS hour,
                     COUNT(DISTINCT o.order_id) AS order_count,
                     COALESCE(SUM(p.amount_paid), 0) AS revenue
                 FROM orders o
                 {$this->paidJoin()}
-                WHERE DATE(p.paid_at) BETWEEN :start AND :end
+                WHERE DATE(p.paid_at) BETWEEN :start AND :end";
+
+        $params = [':start' => $startDate, ':end' => $endDate];
+
+        if ($menuItemId) {
+            $sql .= "
+                AND EXISTS (
+                    SELECT 1 FROM order_items oi
+                    WHERE oi.order_id = o.order_id AND oi.menu_item_id = :menu_item_id
+                )";
+            $params[':menu_item_id'] = $menuItemId;
+        }
+
+        $sql .= "
                 GROUP BY HOUR(p.paid_at)
                 ORDER BY hour ASC";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        $stmt->execute($params);
         $results = $stmt->fetchAll();
 
         // Fill missing hours with 0
@@ -554,17 +597,12 @@ class SalesReport {
      * Helper: Get date format based on groupBy
      */
     private function getDateFormat($groupBy) {
-        // switch (not match) so this file still parses on PHP 7.4 hosts.
-        switch ($groupBy) {
-            case 'week':
-                return '%Y-%u';
-            case 'month':
-                return '%Y-%m';
-            case 'year':
-                return '%Y';
-            case 'day':
-            default:
-                return '%Y-%m-%d';
-        }
+        return match ($groupBy) {
+            'day' => '%Y-%m-%d',
+            'week' => '%Y-%u',
+            'month' => '%Y-%m',
+            'year' => '%Y',
+            default => '%Y-%m-%d'
+        };
     }
 }

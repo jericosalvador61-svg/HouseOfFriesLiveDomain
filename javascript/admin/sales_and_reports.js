@@ -50,15 +50,6 @@ function apiFetch(endpoint, options = {}) {
 let salesChartInstance = null;
 let hourlyChartInstance = null;
 
-// Build the Error thrown for a failed API payload. The backend attaches the
-// real cause in `detail` (Admin/Supervisor only), so the browser console shows
-// the actual DB reason instead of just the generic message.
-function apiErrorMessage(data, fallback) {
-    const base = (data && data.message) || fallback;
-    const detail = data && data.detail ? ` Detail: ${data.detail}` : '';
-    return base + detail;
-}
-
 // State
 let currentFilters = {
     start_date: '',
@@ -193,11 +184,14 @@ function setupEvents() {
     }
 
     if (startDateInput) {
+        const maxToday = new Date().toISOString().split('T')[0];
+        startDateInput.max = maxToday;
         startDateInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') applyFilters();
         });
     }
     if (endDateInput) {
+        endDateInput.max = new Date().toISOString().split('T')[0];
         endDateInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') applyFilters();
         });
@@ -297,11 +291,15 @@ function loadMenuItems() {
         .then(data => {
             if (data.status === 'success') {
                 const select = document.getElementById('menuItemFilter');
+                const current = currentFilters.menu_item_id;
                 select.innerHTML = '<option value="">All Items</option>';
                 data.data.forEach(item => {
                     const option = document.createElement('option');
                     option.value = item.menu_item_id;
                     option.textContent = `${item.item_name} (₱${parseFloat(item.price).toFixed(2)})`;
+                    if (current && String(item.menu_item_id) === String(current)) {
+                        option.selected = true;
+                    }
                     select.appendChild(option);
                 });
             }
@@ -317,6 +315,11 @@ function loadStats() {
         start_date: currentFilters.start_date,
         end_date: currentFilters.end_date
     });
+
+    // REQ-072: KPI cards must honor the menu-item filter like every other section
+    if (currentFilters.menu_item_id) {
+        params.append('menu_item_id', currentFilters.menu_item_id);
+    }
 
     apiFetch(`get_stats.php?${params.toString()}`, { method: 'GET' })
         .then(data => {
@@ -336,7 +339,7 @@ function loadStats() {
                     document.getElementById('bestSellerRevenue').textContent = 'No data';
                 }
             } else {
-                throw new Error(apiErrorMessage(data, 'Failed to load stats'));
+                throw new Error(data.message || 'Failed to load stats');
             }
         })
         .catch(err => {
@@ -374,7 +377,7 @@ function loadChartData() {
             if (data.status === 'success') {
                 renderChart(data.data);
             } else {
-                throw new Error(apiErrorMessage(data, 'Failed to load chart data'));
+                throw new Error(data.message || 'Failed to load chart data');
             }
         })
         .catch(err => {
@@ -512,9 +515,6 @@ function renderChart(chartData) {
         }
     };
 
-    // Reset axis orientation every render so switching away from Horizontal-Bar
-    // never leaves a stale indexAxis: 'y' on the options object.
-    options.indexAxis = 'x';
     let type = 'bar';
     if (chartType === 'line') {
         type = 'line';
@@ -557,12 +557,17 @@ function loadTopSelling() {
         limit: 10
     });
 
+    // REQ-072: top sellers must honor the active menu-item filter
+    if (currentFilters.menu_item_id) {
+        params.append('menu_item_id', currentFilters.menu_item_id);
+    }
+
     apiFetch(`get_top_selling.php?${params.toString()}`, { method: 'GET' })
         .then(data => {
             if (data.status === 'success') {
                 renderTopSelling(data.data);
             } else {
-                throw new Error(apiErrorMessage(data, 'Failed to load top selling'));
+                throw new Error(data.message || 'Failed to load top selling');
             }
         })
         .catch(err => {
@@ -624,12 +629,17 @@ function loadHourlyDistribution() {
         end_date: currentFilters.end_date
     });
 
+    // REQ-072: peak-hour distribution must honor the active menu-item filter
+    if (currentFilters.menu_item_id) {
+        params.append('menu_item_id', currentFilters.menu_item_id);
+    }
+
     apiFetch(`get_hourly_distribution.php?${params.toString()}`, { method: 'GET' })
         .then(data => {
             if (data.status === 'success') {
                 renderHourlyData(data.data);
             } else {
-                throw new Error(apiErrorMessage(data, 'Failed to load hourly data'));
+                throw new Error(data.message || 'Failed to load hourly data');
             }
         })
         .catch(err => {
@@ -727,6 +737,12 @@ function renderHourlyChart(hourlyData) {
 // ==========================================
 function loadReportData() {
     const params = new URLSearchParams({ start_date: currentFilters.start_date, end_date: currentFilters.end_date });
+
+    // REQ-072: per-day report must honor the active menu-item filter
+    if (currentFilters.menu_item_id) {
+        params.append('menu_item_id', currentFilters.menu_item_id);
+    }
+
     apiFetch(`get_report.php?${params.toString()}`, { method: 'GET' })
         .then(data => {
             if (data.status === 'success') {

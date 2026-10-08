@@ -38,7 +38,8 @@ class SalesReportController {
 
     public function getStats() {
         list($start, $end) = $this->getDateRange();
-        $data = $this->model->getStats($start, $end);
+        $menuItemId = isset($_GET['menu_item_id']) ? (int)$_GET['menu_item_id'] : null;
+        $data = $this->model->getStats($start, $end, $menuItemId);
         $this->respond(['status' => 'success', 'data' => $data]);
     }
 
@@ -59,20 +60,23 @@ class SalesReportController {
 
     public function getReport() {
         list($start, $end) = $this->getDateRange();
-        $data = $this->model->getReportByDay($start, $end);
+        $menuItemId = isset($_GET['menu_item_id']) ? (int)$_GET['menu_item_id'] : null;
+        $data = $this->model->getReportByDay($start, $end, $menuItemId);
         $this->respond(['status' => 'success', 'data' => $data]);
     }
 
     public function getTopSelling() {
         list($start, $end) = $this->getDateRange();
         $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
-        $data = $this->model->getTopSelling($start, $end, $limit);
+        $menuItemId = isset($_GET['menu_item_id']) ? (int)$_GET['menu_item_id'] : null;
+        $data = $this->model->getTopSelling($start, $end, $limit, $menuItemId);
         $this->respond(['status' => 'success', 'data' => $data]);
     }
 
     public function getHourlyDistribution() {
         list($start, $end) = $this->getDateRange();
-        $data = $this->model->getHourlyDistribution($start, $end);
+        $menuItemId = isset($_GET['menu_item_id']) ? (int)$_GET['menu_item_id'] : null;
+        $data = $this->model->getHourlyDistribution($start, $end, $menuItemId);
         $this->respond(['status' => 'success', 'data' => $data]);
     }
 

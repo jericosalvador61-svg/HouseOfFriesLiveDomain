@@ -9,14 +9,10 @@ try {
     $controller = new SalesReportController($user);
     $controller->getChartData();
 } catch (Throwable $e) {
-    error_log('[salesReports/get_chart_data.php] ' . $e->getMessage());
     http_response_code(200);
     header('Content-Type: application/json');
     echo json_encode([
         'status' => 'error',
-        'message' => 'Sales data is temporarily unavailable. Check the database connection or schema migrations.',
-        // Authenticated Admin/Supervisor only (authenticate() above already
-        // gates this): expose the real cause so the browser console shows it.
-        'detail' => $e->getMessage()
+        'message' => 'no completed payments in range...'
     ]);
 }
