@@ -46,13 +46,23 @@ class InventoryReport {
         $soStmt->execute([$startDate, $endDate]);
         $stockOutQty = (float)$soStmt->fetchColumn();
 
+        // Damaged / spoilage / waste count (pending records)
+        $damagedStmt = $this->db->prepare("SELECT COUNT(*) FROM spoilage WHERE status='PENDING' AND spoilage_type IN ('SPOILAGE','WASTE','DAMAGE')");
+        $damagedStmt->execute();
+        $damaged = (int)$damagedStmt->fetchColumn();
+
         return [
+            'total'             => (int)$totalMat,
+            'low'               => $lowStock,
+            'out'               => $outStock,
+            'damaged'           => $damaged,
+            // backward-compat keys
             'total_materials'   => (int)$totalMat,
             'low_stock'         => $lowStock,
             'out_stock'         => $outStock,
+            'pending_returns'   => $pendingReturns,
             'stock_in_value'    => $stockInValue,
             'spoilage_loss'     => $spoilageLoss,
-            'pending_returns'   => $pendingReturns,
             'stock_out_qty'     => $stockOutQty
         ];
     }
