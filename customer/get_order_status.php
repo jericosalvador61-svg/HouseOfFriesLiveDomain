@@ -43,6 +43,12 @@ try {
     $stmt->execute([$order_id]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    if (!$result) {
+        http_response_code(404);
+        echo json_encode(['status' => 'PENDING', 'not_found' => true]);
+        exit;
+    }
+
     $prepRemaining = (int)($result['prep_remaining'] ?? 0);
     $prepTotal     = (int)($result['prep_estimate_total'] ?? 0);
     $startedEpoch  = $result['cooking_started_epoch'] ? (int)$result['cooking_started_epoch'] : null;

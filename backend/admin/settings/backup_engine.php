@@ -94,6 +94,76 @@ try {
         echo json_encode(['status' => 'success', 'message' => 'Hourly background data trace serialized successfully.']);
         exit();
     }
+
+    // ── NEW: JSON management actions for the settings page (REQ-068) ──
+    // list_backups → {status, backups:[{filename,type,size_formatted,created}]}
+    // download_backup → streams the file; delete_backup → removes it.
+    // Backups live in backend/admin/settings/backups/ (same dir the hourly
+    // auto-save writes into). Missing folder or empty = success with [].
+    if ($action === 'list_backups' || $action === 'download_backup' || $action === 'delete_backup') {
+        $backupDirectory = __DIR__ . '/backups/';
+
+        if ($action === 'list_backups') {
+            $entries = [];
+            if (is_dir($backupDirectory)) {
+                $files = @scandir($backupDirectory);
+                if ($files) {
+                    foreach ($files as $file) {
+                        if ($file === '.' || $file === '..') continue;
+                        $path = $backupDirectory . $file;
+                        if (!is_file($path)) continue;
+                        $entries[] = [
+                            'filename' => $file,
+                            'type' => (strpos($file, 'auto_backup_') === 0) ? 'auto' : 'manual',
+                            'size_formatted' => round(filesize($path) / 1024, 1) . ' KB',
+                            'created' => date('Y-m-d H:i:s', filemtime($path))
+                        ];
+                    }
+                }
+            }
+            usort($entries, fn($a, $b) => strcmp($b['created'], $a['created']));
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'backups' => $entries]);
+            exit();
+        }
+
+        if ($action === 'download_backup') {
+            $file = basename($_GET['file'] ?? '');
+            $path = $backupDirectory . $file;
+            if ($file === '' || !is_file($path) || !is_readable($path)) {
+                http_response_code(404);
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Backup file not found.']);
+                exit();
+            }
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="' . $file . '"');
+            header('Content-Length: ' . filesize($path));
+            readfile($path);
+            exit();
+        }
+
+        // delete_backup
+        $input = json_decode(file_get_contents('php://input'), true);
+        $file = basename($input['file'] ?? '');
+        $path = $backupDirectory . $file;
+        if ($file === '' || !is_file($path)) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Backup file not found.']);
+            exit();
+        }
+        if (@unlink($path)) {
+            logActivity($pdo, (int)$auth['user_id'], $auth['username'] ?? 'admin', $auth['role'] ?? 'Admin',
+                'SETTINGS_BACKUP', "Deleted backup file {$file}", null, null, null, 'COMPLETED');
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Backup deleted.']);
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Could not delete backup file.']);
+        }
+        exit();
+    }
 } catch (Exception $e) {
     ob_clean();
     http_response_code(500);

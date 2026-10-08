@@ -84,21 +84,34 @@ $existingIntentStatus = $dbOrder['payment_intent_status'] ?? '';
 $existingIntentId = $dbOrder['payment_intent_id'] ?? '';
 
 if (in_array($existingIntentStatus, ['awaiting_payment_method', 'awaiting_next_action', 'processing']) && !empty($existingIntentId)) {
-    $checkStmt = $pdo->prepare("SELECT qr_code_src, redirect_url FROM payments WHERE order_id = ? AND payment_intent_id = ? ORDER BY created_at DESC LIMIT 1");
-    $checkStmt->execute([$order_id, $existingIntentId]);
-    $existingPayment = $checkStmt->fetch(PDO::FETCH_ASSOC);
+    // The payments table has no payment_intent_id column on the local DB —
+    // match on the order row (orders.payment_intent_id is authoritative).
+    // Re-derive QR/redirect from the intent via the PayMongo API (single
+    // round-trip) so resume shows the same doors as before.
+    $qrCodeSrc = null;
+    $redirectUrl = null;
+    try {
+        $checkResp = payMongoRequest('/v1/payment_intents/' . $existingIntentId, 'GET');
+        if ($checkResp['status_code'] === 200) {
+            $attrs = $checkResp['response']['data']['attributes'] ?? [];
+            if (isset($attrs['next_action']['qr_code']['src'])) {
+                $qrCodeSrc = $attrs['next_action']['qr_code']['src'];
+            }
+            if (isset($attrs['next_action']['redirect']['url'])) {
+                $redirectUrl = $attrs['next_action']['redirect']['url'];
+            }
+        }
+    } catch (Throwable $e) { /* fall through with nulls */ }
 
-    if ($existingPayment) {
-        http_response_code(200);
-        echo json_encode([
-            'success' => true,
-            'payment_intent_id' => $existingIntentId,
-            'qr_code_src' => $existingPayment['qr_code_src'],
-            'redirect_url' => $existingPayment['redirect_url'],
-            'existing_intent' => true
-        ]);
-        exit;
-    }
+    http_response_code(200);
+    echo json_encode([
+        'success' => true,
+        'payment_intent_id' => $existingIntentId,
+        'qr_code_src' => $qrCodeSrc,
+        'redirect_url' => $redirectUrl,
+        'existing_intent' => true
+    ]);
+    exit;
 }
 
 try {

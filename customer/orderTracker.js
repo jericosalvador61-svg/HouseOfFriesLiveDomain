@@ -461,6 +461,13 @@ async function fetchAndRenderOrder(orderId) {
                     createdAt: data.created_at || null
                 };
             }
+        } else if (statusResp.status === 404) {
+            // Order no longer exists (purged/never created): stop polling it.
+            const goneCard = document.getElementById('trackerCard-' + orderId);
+            if (goneCard) goneCard.remove();
+            clearCountdownTimer(orderId);
+            clearPrepTimer(orderId);
+            return;
         }
 
         if (itemsResp.ok) {
@@ -712,6 +719,7 @@ function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
     // The card is only built once, so on later polls we must refresh the
     // running countdown in place: the anchor never moves, but the kitchen may
     // have ticked dishes off and shortened the remaining budget.
+    const isCookingNow = status === 'COOKING';
     if (isCookingNow && prep && prep.startedEpoch) {
         if (!document.getElementById('prepTimer-' + orderId)) {
             const holder = cardEl || document.getElementById('orderCardsContainer');
