@@ -228,16 +228,41 @@ class InventoryReport {
     }
 
     /**
+     * REQ-070+071 F7-LIVE-4: SCHEMA-AGNOSTIC column guard (mirrors
+     * SalesReport::hasColumn()). Additive columns (stock_out_items.unit_cost,
+     * return_items.unit_cost) are applied to the live DB AFTER deploy — never
+     * write a query that fatals when the column is absent.
+     */
+    private function hasColumn(string $table, string $column): bool {
+        $stmt = $this->db->prepare("
+            SELECT COUNT(*) FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
+        ");
+        $stmt->execute([$table, $column]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    /**
      * Get stock movement data for table
      */
     public function getMovementData($startDate, $endDate, $limit = 50) {
+        // REQ-070+071 F7-LIVE-4: stock_out_items.unit_cost / return_items.unit_cost
+        // are REQ-057 additive columns that may be absent on an unmigrated DB —
+        // mirror SalesReport::cogsCostExpression(): COALESCE(snapshot, cost_per_unit)
+        // when present, else raw_materials.cost_per_unit.
+        $soiCost = $this->hasColumn('stock_out_items', 'unit_cost')
+            ? "COALESCE(soi.unit_cost, rm.cost_per_unit)"
+            : "rm.cost_per_unit";
+        $riCost = $this->hasColumn('return_items', 'unit_cost')
+            ? "COALESCE(ri.unit_cost, rm.cost_per_unit)"
+            : "rm.cost_per_unit";
         $sql = "(SELECT 'Stock In' AS type, si.stock_in_date AS date, rm.raw_material_name, sis.quantity, si.total_cost AS value, si.status
                 FROM stock_in si
                 JOIN stock_in_items sis ON si.stock_in_id = sis.stock_in_id
                 JOIN raw_materials rm ON sis.raw_material_id = rm.raw_material_id
                 WHERE si.stock_in_date BETWEEN :start1 AND :end1)
                 UNION ALL
-                (SELECT 'Stock Out' AS type, so.stock_out_date AS date, rm.raw_material_name, soi.quantity, soi.quantity * rm.cost_per_unit AS value, so.status
+                (SELECT 'Stock Out' AS type, so.stock_out_date AS date, rm.raw_material_name, soi.quantity, soi.quantity * " . $soiCost . " AS value, so.status
                 FROM stock_out so
                 JOIN stock_out_items soi ON so.stock_out_id = soi.stock_out_id
                 JOIN raw_materials rm ON soi.raw_material_id = rm.raw_material_id
@@ -248,7 +273,7 @@ class InventoryReport {
                 JOIN raw_materials rm ON s.raw_material_id = rm.raw_material_id
                 WHERE s.spoilage_date BETWEEN :start3 AND :end3)
                 UNION ALL
-                (SELECT 'Return' AS type, r.return_date AS date, rm.raw_material_name, ri.quantity, ri.quantity * ri.unit_cost AS value, r.status
+                (SELECT 'Return' AS type, r.return_date AS date, rm.raw_material_name, ri.quantity, ri.quantity * " . $riCost . " AS value, r.status
                 FROM returns r
                 JOIN return_items ri ON r.return_id = ri.return_id
                 JOIN raw_materials rm ON ri.raw_material_id = rm.raw_material_id

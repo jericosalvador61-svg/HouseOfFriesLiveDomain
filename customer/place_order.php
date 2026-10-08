@@ -250,10 +250,15 @@ try {
         // distinct ref. The UNIQUE index is the real guard; this just makes the
         // retry actually able to succeed instead of looping on the same ref.
         $year = date("Y");
-        if ($attempt > 1 && defined('REF_COLLISION')) {
-            // rare: bump the numeric segment by a small random offset so the
-            // retried ref differs from the collided one
-            $count = (int)$stmtCount->fetchColumn() + $attempt + random_int(1, 7);
+        if ($attempt > 1) {
+            // REQ-070+071 F1: the prior $stmtCount is EXHAUSTED after a 23000
+            // (fetchColumn() on a consumed statement returns false->0, which
+            // regenerates HOF{year}0000X and collides again). Re-query MAX with
+            // a FRESH statement, then offset by $attempt + random so the retry
+            // ref is genuinely distinct and far from the collided one.
+            $stmtFresh = $pdo->prepare("SELECT COALESCE(MAX(CAST(SUBSTRING(reference_number, 8) AS UNSIGNED)), 0) FROM orders WHERE YEAR(created_at) = ?");
+            $stmtFresh->execute([$year]);
+            $count = (int)$stmtFresh->fetchColumn() + $attempt + random_int(1, 50);
         } else {
             $stmtCount = $pdo->prepare("SELECT COALESCE(MAX(CAST(SUBSTRING(reference_number, 8) AS UNSIGNED)), 0) FROM orders WHERE YEAR(created_at) = ?");
             $stmtCount->execute([$year]);
@@ -454,7 +459,11 @@ try {
             }
             // REQ-070: mark that the last ref collided so the next attempt
             // regenerates a DISTINCT ref (see ref generator above).
-            define('REF_COLLISION', true);
+            // REQ-070+071 F1: guard — a 2nd 23000 in the same request must
+            // not re-define the constant ("Constant already defined" notice).
+            if (!defined('REF_COLLISION')) {
+                define('REF_COLLISION', true);
+            }
             continue;
         }
         throw $e;

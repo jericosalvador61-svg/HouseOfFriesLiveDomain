@@ -55,7 +55,9 @@ try {
         'pagination' => [
             'total' => $total,
             'page' => $page,
-            'per_page' => $limit,
+            // REQ-070+071 F3: when ?all=1 the envelope must reflect the actual
+            // rows returned, not the uncapped limit sentinel.
+            'per_page' => $all ? $total : $limit,
             'total_pages' => (int)ceil($total / $limit)
         ]
     ]);

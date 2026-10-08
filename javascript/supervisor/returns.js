@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function fetchMaterialsAndStats() {
-        authenticatedFetch("/backend/admin/manageInventory/get_materials.php")
+        authenticatedFetch("/backend/admin/manageInventory/get_materials.php?all=1")
             .then(r => r.json())
             .then(result => {
                 if (result.status === 'success') {

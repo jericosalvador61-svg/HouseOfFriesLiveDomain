@@ -51,7 +51,7 @@ function authenticatedFetch(url, options = {}) {
 }
 
 function fetchInventoryStats() {
-    authenticatedFetch("/backend/admin/manageInventory/get_materials.php")
+    authenticatedFetch("/backend/admin/manageInventory/get_materials.php?all=1")
         .then(r => r.json())
         .then(result => {
             if (result.status === 'success') {
@@ -78,7 +78,7 @@ function updateCount(id, value) {
 }
 
 function populateMaterialDropdown() {
-    authenticatedFetch("/backend/admin/manageInventory/get_materials.php")
+    authenticatedFetch("/backend/admin/manageInventory/get_materials.php?all=1")
         .then(r => r.json())
         .then(result => {
             if (result.status === 'success') {
