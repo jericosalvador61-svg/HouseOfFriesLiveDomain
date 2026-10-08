@@ -89,6 +89,19 @@ try {
 
     $dbTotal = round((float)$orderRow['total_amount'], 2);
 
+    // ── POISONED TOTAL GUARD (REQ-068 M4-2) ──
+    // Live data can carry total_amount = 99999999 (poisoned/stale row). Never
+    // transact against it — refuse so the cashier voids and rebuilds the order.
+    if ($dbTotal > 1000000) {
+        $pdo->rollBack();
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'This order total looks incorrect. Please void and rebuild the order.'
+        ]);
+        exit;
+    }
+
     // ── STALE TOTAL GUARD (P0) ─
     // The order total is always taken from the server, never from the client.
     if ($hasExpectedTotal && abs($expectedTotal - $dbTotal) > 0.009) {

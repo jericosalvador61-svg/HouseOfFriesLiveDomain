@@ -23,6 +23,19 @@ try {
         exit;
     }
 
+    // REQ-068 M4-2: guard a poisoned/stale subtotal. Some live-DB rows carry
+    // subtotal_amount = 99999999 (the writers recompute from SUM(order_items.subtotal),
+    // so the bad value is never written by code). If the stored subtotal is
+    // > 1000000 or NULL, recompute it from the non-deleted items and use that
+    // for the RESPONSE only — never mutate the DB. total_amount stays as-is.
+    $subtotal = isset($orderInfo['subtotal_amount']) ? (float)$orderInfo['subtotal_amount'] : 0.0;
+    if ($subtotal > 1000000 || $subtotal <= 0) {
+        $subStmt = $pdo->prepare("SELECT COALESCE(SUM(quantity * price), 0) FROM order_items WHERE order_id = ? AND is_deleted = 0");
+        $subStmt->execute([$order_id]);
+        $subtotal = (float)$subStmt->fetchColumn();
+    }
+    $orderInfo['subtotal_amount'] = $subtotal;
+
     // 2. Fetch Items (Added order_item_id and is_deleted check)
     $itemsQuery = "SELECT 
                     oi.order_item_id, 

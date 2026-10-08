@@ -333,7 +333,10 @@ function fetchOrderDetails(id) {
                 }
 
                 // REQ-049: subtotal stays GROSS, discount shows -₱, total shows NET.
-                const subtotal = parseFloat(data.order_info.subtotal_amount ?? data.order_info.total_amount).toFixed(2);
+                // REQ-068 M4-2: belt-and-suspenders guard — if the stored subtotal
+                // looks poisoned (>1M or <=0), fall back to total_amount.
+                const st = parseFloat(data.order_info.subtotal_amount ?? data.order_info.total_amount);
+                const subtotal = (st > 0 && st < 1000000) ? st : parseFloat(data.order_info.total_amount);
                 const discountAmount = data.order_info.discount_amount != null
                     ? parseFloat(data.order_info.discount_amount).toFixed(2)
                     : null;
@@ -343,7 +346,7 @@ function fetchOrderDetails(id) {
                 const discountEl = document.getElementById('summary-discount');
                 const totalEl = document.getElementById('summary-total');
                 const discountBtn = document.getElementById('discount-toggle-btn');
-                if (subEl) subEl.innerText = `₱${subtotal}`;
+                if (subEl) subEl.innerText = `₱${subtotal.toFixed(2)}`;
                 if (discountEl) discountEl.innerText = discountAmount != null ? `-₱${discountAmount}` : '₱0.00';
                 if (totalEl) totalEl.innerText = `₱${total}`;
 
@@ -923,7 +926,11 @@ async function handlePay() {
             receiptItems = detailsData.items || [];
             cashierName = detailsData.cashier_name || detailsData.order_info?.cashier_name || '';
             receiptSubtotal = detailsData.order_info?.subtotal_amount != null
-                ? round2(parseFloat(detailsData.order_info.subtotal_amount))
+                ? (() => {
+                    const rs = parseFloat(detailsData.order_info.subtotal_amount);
+                    // REQ-068 M4-2: guard poisoned subtotal (>1M or <=0) → fall back to total.
+                    return (rs > 0 && rs < 1000000) ? round2(rs) : round2(parseFloat(detailsData.order_info.total_amount));
+                })()
                 : null;
             receiptDiscount = detailsData.order_info?.discount_amount != null
                 ? round2(parseFloat(detailsData.order_info.discount_amount))

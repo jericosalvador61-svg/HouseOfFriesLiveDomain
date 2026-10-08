@@ -29,9 +29,12 @@ try {
     for ($attempt = 1; $attempt <= 3; $attempt++) {
         $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE reference_number LIKE :prefix");
-        $stmt->execute(['prefix' => $prefix . '%']);
-        $count = $stmt->fetchColumn() + 1;
+        // REQ-068 M4-1: MAX+1 so refs never repeat when cancelled rows are
+        // hard-deleted; COUNT+1 fallback when MAX is NULL. The 23000 retry loop
+        // below is the collision backstop.
+        $stmt = $pdo->prepare("SELECT COALESCE(MAX(CAST(SUBSTRING(reference_number, 8) AS UNSIGNED)), 0) FROM orders WHERE YEAR(created_at) = ?");
+        $stmt->execute([$currentYear]);
+        $count = (int)$stmt->fetchColumn() + 1;
         $newReference = $prefix . str_pad($count, 5, '0', STR_PAD_LEFT);
 
         $insertStmt = $pdo->prepare("

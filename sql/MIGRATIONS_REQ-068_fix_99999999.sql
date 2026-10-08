@@ -1,0 +1,35 @@
+-- REQ-068 M4-3: find-and-fix poison rows (99999999) in live data.
+-- Root cause: some live rows carry price/qty/subtotal/total = 99999999 (or other
+-- values >= 100000) that the app code never writes. Run this ONLY after Jerico
+-- reviews the PREVIEW output below and approves the clamp values.
+--
+-- STAGED, SAFE TO REVIEW: preview SELECTs first (uncomment the preview block, run,
+-- inspect), then uncomment the guarded UPDATE block and run.
+-- The UPDATEs touch ONLY rows whose values are >= 100000, so legit data is safe.
+--
+-- Do NOT auto-run. Not idempotent — it is a one-time data repair. (The unique-key
+-- migration MIGRATIONS_REQ-068_ref_unique.sql may fail on duplicate refs until
+-- this repair has been reviewed/applied.)
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- STEP 1 — PREVIEW (run first; review with Jerico before touching any data)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SELECT * FROM menu_items WHERE price >= 100000;
+-- SELECT * FROM order_items WHERE price >= 100000 OR quantity >= 100000;
+-- SELECT * FROM orders WHERE total_amount >= 100000 OR subtotal_amount >= 100000;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- STEP 2 — FIX (uncomment ONLY after the preview has been reviewed/approved)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Menu item prices: clamp to 0 (or a sane real price per the reviewed preview).
+-- UPDATE menu_items SET price = 0 WHERE price >= 100000;
+--
+-- Order items: clamp poisoned unit price to 0 (keeps the item on the order;
+-- the order subtotal is recomputed from real item values elsewhere).
+-- UPDATE order_items SET price = 0 WHERE price >= 100000;
+-- UPDATE order_items SET quantity = 1 WHERE quantity >= 100000;
+--
+-- Orders: clamp poisoned totals/subtotals to 0 so the cashier can void/rebuild
+-- (or correct them from the recomputed item sum after reviewing the preview).
+-- UPDATE orders SET total_amount = 0, subtotal_amount = 0
+--    WHERE total_amount >= 100000 OR subtotal_amount >= 100000;

@@ -1,6 +1,6 @@
-﻿/**
+/**
  * javascript/admin/manage_customers.js
- * REQ-052 Batch 3 â€” Admin manage-customers page (list/search, toggle
+ * REQ-052 Batch 3 — Admin manage-customers page (list/search, toggle
  * is_active, generate password-reset code).
  */
 
@@ -116,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const statusBadge = isActive
                 ? '<span class="badge bg-success-subtle text-success">Active</span>'
                 : '<span class="badge bg-danger-subtle text-danger" title="Locked / deactivated">Locked</span>';
-            const created = c.created_at ? new Date(c.created_at + 'Z').toLocaleDateString('en-PH') : 'â€”';
+            const created = c.created_at ? new Date(c.created_at + 'Z').toLocaleDateString('en-PH') : '—';
             const ordersCount = (c.paid_orders_count ? c.paid_orders_count : 0)
                 + (c.orders_count && c.orders_count > (c.paid_orders_count || 0) ? ' (' + c.orders_count + ' total)' : '');
 
@@ -198,7 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             li.appendChild(a);
             // FIX (REQ-063): insert before the last <li> (Next). The old code
-            // passed prevPage.nextSibling â€” prevPage is the <a> INSIDE the first
+            // passed prevPage.nextSibling — prevPage is the <a> INSIDE the first
             // <li>, so its nextSibling is a text node outside the <ul>, which
             // made insertBefore throw and the page numbers never render.
             if (nextLi) controls.insertBefore(li, nextLi);
