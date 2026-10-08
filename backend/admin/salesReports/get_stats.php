@@ -1,12 +1,12 @@
 <?php
 require_once __DIR__ . '/../../auth_middleware.php';
-$user = authenticate(['Admin', 'Supervisor']);
+$authUser = authenticate(['Admin', 'Supervisor']);
 
 require_once __DIR__ . '/SalesReportController.php';
 
 // REQ-056: any PDO/exception must surface as clean JSON, never HTML/500.
 try {
-    $controller = new SalesReportController($user);
+    $controller = new SalesReportController($authUser);
     $controller->getStats();
 } catch (Throwable $e) {
     http_response_code(200);
