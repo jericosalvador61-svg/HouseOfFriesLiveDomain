@@ -49,7 +49,7 @@ function authenticatedFetch(url, options = {}) {
 
 async function loadInitialData() {
     try {
-        const res = await authenticatedFetch("/backend/admin/manageInventory/get_materials.php");
+        const res = await authenticatedFetch("/backend/admin/manageInventory/get_materials.php?all=1");
         const result = await res.json();
         if (result.status === 'success') {
             inventoryMaterials = result.data;

@@ -83,7 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================
     async function loadMaterialsAndStats() {
         try {
-            const res = await fetch("/backend/admin/manageInventory/get_materials.php", {
+            const res = await fetch("/backend/admin/manageInventory/get_materials.php?all=1", {
                 method: "GET",
                 headers: getHeaders(null) // Dynamic injection fixes 401 on initialization
             });

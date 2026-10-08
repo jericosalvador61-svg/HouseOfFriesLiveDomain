@@ -11,15 +11,30 @@ try {
     // filters by mat.status client-side, so both ACTIVE + INACTIVE are returned
     // here (stats removed — REQ-057: KPI cards live on the dashboard only).
     // REQ-057 pagination: 10 rows/page, server-side LIMIT/OFFSET.
+    // REQ-071: `?all=1` returns the FULL list (no pagination) — required by the
+    // inventory dropdowns (stock_in / adjustments / spoilage) so EVERY raw
+    // material (including rows beyond page 10 and inactive ones) is selectable.
     $page = max(1, (int)($_GET['page'] ?? 1));
-    $limit = 10;
-    $offset = ($page - 1) * $limit;
+    $all = isset($_GET['all']) ? (int)$_GET['all'] : 0;
+    $limit = $all ? 100000 : 10;
+    $offset = $all ? 0 : ($page - 1) * $limit;
 
     $total = (int)$pdo->query("SELECT COUNT(*) FROM raw_materials")->fetchColumn();
 
+    // REQ-071: image_blob is a REQ-057 additive column that may be absent on
+    // an unmigrated DB — mirror the SalesReport hasColumn() guard so this
+    // endpoint (which feeds EVERY inventory dropdown) never 500s when the
+    // column is missing.
+    $hasImageBlob = false;
+    try {
+        $cols = $pdo->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'raw_materials'")->fetchAll(PDO::FETCH_COLUMN);
+        $hasImageBlob = in_array('image_blob', $cols, true);
+    } catch (Throwable $e) { /* treat as un-migrated */ }
+
     $stmt = $pdo->prepare("
         SELECT raw_material_id, raw_material_name, description, unit, 
-               current_quantity, reorder_level, status, is_perishable, img_url, image_blob, updated_at
+               current_quantity, reorder_level, status, is_perishable, img_url, updated_at"
+               . ($hasImageBlob ? ", image_blob" : "") . "
         FROM raw_materials
         ORDER BY raw_material_name ASC
         LIMIT :limit OFFSET :offset
@@ -30,7 +45,9 @@ try {
     $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // REQ-057: base64-encode image_blob so tables render data URIs.
-    hof_encode_blob_columns($materials, ['image_blob' => 'image_blob']);
+    if ($hasImageBlob) {
+        hof_encode_blob_columns($materials, ['image_blob' => 'image_blob']);
+    }
 
     echo json_encode([
         'status' => 'success',
