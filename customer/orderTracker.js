@@ -720,6 +720,8 @@ function renderOrderCard(orderId, status, itemsData, prepMinutes, prep, paid) {
     // running countdown in place: the anchor never moves, but the kitchen may
     // have ticked dishes off and shortened the remaining budget.
     const isCookingNow = status === 'COOKING';
+    const ledgerTotal = (prep && prep.total) ? prep.total : prepMinutes;
+    const ledgerRemaining = prep ? prep.remaining : null;
     if (isCookingNow && prep && prep.startedEpoch) {
         if (!document.getElementById('prepTimer-' + orderId)) {
             const holder = cardEl || document.getElementById('orderCardsContainer');
