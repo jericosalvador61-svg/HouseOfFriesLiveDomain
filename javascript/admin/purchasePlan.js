@@ -41,7 +41,7 @@ async function fetchInitialData() {
         checkStockAlerts(rawMaterialsCache);
 
         // Render both layouts side-by-side using unified cache data
-        renderPurchasePlanTable(purchasePlansCache.plans || []);
+        renderPurchasePlanTable(purchasePlansCache.plans || purchasePlansCache || []);
     } catch (error) {
         console.error("Error loading House of Fries data system:", error);
     }
