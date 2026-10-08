@@ -55,10 +55,17 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(r => r.json())
             .then(result => {
                 if (result.status === 'success') {
-                    updateCount('totalItems', result.stats?.total);
-                    updateCount('lowStock', result.stats?.low);
-                    updateCount('outStock', result.stats?.out);
-                    updateCount('damagedStock', result.stats?.damaged);
+                    // REQ-068: KPI cards from inventoryReports stats endpoint
+                    fetch("/backend/admin/inventoryReports/get_stats.php", { method: "GET", headers: getAuthHeaders(null) })
+                        .then(r => r.json())
+                        .then(s => {
+                            const d = s.data || {};
+                            updateCount('totalItems', d.total);
+                            updateCount('lowStock', d.low);
+                            updateCount('outStock', d.out);
+                            updateCount('damagedStock', d.damaged);
+                        })
+                        .catch(() => {});
                     checkStockAlerts(result.data);
                     if (inputMaterial && Array.isArray(result.data)) {
                         inputMaterial.innerHTML = '<option value="" selected disabled>Select Material...</option>';

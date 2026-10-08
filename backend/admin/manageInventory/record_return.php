@@ -10,7 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$auth = authenticate(['Admin']);
+// REQ-068: Admin + Supervisor record returns DIRECTLY (approved, stock restored now).
+$auth = authenticate(['Admin', 'Supervisor']);
 
 $return_date = $_POST['return_date'] ?? date('Y-m-d');
 $reason      = $_POST['reason'] ?? '';
@@ -24,17 +25,22 @@ try {
         throw new Exception("No return items received.");
     }
 
+    // Admin/Supervisor-recorded return = APPROVED immediately.
     $stmt = $pdo->prepare("
         INSERT INTO returns 
-        (user_id, status, reference_number, return_date, reason, return_type, created_at)
-        VALUES (?, 'PENDING', ?, ?, ?, ?, NOW())
+        (user_id, status, reference_number, return_date, reason, return_type, approved_by, approved_at, created_at)
+        VALUES (?, 'APPROVED', ?, ?, ?, ?, ?, NOW(), NOW())
     ");
-    $stmt->execute([$auth['user_id'], $ref_number, $return_date, $reason, $return_type]);
+    $stmt->execute([$auth['user_id'], $ref_number, $return_date, $reason, $return_type, $auth['user_id']]);
     $return_id = $pdo->lastInsertId();
 
     $itemStmt = $pdo->prepare("
         INSERT INTO return_items (return_id, raw_material_id, quantity, unit_cost, created_at)
         VALUES (?, ?, ?, ?, NOW())
+    ");
+    $updateStock = $pdo->prepare("
+        UPDATE raw_materials SET current_quantity = current_quantity + ?, updated_at = NOW()
+        WHERE raw_material_id = ?
     ");
 
     foreach ($_POST['material_id'] as $index => $material_id) {
@@ -42,6 +48,8 @@ try {
         $cost = (float)($_POST['unit_cost'][$index] ?? 0);
 
         $itemStmt->execute([$return_id, $material_id, $qty, $cost]);
+        // REQ-068: stock is restored immediately (no separate approval needed).
+        $updateStock->execute([$qty, $material_id]);
     }
 
     $pdo->commit();
@@ -55,10 +63,10 @@ try {
         $retParts[] = "{$mName} x{$qty}";
     }
     logActivity($pdo, $auth['user_id'], $auth['username'], $auth['role'],
-        'RETURN', "Return: " . implode(', ', $retParts),
+        'RETURN', "Return: " . implode(', ', $retParts) . " (auto-approved)",
         'raw_material', (int)$_POST['material_id'][0]);
 
-    echo json_encode(['status' => 'success', 'message' => 'Return request submitted for approval.']);
+    echo json_encode(['status' => 'success', 'message' => 'Return recorded and stock restored.']);
 } catch (Exception $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     error_log('record_return error: ' . $e->getMessage());
